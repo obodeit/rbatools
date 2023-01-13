@@ -363,6 +363,7 @@ def correction_pipeline(input,
     out["Location"]=out.index
     return(out)
 
+
 def build_input_for_default_kapp_estimation(input, type='new',max_PG_fraction=0.9,comps_minPG=["Secreted","n","vM","gM"]):
     out = pandas.DataFrame(columns=['Compartment_ID', 'Density', 'PG_fraction'])
     for i in input.index:
@@ -380,6 +381,7 @@ def build_input_for_default_kapp_estimation(input, type='new',max_PG_fraction=0.
     total_size=sum(list(out["Density"]))
     out["Density"]/=total_size
     return(out)
+
 
 def flux_bounds_from_input(input, condition, specific_exchanges=None, specific_directions=None):
     flux_mean_df = input.loc[input['Type'] == 'ExchangeFlux_Mean', :]
@@ -1370,33 +1372,43 @@ def generate_specific_kapp_input(specific_kapps,condition):
 def linear_function(x, a, b):
     return((a*x)+b)
 
+
 def quadratic_function(x, a, b,c):
     return((a*x**2)+(b*x)+c)
+
 
 def eval_linear_function(x_in, a, b):
     return([(a*x)+b for x in x_in])
 
+
 def eval_quadratic_function(x_in, a, b , c):
     return([(a*x**2)+(b*x)+c for x in x_in])
+
 
 def logistic_function(x, y_max ,x0, k, y_min):
     y = y_max / (1 + numpy.exp(-k*(x-x0)))+y_min
     return (y)
 
+
 def logistic_function_1st_derivative(x, y_max ,x_0, k):
     return((y_max*k*numpy.exp(-k*(x - x_0)))/((1 + numpy.exp(-k*(x-x_0)))**2))
+
 
 def logistic_function_2nd_derivative(x, y_max ,x_0, k):
     return(((numpy.exp(k*x_0)-numpy.exp(k*x))*numpy.exp(k*(x+x_0))*y_max*k**2)/((numpy.exp(k*x)+numpy.exp(k*x_0))**3))
 
+
 def eval_logistic_function(x_in,y_max,x0,k,y_min):
     return([logistic_function(x=x,y_max=y_max,x0=x0,k=k,y_min=y_min) for x in x_in])
+
 
 def eval_logistic_function_2nd_derivative(x_in,y_max,x0,k):
     return([logistic_function_2nd_derivative(x=x,y_max=y_max,x_0=x0,k=k) for x in x_in])
 
+
 def eval_logistic_function_1st_derivative(x_in,y_max,x0,k):
     return([logistic_function_1st_derivative(x=x,y_max=y_max,x_0=x0,k=k) for x in x_in])
+
 
 def do_lin_regression(x_to_fit,y_to_fit,min_val):
     if len(x_to_fit)>2:
@@ -1413,6 +1425,7 @@ def do_lin_regression(x_to_fit,y_to_fit,min_val):
         a=0
         b=min_val
     return({"A":round(a,5),"B":round(b,5)})
+
 
 def do_quadratic_regression(x_to_fit,y_to_fit,min_val):
     if len(x_to_fit)>2:
@@ -1433,6 +1446,7 @@ def do_quadratic_regression(x_to_fit,y_to_fit,min_val):
         b=0
         c=min_val
     return({"A":round(a,5),"B":round(b,5),"C":round(c,5)})
+
 
 def do_log_regression(x_to_fit,y_to_fit,x_to_plot,max_val,min_val):
     try:
@@ -1589,6 +1603,7 @@ def do_log_regression(x_to_fit,y_to_fit,x_to_plot,max_val,min_val):
             params={"Y_max":y_max,"Y_min":y_min,"A":0,"B":numpy.mean(y_to_fit)}
     return({i:round(params[i],5)for i in params.keys()})
 
+
 def quad_predictions(params,x_to_fit):
     x_to_use=[]
     for x in x_to_fit:
@@ -1610,6 +1625,7 @@ def quad_predictions(params,x_to_fit):
         else:
             y_pred.append(quad_prediction_values[i])
     return(y_pred)
+
 
 def lin_predictions(params,x_to_fit):
     x_to_use=[]
@@ -1633,6 +1649,7 @@ def lin_predictions(params,x_to_fit):
             y_pred.append(lin_prediction_values[i])
     return(y_pred)
 
+
 def calculate_rss(y_predicted,y_measured):
     if len(y_predicted)==len(y_measured):
         RSS=0
@@ -1641,6 +1658,7 @@ def calculate_rss(y_predicted,y_measured):
         return(RSS)
     else:
         return(None)
+
 
 def do_regression(x_to_fit,y_to_fit,x_to_plot,max_val,min_val,monotonous_quadratic=False,total_x_range=(0,1)):
     #y_max=min([max(y_to_fit),max_val])
@@ -1734,6 +1752,7 @@ def do_regression(x_to_fit,y_to_fit,x_to_plot,max_val,min_val,monotonous_quadrat
             out["Parameters"]=lin_regression_results
     return(out)
 
+
 def regression_on_specific_enzyme_efficiencies(Spec_Kapps,min_kapp,max_kapp,conditions,growth_rates,only_lin=False,impose_on_isoenzymes=True,monotonous_quadratic=False,fill_in_missing_conditions=False):
     out=pandas.DataFrame(columns=Spec_Kapps.columns)
     for enzyme in Spec_Kapps.index:
@@ -1793,6 +1812,7 @@ def regression_on_specific_enzyme_efficiencies(Spec_Kapps,min_kapp,max_kapp,cond
             out.loc[enzyme,"Model"]=json.dumps({"constant":{'CONSTANT':regression_results["Parameters"]["B"]}})
     return(out)
 
+
 def regression_on_compartment_sizes(Comp_sizes,conditions,growth_rates,monotonous_quadratic=False):
     pp = PdfPages('CompSize_Plots_refined3.pdf')
     out=pandas.DataFrame()
@@ -1832,6 +1852,7 @@ def regression_on_compartment_sizes(Comp_sizes,conditions,growth_rates,monotonou
             out.loc[comp,"Model"]=json.dumps({"constant":{'CONSTANT':regression_results["Parameters"]["B"]}})
     pp.close()
     return(out)
+
 
 def regression_on_pg_fractions(PG_sizes,conditions,growth_rates,monotonous_quadratic=False):
     pp = PdfPages('PGfraction_Plots_refined3.pdf')
@@ -1874,6 +1895,7 @@ def regression_on_pg_fractions(PG_sizes,conditions,growth_rates,monotonous_quadr
     pp.close()
     return(out)
 
+
 def regression_on_process_efficiencies(Process_efficiencies,min_efficiency,max_efficiency,conditions,growth_rates,monotonous_quadratic=False):
     pp = PdfPages('ProcessEfficiencies_Plots_refined3.pdf')
     out=pandas.DataFrame()
@@ -1914,6 +1936,7 @@ def regression_on_process_efficiencies(Process_efficiencies,min_efficiency,max_e
             out.loc[process,"Model"]=json.dumps({"constant":{'CONSTANT':regression_results["Parameters"]["B"]}})
     pp.close()
     return(out)
+
 
 def regression_on_default_enzyme_efficiencies(default_kapps,min_kapp,max_kapp,conditions,growth_rates,monotonous_quadratic=False):
     pp = PdfPages('DefKapp_Plots_refined3.pdf')
@@ -1957,6 +1980,7 @@ def regression_on_default_enzyme_efficiencies(default_kapps,min_kapp,max_kapp,co
         out.loc["Regression","Model"]=json.dumps({"constant":{'CONSTANT':regression_results["Parameters"]["B"]}})
     pp.close()
     return(out)
+
 
 def plot_predicted_fluxes(simulation_outputs,types=["DefaultKapp","Prokaryotic","Eukaryotic"],input_definition=None):
 
@@ -2426,6 +2450,7 @@ def plot_predicted_fluxes(simulation_outputs,types=["DefaultKapp","Prokaryotic",
 
     plt.show()
 
+
 def plot_specific_enzyme_efficiencies(point_calibration_kapps,regressed_kapps,conditions,growth_rates,filename,min_y=0,max_y=10**12):
     out_pdf=PdfPages(filename)
     for enzyme in point_calibration_kapps.index:
@@ -2450,6 +2475,7 @@ def plot_specific_enzyme_efficiencies(point_calibration_kapps,regressed_kapps,co
             plt.close()
     out_pdf.close()
 
+
 def plot_compartment_sizes_and_pg(point_calibration_sizes,point_calibration_pg,regressed_sizes,regressed_pg,conditions,growth_rates,filename):
     out_pdf=PdfPages(filename)
     for compartment in point_calibration_sizes.index:
@@ -2470,6 +2496,7 @@ def plot_compartment_sizes_and_pg(point_calibration_sizes,point_calibration_pg,r
         out_pdf.savefig(fig)
         plt.close()
     out_pdf.close()
+
 
 def plot_rss_trajectory(calibration_outputs):
     out=pandas.DataFrame()
@@ -2502,6 +2529,7 @@ def plot_rss_trajectory(calibration_outputs):
         count+=1
     plt.show()
 
+
 def perform_protein_protein_comparison(rba_session,condition,calibration_object,simulation_object,simulation_type,scaling_coeff=6.023e20):
     ProtoProteinMap=generate_proto_protein_map(rba_session=rba_session)
     out = pandas.DataFrame()
@@ -2517,6 +2545,7 @@ def perform_protein_protein_comparison(rba_session,condition,calibration_object,
     out = determine_kapp_type_classification(protein_DF=out,rbaSession=rba_session,specific_kapps=calibration_object['Specific_Kapps'],protomap=ProtoProteinMap)
     return(out)
 
+
 def plot_predicted_versus_measured_proteomes(rba_session,calibration_outputs,simulation_outputs,type):
     if type=="Prokaryotic":
         results_object="Simulation_Results"
@@ -2524,6 +2553,7 @@ def plot_predicted_versus_measured_proteomes(rba_session,calibration_outputs,sim
         results_object="Simulation_Results_Euk"
     elif type=="DefaultKapp":
         results_object="Simulation_Results_DefKapp"
+
 
 def efficiency_correction(specific_kapps,
                                simulation_results,
@@ -2738,6 +2768,7 @@ def efficiency_correction(specific_kapps,
             changes_applied=False
     return({"Sum_of_squared_residuals":sum(squared_residuals),"Changes":changes_applied,"Kapps":kapps_out,"ProcessEfficiencies":process_efficiencies_out,"Process_MispredictionFactors":process_correction_coefficients,"Enzyme_MispredictionFactors":enzyme_correction_coefficients,"Misprediction_factor_trajectory":previous_misprediction_factors})
 
+
 def extract_proteomes_from_calibration_results(calib_results):
     proteomes=pandas.DataFrame()
     for calib_result in calib_results:
@@ -2746,6 +2777,7 @@ def extract_proteomes_from_calibration_results(calib_results):
         for i in list(proteome.index):
             proteomes.loc[i,condition]=proteome.loc[i,"copy_number"]
     return(proteomes)
+
 
 def extract_compsizes_and_pgfractions_from_correction_summary(corrsummary,rows_to_exclude):
     out=pandas.DataFrame()
@@ -2757,6 +2789,7 @@ def extract_compsizes_and_pgfractions_from_correction_summary(corrsummary,rows_t
             out.loc[i,"Density"]=corrsummary.loc[i,"new_protein_fraction"]
             out.loc[i,"PG_fraction"]=corrsummary.loc[i,"new_PG_fraction"]
     return(out)
+
 
 def extract_feasible_bounds(inputs=[],feasible_range_object='FeasibleRange_prok', variable='',bound_type="Min"):
     out = []
@@ -2770,6 +2803,7 @@ def extract_feasible_bounds(inputs=[],feasible_range_object='FeasibleRange_prok'
         except:
             out.append(0)
     return(out)
+
 
 def calibration_workflow(proteome,
                          condition,
@@ -3238,6 +3272,7 @@ def calibration_workflow(proteome,
             'Specific_Kapps': Specific_Kapps_to_return,
             'Process_Efficiencies': process_efficiencies_to_return})
 
+
 def get_flux_distribution(simulation_outputs,result_object='Simulation_Results', run='Prokaryotic'):
     out=pandas.DataFrame(columns=[sim_result["Condition"] for sim_result in simulation_outputs])
     for sim_result in simulation_outputs:
@@ -3246,6 +3281,7 @@ def get_flux_distribution(simulation_outputs,result_object='Simulation_Results',
                 out.loc[rx,sim_result["Condition"]]=sim_result[result_object]['uniqueReactions'].loc[rx, run]
     return(out)
 
+
 def get_exchange_flux_distribution(simulation_outputs,result_object='Simulation_Results', run='Prokaryotic'):
     out=pandas.DataFrame(columns=[sim_result["Condition"] for sim_result in simulation_outputs])
     for sim_result in simulation_outputs:
@@ -3253,6 +3289,7 @@ def get_exchange_flux_distribution(simulation_outputs,result_object='Simulation_
             for rx in sim_result[result_object]['ExchangeFluxes'].index:
                 out.loc[rx,sim_result["Condition"]]=sim_result[result_object]['ExchangeFluxes'].loc[rx, run]
     return(out)
+
 
 def extract_proteomes_from_simulation_results(simulation_outputs,type="Prokaryotic"):
     if type=="Prokaryotic":
@@ -3272,6 +3309,7 @@ def extract_proteomes_from_simulation_results(simulation_outputs,type="Prokaryot
         except:
             x=1
     return(out)
+
 
 def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,conditions):
     from sklearn.linear_model import LinearRegression
@@ -3318,6 +3356,7 @@ def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,condi
 
     plt.show()
 
+
 def sample_copy_numbers_from_proteome_replicates(Input_data,cols_to_draw_from,target_size=1):
     sample_set=set()
     dimension_too_draw=Input_data.shape[0]
@@ -3330,6 +3369,7 @@ def sample_copy_numbers_from_proteome_replicates(Input_data,cols_to_draw_from,ta
         count+=1
         out["run_{}".format(count)]=[Input_data.loc[list(Input_data.index)[i],sample[i]] for i in list(range(len(sample)))]
     return(out)
+
 
 def sample_copy_numbers_from_residuals_old(Input_data,replicate_cols,mean_col,replicate_threshold=1,filter_list=[],target_size=1,reps_to_sample=3):
     data_to_use=pandas.DataFrame(columns=Input_data.columns)
@@ -3384,6 +3424,7 @@ def sample_copy_numbers_from_residuals_old(Input_data,replicate_cols,mean_col,re
         out["run_{}".format(count)]=list(df_intermediate["Sampled_Mean_abs"])
     return(out)
 
+
 def check_quantile(val,quantiles):
     if not pandas.isna(val):
         for i in range(len(quantiles)):
@@ -3395,6 +3436,7 @@ def check_quantile(val,quantiles):
                     return(i+1)
     else:
         return(numpy.nan)
+
 
 def sample_copy_numbers_from_residuals_quantiles(Input_data,replicate_cols,mean_col,replicate_threshold=1,filter_list=[],target_size=1,reps_to_sample=3,number_quantiles=1,transform_residuals=False,regression_type="lin"):
     dimension_too_draw=Input_data.shape[0]
@@ -3501,6 +3543,7 @@ def sample_copy_numbers_from_residuals_quantiles(Input_data,replicate_cols,mean_
         out2["run_{}".format(count)]=out["run_{}".format(count)]
     out["Mean_of_log_samples"]=out.loc[:,[col for col in out.columns if col.startswith("MeanSampleLog__run_")]].mean(axis=1)
     return(out2)
+
 
 def estimate_specific_enzyme_efficiencies(rba_session, proteomicsData, flux_bounds, mu, biomass_function=None, target_biomass_function=True, parsimonious_fba=True, only_non_ambigous_proteins=False, chose_isoreaction=False, equalize_identical_enzymes=True, only_identical_reactions_with_twin_enzyme=False, equalize_identical_reactions=True, metabolites_to_ignore=[], impose_on_all_isoreactions=True, zero_on_all_isoreactions=True, condition=None, store_output=True,rxns_to_ignore_when_parsimonious=[]):
     """
@@ -3871,11 +3914,13 @@ def estimate_specific_enzyme_efficiencies(rba_session, proteomicsData, flux_boun
     #overview_out.to_csv('SpecKapp_5_method_.csv'.format(), sep=';')
     return({"Overview":overview_out,"Flux_Distribution":FluxDistribution})
 
+
 def inject_default_kapps(rba_session, default_kapp, default_transporter_kapp):
     if numpy.isfinite(default_kapp):
         rba_session.model.parameters.functions._elements_by_id['default_efficiency'].parameters._elements_by_id['CONSTANT'].value = default_kapp
     if numpy.isfinite(default_transporter_kapp):
         rba_session.model.parameters.functions._elements_by_id['default_transporter_efficiency'].parameters._elements_by_id['CONSTANT'].value = default_transporter_kapp
+
 
 def inject_process_capacities(rba_session, process_efficiencies, round_to_digits=0, min_value=100):
     """
@@ -3894,6 +3939,7 @@ def inject_process_capacities(rba_session, process_efficiencies, round_to_digits
                         rba_session.model.parameters.functions.append(const)
                     else:
                         rba_session.model.parameters.functions._elements_by_id[const.id].parameters._elements_by_id['CONSTANT'].value = val
+
 
 def inject_specific_kapps(rba_session, specific_kapps, round_to_digits=0, min_value=1000):
     """
@@ -3924,6 +3970,7 @@ def inject_specific_kapps(rba_session, specific_kapps, round_to_digits=0, min_va
                             e.forward_efficiency = str(enz + '_kapp__constant')
                             e.backward_efficiency = str(enz + '_kapp__constant')
 
+
 def inject_default_kapps_as_function(rba_session, default_kapps,transporter_coeff, round_to_digits,x_min,x_max,indep_variable="growth_rate"):
     model_dict=json.loads(str(default_kapps.loc["Regression","Model"]))
     respective_function_default=None
@@ -3949,6 +3996,7 @@ def inject_default_kapps_as_function(rba_session, default_kapps,transporter_coef
             rba_session.model.parameters.functions.remove(rba_session.model.parameters.functions._elements_by_id[parameter_ID_default_transport])
         rba_session.model.parameters.functions.append(respective_function_default_transport)
 
+
 def inject_process_capacities_as_function(rba_session, process_efficiencies, round_to_digits,x_min,x_max,indep_variable="growth_rate"):
     """
     Parameters
@@ -3972,6 +4020,7 @@ def inject_process_capacities_as_function(rba_session, process_efficiencies, rou
                 if parameter_ID in rba_session.model.parameters.functions._elements_by_id.keys():
                     rba_session.model.parameters.functions.remove(rba_session.model.parameters.functions._elements_by_id[parameter_ID])
                 rba_session.model.parameters.functions.append(respective_function)
+
 
 def inject_compartment_densities_as_function(rba_session, compartment_densities, round_to_digits,x_min,x_max,indep_variable="growth_rate"):
     comp_den_param_map={den.compartment:str("fraction_protein_"+str(den.compartment)) for den in rba_session.model.density.target_densities._elements}
@@ -4007,6 +4056,7 @@ def inject_compartment_densities_as_function(rba_session, compartment_densities,
                     rba_session.model.parameters.functions.remove(rba_session.model.parameters.functions._elements_by_id[parameter_ID])
                     rba_session.model.parameters.functions.append(respective_function)
 
+
 def inject_pg_fractions_as_function(rba_session, pg_fractions, round_to_digits,x_min,x_max,indep_variable="growth_rate"):
     comp_pg_param_map={str(tar.value.split("nonenzymatic_proteins_")[1]):str("fraction_non_enzymatic_protein_"+tar.value.split("nonenzymatic_proteins_")[1]) for tar in rba_session.model.targets.target_groups._elements_by_id["translation_targets"].concentrations._elements}
     for i in pg_fractions.index:
@@ -4025,6 +4075,7 @@ def inject_pg_fractions_as_function(rba_session, pg_fractions, round_to_digits,x
                 if parameter_ID in rba_session.model.parameters.functions._elements_by_id.keys():
                     rba_session.model.parameters.functions.remove(rba_session.model.parameters.functions._elements_by_id[parameter_ID])
                 rba_session.model.parameters.functions.append(respective_function)
+
 
 def inject_specific_kapps_as_function(rba_session, specific_kapps, round_to_digits,x_min,x_max,indep_variable="growth_rate"):
     """
