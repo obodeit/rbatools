@@ -4270,6 +4270,360 @@ def estimate_specific_enzyme_efficiencies(rba_session, proteomicsData, flux_boun
     return({"Overview":overview_out,"Flux_Distribution":FluxDistribution})
 
 
+def estimate_specific_enzyme_efficiencies_mean_isoenzyme_composition(rba_session, proteomicsData, flux_bounds, mu, biomass_function=None, target_biomass_function=True, parsimonious_fba=True, only_non_ambigous_proteins=False, chose_isoreaction=False, equalize_identical_enzymes=True, only_identical_reactions_with_twin_enzyme=False, equalize_identical_reactions=True, metabolites_to_ignore=[], impose_on_all_isoreactions=True, zero_on_all_isoreactions=True, condition=None, store_output=True,rxns_to_ignore_when_parsimonious=[]):
+    """
+    Parameters
+    ----------
+    proteomicsData : pandas.DataFrame (in mmol/gDW)
+    flux_bounds : pandas.DataFrame  (in mmol/(gDW*h))
+    mu : float (in 1/h)
+    biomass_function : str
+    target_biomass_function : bool
+    atp_maintenance_to_biomassfunction : bool
+    eukaryotic : bool
+    """
+
+    old_model = copy.deepcopy(rba_session.model)
+
+    rba_session.rebuild_from_model()
+    rba_session.set_medium(rba_session.Medium)
+    rba_session.add_exchange_reactions()
+    rba_session.set_growth_rate(mu)
+
+    if target_biomass_function:
+        original_density_constraint_signs=rba_session.get_constraint_types(constraints=[i for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names])
+        original_medium = copy.deepcopy(rba_session.model)
+        rba_session.set_medium({i:100.0 for i in original_medium.keys()})
+        rba_session.Problem.set_constraint_types({i:"E" for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names})
+        derive_bm_from_rbasolution=False
+        solved=rba_session.solve()
+        if solved:
+            derive_bm_from_rbasolution=True
+        else:
+            print("initial rba 1 infeas at mu")
+            rba_session.Problem.set_constraint_types(original_density_constraint_signs)
+            solved2=rba_session.solve()
+            if solved2:
+                derive_bm_from_rbasolution=True
+            else:
+                print("initial rba 2 infeas at mu")
+        rba_session.set_medium(original_medium)
+        rba_session.build_fba_model(rba_derived_biomass_function=True,from_rba_solution=derive_bm_from_rbasolution)
+        #rba_session.build_fba_model(objective='targets', maintenanceToBM=False)
+        BMfunction = 'R_BIOMASS_targetsRBA'
+    else:
+        rba_session.build_fba_model(rba_derived_biomass_function=False)
+        #rba_session.build_fba_model(objective='classic', maintenanceToBM=False)
+        BMfunction = biomass_function
+
+    for j in [i for i in rba_session.Medium.keys() if rba_session.Medium[i] == 0]:
+        Exrxn = 'R_EX_'+j.split('M_')[-1]+'_e'
+        rba_session.FBA.set_ub({Exrxn: 0})
+
+    rxn_LBs = {}
+    rxn_UBs = {}
+    for rx in flux_bounds['Reaction_ID']:
+        lb = flux_bounds.loc[flux_bounds['Reaction_ID'] == rx, 'LB'].values[0]
+        ub = flux_bounds.loc[flux_bounds['Reaction_ID'] == rx, 'UB'].values[0]
+        if not pandas.isna(lb):
+            rxn_LBs.update({rx: lb})
+        if not pandas.isna(ub):
+            rxn_UBs.update({rx: ub})
+    rba_session.FBA.set_lb(rxn_LBs)
+    rba_session.FBA.set_ub(rxn_UBs)
+
+    rba_session.FBA.clear_objective()
+
+    rba_session.FBA.set_objective({BMfunction: -1})
+
+    rba_session.FBA.solve_lp()
+    if rba_session.FBA.Solved:
+        BMfluxOld = rba_session.FBA.SolutionValues[BMfunction]
+    else:
+        rba_session.FBA.clear_objective()
+        rba_session.FBA.set_objective({BMfunction: -1.0})
+        rba_session.FBA.set_lb({BMfunction:0.0})
+        rba_session.FBA.solve_lp()
+        BMfluxOld = rba_session.FBA.SolutionValues[BMfunction]
+        #ObjectiveValue
+
+    if parsimonious_fba:
+        rba_session.FBA.parsimonise(rxns_to_ignore_in_objective=rxns_to_ignore_when_parsimonious)
+        rba_session.FBA.set_lb(rxn_LBs)
+        rba_session.FBA.set_ub(rxn_UBs)
+        rba_session.FBA.set_lb({BMfunction: BMfluxOld})
+        rba_session.FBA.set_ub({BMfunction: BMfluxOld})
+        rba_session.FBA.solve_lp()
+
+    FluxDistribution = pandas.DataFrame(index=list(rba_session.FBA.SolutionValues.keys()), columns=['FluxValues'])
+    FluxDistribution['FluxValues'] = list(rba_session.FBA.SolutionValues.values())
+
+    ProtoIDmap = {}
+    for i in rba_session.ModelStructure.ProteinInfo.Elements.keys():
+        ProtoID = rba_session.ModelStructure.ProteinInfo.Elements[i]['ProtoID']
+        if ProtoID in list(proteomicsData['ID']):
+            if not pandas.isna(proteomicsData.loc[proteomicsData['ID'] == ProtoID, 'copy_number'].values[0]):
+                if proteomicsData.loc[proteomicsData['ID'] == ProtoID, 'copy_number'].values[0] != 0:
+                    if ProtoID in ProtoIDmap.keys():
+                        ProtoIDmap[ProtoID]['ModelProteins'].append(i)
+                    else:
+                        ProtoIDmap.update({ProtoID: {'ModelProteins': [i], 'CopyNumber': proteomicsData.loc[proteomicsData['ID'] == ProtoID, 'copy_number'].values[0]}})
+
+    # NEW METHOD
+    # identify all model protein-isoforms, associated with the measured proteins
+    # return dict with (proto-)protein IDs as keys and list of associated compartment-isoforms as values
+    ProtoProteinMap = rba_session.ModelStructure.ProteinInfo.return_protein_iso_form_map()
+    measured_Proteins_Isoform_Map = {p_ID: ProtoProteinMap[p_ID] for p_ID in list(proteomicsData['ID']) if p_ID in list(ProtoProteinMap.keys())}
+
+    # identify all model reactions, associated with the measured proteins
+    measured_Proteins_Reaction_Map = {}
+    for p_ID in measured_Proteins_Isoform_Map.keys():
+        reactions_associated_with_proto_Protein = []
+        for isoform in measured_Proteins_Isoform_Map[p_ID]:
+            for reaction in rba_session.ModelStructure.ProteinInfo.Elements[isoform]['associatedReactions']:
+                #reactions_associated_with_proto_Protein.append(reaction.split('_duplicate')[0])
+                reactions_associated_with_proto_Protein.append(reaction)
+        if only_non_ambigous_proteins:
+            if len(list(reactions_associated_with_proto_Protein)) == 1:
+                measured_Proteins_Reaction_Map[p_ID] = list(reactions_associated_with_proto_Protein)
+        else:
+            measured_Proteins_Reaction_Map[p_ID] = list(set(reactions_associated_with_proto_Protein))
+    # choose most likely iso-reaction for each measured-protein associated reaction
+    protoRxnDict = {}
+    chosen_Isoreactions = {}
+    for p_ID in measured_Proteins_Reaction_Map.keys():
+        for rxn in measured_Proteins_Reaction_Map[p_ID]:
+            rxn_to_split=str(rxn)
+            protoRxn = rxn_to_split.split('_duplicate')[0]
+            if protoRxn in list(protoRxnDict.keys()):
+                if rxn in list(protoRxnDict[protoRxn].keys()):
+                    protoRxnDict[protoRxn][rxn] += 1
+                else:
+                    protoRxnDict[protoRxn].update({rxn: 1})
+            else:
+                protoRxnDict[protoRxn] = {rxn: 1}
+    for prx in protoRxnDict.keys():
+        unique_SU_dict={}
+        for irx in protoRxnDict[prx].keys():
+            enzyme = rba_session.ModelStructure.ReactionInfo.Elements[irx]['Enzyme']
+            unique_SU_dict[irx] = len(list(rba_session.ModelStructure.EnzymeInfo.Elements[enzyme]['Subunits'].keys()))
+        if chose_isoreaction:
+            max_val = max([protoRxnDict[prx][i]/unique_SU_dict[i] for i in protoRxnDict[prx].keys()])
+            l = [i for i in protoRxnDict[prx].keys() if protoRxnDict[prx][i]/unique_SU_dict[i] == max_val]
+            if len(l)>1:
+                max_SU_number=max([unique_SU_dict[i] for i in l])
+                l_new=[i for i in l if unique_SU_dict[i]==max_SU_number]
+                l=l_new
+            l.sort()
+            #chosen_Isoreactions[prx] = ';,;'.join([l[0]])
+            chosen_Isoreactions[prx] = ';,;'.join(l)
+        else:
+            l = [i for i in protoRxnDict[prx].keys() if protoRxnDict[prx][i] != 0]
+            l.sort()
+            chosen_Isoreactions[prx] = ';,;'.join(l)
+    chosen_isoreaction_DF = pandas.DataFrame()
+    protoreactionsforDF = list(chosen_Isoreactions.keys())
+    chosen_isoreaction_DF['ProtoReaction'] = protoreactionsforDF
+    chosen_isoreaction_DF['ChosenIsoReaction'] = [chosen_Isoreactions[pr] for pr in protoreactionsforDF]
+
+    # determine model reactions with non-zero flux in FBA#
+    overview_out = pandas.DataFrame()
+    for i in list(chosen_Isoreactions.keys()):
+        all_iso_rxns = chosen_Isoreactions[i].split(';,;')
+        if i in list(FluxDistribution.index):
+            rxn_flux = FluxDistribution.loc[i, 'FluxValues']
+        else:
+            rxn_flux = 0
+        all_enzyme_concentrations = {}
+        for iso_rxn in all_iso_rxns:
+            corresponding_enzyme = rba_session.ModelStructure.EnzymeInfo.Elements[rba_session.ModelStructure.ReactionInfo.Elements[iso_rxn]['Enzyme']]
+            CompositionDict = {rba_session.ModelStructure.ProteinInfo.Elements[j]['ProtoID']: corresponding_enzyme['Subunits'][j] for j in corresponding_enzyme['Subunits'].keys()}
+            CopyNumbers = []
+            Stoichiometries = []
+            EnzymeNumbers = {}
+            for j in CompositionDict.keys():
+                if j in ProtoIDmap.keys():
+                    CopyNumbers.append(ProtoIDmap[j]['CopyNumber'])
+                    Stoichiometries.append(CompositionDict[j])
+                    EnzymeNumbers.update({j: ProtoIDmap[j]['CopyNumber']/CompositionDict[j]})
+
+            GM_enzymenumber = gmean(numpy.array(list(EnzymeNumbers.values())))
+            if (numpy.isfinite(GM_enzymenumber)) and (GM_enzymenumber != 0):
+                all_enzyme_concentrations[iso_rxn] = GM_enzymenumber
+        overall_enzyme_concentration = gmean(list(all_enzyme_concentrations.values()))
+        if (overall_enzyme_concentration!=0)&(pandas.isna(overall_enzyme_concentration)==False):
+            if (rxn_flux !=0)&(pandas.isna(rxn_flux)==False):
+                for iso_rxn in all_iso_rxns:
+                    overview_out.loc[iso_rxn, 'Comment'] = '1'
+                    overview_out.loc[iso_rxn, 'Enzyme_ID'] = rba_session.ModelStructure.ReactionInfo.Elements[iso_rxn]['Enzyme']
+                    overview_out.loc[iso_rxn, 'ChosenIsoReaction'] = chosen_Isoreactions[i]
+                    overview_out.loc[iso_rxn, 'Proto_Reaction'] = i
+                    overview_out.loc[iso_rxn, 'Individual_Isozyme_Concentrations'] = json.dumps(all_enzyme_concentrations)
+                    overview_out.loc[iso_rxn, 'CopyNumber'] = overall_enzyme_concentration
+                    overview_out.loc[iso_rxn, 'Concentration'] = overall_enzyme_concentration
+                    overview_out.loc[iso_rxn, 'Apparent_Concentration'] = overall_enzyme_concentration
+                    overview_out.loc[iso_rxn, 'Apparent_Flux'] = rxn_flux
+                    overview_out.loc[iso_rxn, 'Flux_all_promisc_rxns'] = rxn_flux
+                    overview_out.loc[iso_rxn, 'Flux_FBA'] = rxn_flux
+
+    FluxDistribution.to_csv('Calib_FluxDist_'+condition+'_.csv', sep=';')
+    chosen_isoreaction_DF.to_csv('Chosen_IsoRxns_'+condition+'_.csv', sep=';')
+    if equalize_identical_enzymes:
+        already_handled = []
+        identical_enzymes = []
+        for i in list(overview_out['Enzyme_ID']):
+            identical_set = []
+            if i not in already_handled:
+                if len(rba_session.ModelStructure.EnzymeInfo.Elements[i]['EnzymesWithIdenticalSubunitComposition']) > 0:
+                    identical_set.append(i)
+                    already_handled.append(i)
+                    for j in rba_session.ModelStructure.EnzymeInfo.Elements[i]['EnzymesWithIdenticalSubunitComposition']:
+                        if j not in already_handled:
+                            if only_identical_reactions_with_twin_enzyme:
+                                R1 = rba_session.ModelStructure.ReactionInfo.Elements[rba_session.ModelStructure.EnzymeInfo.Elements[i]['Reaction']]
+                                R2 = rba_session.ModelStructure.ReactionInfo.Elements[rba_session.ModelStructure.EnzymeInfo.Elements[j]['Reaction']]
+                                if (len(R1['Compartment_Species']) == 1) & (len(R2['Compartment_Species']) == 1):
+                                    reactants1 = {i.rsplit('_{}'.format(R1['Compartment_Species'][0]), 1)[0]: R1['Reactants'][i] for i in list(R1['Reactants'].keys()) if i.rsplit('_{}'.format(R1['Compartment_Species'][0]), 1)[0] not in metabolites_to_ignore}
+                                    reactants2 = {i.rsplit('_{}'.format(R2['Compartment_Species'][0]), 1)[0]: R2['Reactants'][i] for i in list(R2['Reactants'].keys()) if i.rsplit('_{}'.format(R2['Compartment_Species'][0]), 1)[0] not in metabolites_to_ignore}
+                                    products1 = {i.rsplit('_{}'.format(R1['Compartment_Species'][0]), 1)[0]: R1['Products'][i] for i in list(R1['Products'].keys()) if i.rsplit('_{}'.format(R1['Compartment_Species'][0]), 1)[0] not in metabolites_to_ignore}
+                                    products2 = {i.rsplit('_{}'.format(R2['Compartment_Species'][0]), 1)[0]: R2['Products'][i] for i in list(R2['Products'].keys()) if i.rsplit('_{}'.format(R2['Compartment_Species'][0]), 1)[0] not in metabolites_to_ignore}
+                                    if (reactants1 == reactants2) & (products1 == products2):
+                                        identical_set.append(j)
+                                        already_handled.append(j)
+                            else:
+                                identical_set.append(j)
+                                already_handled.append(j)
+                    identical_enzymes.append(identical_set)
+
+        ident_set_overview = {}
+        for ident_set in identical_enzymes:
+            #enzyme_concentration = list(set([overview_out.loc[overview_out['Enzyme_ID'] == enz, 'CopyNumber'].values[0] for enz in ident_set if enz in list(overview_out['Enzyme_ID'])]))[0]
+            enzyme_concentration = sum(list(set([overview_out.loc[overview_out['Enzyme_ID'] == enz, 'CopyNumber'].values[0] for enz in ident_set if enz in list(overview_out['Enzyme_ID'])])))
+            tot_flux = 0
+            for enz in ident_set:
+                rxn_id = rba_session.ModelStructure.EnzymeInfo.Elements[enz]['Reaction']
+                if rxn_id in list(FluxDistribution.index):
+                    tot_flux += abs(FluxDistribution.loc[rxn_id, 'FluxValues'])
+                if enz not in list(ident_set_overview.keys()):
+                    ident_set_overview[enz] = {'Set_of_Identical_Enzymes': ident_set}
+
+            if (enzyme_concentration!=0)&(pandas.isna(enzyme_concentration)==False):
+                if (tot_flux !=0)&(pandas.isna(tot_flux)==False):
+                    for enz in ident_set:
+                        rxn_id = rba_session.ModelStructure.EnzymeInfo.Elements[enz]['Reaction']
+                        if rxn_id in list(FluxDistribution.index):
+                            ident_set_overview[enz]['Respective_Enzyme_Level'] = enzyme_concentration * FluxDistribution.loc[rxn_id, 'FluxValues']/tot_flux
+                        overview_out.loc[rxn_id, 'Comment'] = '2'
+                        overview_out.loc[rxn_id,'Enzyme_ID'] = rba_session.ModelStructure.ReactionInfo.Elements[rxn_id]['Enzyme']
+                        overview_out.loc[rxn_id, 'Proto_Reaction'] = rxn_id.split('_duplicate_')[0]
+                        if rxn_id in list(FluxDistribution.index):
+                            overview_out.loc[rxn_id, 'Concentration'] = enzyme_concentration* FluxDistribution.loc[rxn_id, 'FluxValues']/tot_flux
+                        else:
+                            overview_out.loc[rxn_id, 'Concentration'] = 0
+                        overview_out.loc[rxn_id, 'Apparent_Concentration'] = enzyme_concentration
+                        overview_out.loc[rxn_id, 'Apparent_Flux'] = tot_flux
+                        overview_out.loc[rxn_id, 'Flux_all_promisc_rxns'] = tot_flux
+                        overview_out.loc[rxn_id, 'CopyNumber'] = enzyme_concentration
+                        if rxn_id in list(FluxDistribution.index):
+                            overview_out.loc[rxn_id, 'Flux_FBA'] = FluxDistribution.loc[rxn_id, 'FluxValues']
+
+
+    if equalize_identical_reactions:
+        RBAmets = [i for i in rba_session.ModelStructure.MetaboliteInfo.Elements.keys() if i.rsplit('_{}'.format(rba_session.ModelStructure.MetaboliteInfo.Elements[i]['Compartment'][0]), 1)[0] not in metabolites_to_ignore]
+        RBArxns = list(rba_session.ModelStructure.ReactionInfo.Elements.keys())
+        Metabolite_rows = [i for i in list(rba_session.Problem.LP.row_names) if i in RBAmets]
+        Rxn_cols = [i for i in list(rba_session.Problem.LP.col_names) if (i in RBArxns) and ('_duplicate' not in i)]
+        A = pandas.DataFrame(index=list(rba_session.Problem.LP.row_names), columns=list(rba_session.Problem.LP.col_names), data=rba_session.Problem.LP.A.toarray())
+        S = A.loc[Metabolite_rows, Rxn_cols].abs()
+        S_t = S.T
+        S_t_dup = S_t.loc[S_t.duplicated(keep=False), :]
+
+        Du_index = list(S_t_dup.index)
+        ident_sets = {}
+        for i in Du_index:
+            if rba_session.ModelStructure.ReactionInfo.Elements[i]['Compartment_Species'] != ['e']:
+                l = []
+                for j in Du_index:
+                    if j != i:
+                        if (rba_session.ModelStructure.ReactionInfo.Elements[i]['Reactants'] == rba_session.ModelStructure.ReactionInfo.Elements[j]['Reactants']) and (rba_session.ModelStructure.ReactionInfo.Elements[i]['Products'] == rba_session.ModelStructure.ReactionInfo.Elements[j]['Products']):
+                            l.append(j)
+                        elif (rba_session.ModelStructure.ReactionInfo.Elements[i]['Reactants'] == rba_session.ModelStructure.ReactionInfo.Elements[j]['Products']) and (rba_session.ModelStructure.ReactionInfo.Elements[i]['Products'] == rba_session.ModelStructure.ReactionInfo.Elements[j]['Reactants']):
+                            if (rba_session.ModelStructure.ReactionInfo.Elements[i]['Reversible']) or (rba_session.ModelStructure.ReactionInfo.Elements[j]['Reversible']):
+                                l.append(j)
+                if len(l) >= 1:
+                    ident_sets[i] = l
+        rxns_already_handled = []
+        for i in list(ident_sets.keys()):
+            if i not in rxns_already_handled:
+                tot_flux = 0
+                tot_enzyme_level = 0
+                for j in ident_sets[i]:
+                    if j not in rxns_already_handled:
+                        rxns_already_handled.append(j)
+                        if j in list(overview_out.index):
+                            tot_enzyme_level += abs(overview_out.loc[j, 'Concentration'])
+                        if j in list(FluxDistribution.index):
+                            tot_flux += abs(FluxDistribution.loc[j, 'FluxValues'])
+                for j in ident_sets[i]:
+                    overview_out.loc[i, 'Comment'] = '3'
+                    overview_out.loc[j,'Enzyme_ID'] = rba_session.ModelStructure.ReactionInfo.Elements[j]['Enzyme']
+                    overview_out.loc[j, 'Proto_Reaction'] = j
+                    overview_out.loc[j, 'Apparent_Concentration'] = tot_enzyme_level
+                    overview_out.loc[j, 'Apparent_Flux'] = tot_flux
+                    if j in list(FluxDistribution.index):
+                        overview_out.loc[j, 'Flux_FBA'] = FluxDistribution.loc[j, 'FluxValues']
+                    else:
+                        overview_out.loc[j, 'Flux_FBA'] = 0
+
+    overview_out['Kapp']=[abs(overview_out.loc[i,'Apparent_Flux']/overview_out.loc[i,'Apparent_Concentration']) for i in overview_out.index]
+    overview_out['Flux']=[overview_out.loc[i,'Flux_FBA']/abs(overview_out.loc[i,'Flux_FBA']) for i in overview_out.index]
+
+    if impose_on_all_isoreactions:
+        for rx in list(overview_out.index):
+            if rx in list(rba_session.ModelStructure.ReactionInfo.Elements.keys()):
+                enz = rba_session.ModelStructure.ReactionInfo.Elements[rx]['Enzyme']
+            elif rx in list(rba_session.ModelStructure.EnzymeInfo.Elements.keys()):
+                enz = rx
+            if enz in list(rba_session.ModelStructure.EnzymeInfo.Elements.keys()):
+                for isoenz in rba_session.ModelStructure.EnzymeInfo.Elements[enz]['Isozymes']:
+                    isorx = rba_session.ModelStructure.EnzymeInfo.Elements[isoenz]['Reaction']
+                    if isorx not in overview_out.index:
+                        overview_out.loc[isorx, 'Comment'] = '4'
+                        overview_out.loc[isorx,'Enzyme_ID'] = isoenz
+                        overview_out.loc[isorx, 'Proto_Reaction'] = overview_out.loc[rx, 'Proto_Reaction']
+                        overview_out.loc[isorx, 'Kapp'] = overview_out.loc[rx, 'Kapp']
+                        overview_out.loc[isorx, 'Flux'] = overview_out.loc[rx, 'Flux']
+
+    if zero_on_all_isoreactions:
+        for rx in list(overview_out.index):
+            if rx in list(rba_session.ModelStructure.ReactionInfo.Elements.keys()):
+                enz = rba_session.ModelStructure.ReactionInfo.Elements[rx]['Enzyme']
+            elif rx in list(rba_session.ModelStructure.EnzymeInfo.Elements.keys()):
+                enz = rx
+            if enz in list(rba_session.ModelStructure.EnzymeInfo.Elements.keys()):
+                for isoenz in rba_session.ModelStructure.EnzymeInfo.Elements[enz]['Isozymes']:
+                    isorx = rba_session.ModelStructure.EnzymeInfo.Elements[isoenz]['Reaction']
+                    if isorx not in overview_out.index:
+                        overview_out.loc[isorx, 'Comment'] = '4'
+                        overview_out.loc[isorx,'Enzyme_ID'] =isoenz
+                        overview_out.loc[isorx, 'Proto_Reaction'] = overview_out.loc[rx, 'Proto_Reaction']
+                        overview_out.loc[isorx, 'Kapp'] = 0.0
+
+    rba_session.model = old_model
+    rba_session.rebuild_from_model()
+    rba_session.set_medium(rba_session.Medium)
+
+    overview_out.sort_index(inplace=True)
+
+    if store_output:
+        if condition is not None:
+            overview_out.to_csv('SpecKapp_Old_overview_'+condition+'_.csv', sep=';')
+        else:
+            overview_out.to_csv('SpecKapp_Old_overview_.csv', sep=';')
+    #overview_out.to_csv('SpecKapp_5_method_.csv'.format(), sep=';')
+    return({"Overview":overview_out,"Flux_Distribution":FluxDistribution})
+
+
 def inject_default_kapps(rba_session, default_kapp, default_transporter_kapp):
     if numpy.isfinite(default_kapp):
         rba_session.model.parameters.functions._elements_by_id['default_efficiency'].parameters._elements_by_id['CONSTANT'].value = default_kapp
