@@ -3937,7 +3937,7 @@ def estimate_specific_enzyme_efficiencies(rba_session, proteomicsData, flux_boun
     rba_session.set_growth_rate(mu)
 
     if target_biomass_function:
-        original_density_constraint_signs=rba_session.get_constraint_types(constraints=[i for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names])
+        original_density_constraint_signs=rba_session.Problem.get_constraint_types(constraints=[i for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names])
         original_medium = copy.deepcopy(rba_session.model)
         rba_session.set_medium({i:100.0 for i in original_medium.keys()})
         rba_session.Problem.set_constraint_types({i:"E" for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names})
@@ -4291,7 +4291,7 @@ def estimate_specific_enzyme_efficiencies_mean_isoenzyme_composition(rba_session
     rba_session.set_growth_rate(mu)
 
     if target_biomass_function:
-        original_density_constraint_signs=rba_session.get_constraint_types(constraints=[i for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names])
+        original_density_constraint_signs=rba_session.Problem.get_constraint_types(constraints=[i for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names])
         original_medium = copy.deepcopy(rba_session.model)
         rba_session.set_medium({i:100.0 for i in original_medium.keys()})
         rba_session.Problem.set_constraint_types({i:"E" for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names})
