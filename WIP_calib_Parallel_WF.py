@@ -133,15 +133,22 @@ def main(conditions,n_parallel_processes=None):
         i.update({"Compartment_sizes":regressed_compartment_sizes_1,"PG_fractions":regressed_pg_fractions_1,"preliminary_run":False})
         #i.update({"Compartment_sizes":compartment_sizes_from_calibration_1,"PG_fractions":pg_fractions_from_calibration_1,"preliminary_run":False})
 
-    if n_parallel_processes is None:
-        num_cores=cpu_count()
-        n_jobs=min(num_cores,len(conditions))
+    if n_parallel_processes==1:
+        calib_dicts_2=[]
+        for i in input_dicts:
+            print(i["condition"])
+            calib_dicts_2.append(calibration(i))
+        #calib_dicts_2=[calibration(i) for i in input_dicts]
     else:
-        n_jobs=n_parallel_processes
+        if n_parallel_processes is None:
+            num_cores=cpu_count()
+            n_jobs=min(num_cores,len(conditions))
+        else:
+            n_jobs=n_parallel_processes
 
-    #calib_dicts_2=Parallel(n_jobs=n_jobs)(delayed(calibration)(input_dict) for input_dict in input_dicts)
-    pool=Pool(n_jobs)
-    calib_dicts_2=pool.map(calibration,input_dicts)
+        #calib_dicts_2=Parallel(n_jobs=n_jobs)(delayed(calibration)(input_dict) for input_dict in input_dicts)
+        pool=Pool(n_jobs)
+        calib_dicts_2=pool.map(calibration,input_dicts)
 
     calibration_results_2=[]
     corrected_proteomes_DF=pandas.DataFrame()
