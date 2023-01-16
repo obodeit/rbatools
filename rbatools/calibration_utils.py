@@ -3937,17 +3937,17 @@ def estimate_specific_enzyme_efficiencies(rba_session, proteomicsData, flux_boun
     rba_session.set_growth_rate(mu)
 
     if target_biomass_function:
-        original_density_constraint_signs=rba_session.Problem.get_constraint_types(constraints=[i for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names])
-        original_medium = copy.deepcopy(rba_session.model)
+        #original_density_constraint_signs=rba_session.Problem.get_constraint_types(constraints=[i for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names])
+        original_medium = copy.deepcopy(rba_session.Medium)
         rba_session.set_medium({i:100.0 for i in original_medium.keys()})
-        rba_session.Problem.set_constraint_types({i:"E" for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names})
+        #rba_session.Problem.set_constraint_types({i:"E" for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names})
         derive_bm_from_rbasolution=False
         solved=rba_session.solve()
         if solved:
             derive_bm_from_rbasolution=True
         else:
             print("initial rba 1 infeas at mu")
-            rba_session.Problem.set_constraint_types(original_density_constraint_signs)
+            #rba_session.Problem.set_constraint_types(original_density_constraint_signs)
             solved2=rba_session.solve()
             if solved2:
                 derive_bm_from_rbasolution=True
@@ -3964,7 +3964,8 @@ def estimate_specific_enzyme_efficiencies(rba_session, proteomicsData, flux_boun
 
     for j in [i for i in rba_session.Medium.keys() if rba_session.Medium[i] == 0]:
         Exrxn = 'R_EX_'+j.split('M_')[-1]+'_e'
-        rba_session.FBA.set_ub({Exrxn: 0})
+        if Exrxn in list(rba_session.FBA.LP.col_names):
+            rba_session.FBA.set_ub({Exrxn: 0})
 
     rxn_LBs = {}
     rxn_UBs = {}
