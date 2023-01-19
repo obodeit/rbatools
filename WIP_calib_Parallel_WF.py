@@ -19,17 +19,16 @@ def calibration(input_dict):
                                          spec_kapps=None,
                                          corrected_spec_kapps=True,
                                          take_lowest_RSS_parameters=True,
-                                         pre_optimise_def_kapp=False,
                                          process_efficiencies=None,
                                          Compartment_sizes=input_dict["Compartment_sizes"],
                                          PG_fractions=input_dict["PG_fractions"],
                                          transporter_multiplier=1,
                                          prelim_run=input_dict["preliminary_run"],
                                          final_global_scaling_free_exchanges=False,
-                                         Mu_approx_precision=0.0001,
-                                         min_kapp=None,
+                                         Mu_approx_precision=0.001,
+                                         min_kapp=3600,
                                          fixed_mu_when_above_target_mu_in_correction=True,
-                                         mu_misprediction_tolerance=0.05,
+                                         mu_misprediction_tolerance=0.01,
                                          print_outputs=False)
     return({input_dict["condition"]:calib_results})
 
@@ -130,25 +129,26 @@ def main(conditions,n_parallel_processes=None):
     regressed_pg_fractions_1=regression_on_pg_fractions(PG_sizes=pg_fractions_from_calibration_1,conditions=conditions,growth_rates=growth_rates,monotonous_quadratic=True)
 
     for i in input_dicts:
-        i.update({"Compartment_sizes":regressed_compartment_sizes_1,"PG_fractions":regressed_pg_fractions_1,"preliminary_run":False})
-        #i.update({"Compartment_sizes":compartment_sizes_from_calibration_1,"PG_fractions":pg_fractions_from_calibration_1,"preliminary_run":False})
+        #i.update({"Compartment_sizes":regressed_compartment_sizes_1,"PG_fractions":regressed_pg_fractions_1,"preliminary_run":False})
+        i.update({"Compartment_sizes":compartment_sizes_from_calibration_1,"PG_fractions":pg_fractions_from_calibration_1,"preliminary_run":False})
 
-    if n_parallel_processes==1:
+    if n_parallel_processes is None:
+        num_cores=cpu_count()
+        n_jobs=min(num_cores,len(conditions))
+        #calib_dicts_2=Parallel(n_jobs=n_jobs)(delayed(calibration)(input_dict) for input_dict in input_dicts)
+        pool=Pool(n_jobs)
+        calib_dicts_2=pool.map(calibration,input_dicts)
+    elif n_parallel_processes==1:
         calib_dicts_2=[]
         for i in input_dicts:
             print(i["condition"])
             calib_dicts_2.append(calibration(i))
         #calib_dicts_2=[calibration(i) for i in input_dicts]
     else:
-        if n_parallel_processes is None:
-            num_cores=cpu_count()
-            n_jobs=min(num_cores,len(conditions))
-        else:
-            n_jobs=n_parallel_processes
-
-        #calib_dicts_2=Parallel(n_jobs=n_jobs)(delayed(calibration)(input_dict) for input_dict in input_dicts)
-        pool=Pool(n_jobs)
+        #calib_dicts_2=Parallel(n_jobs=n_parallel_processes)(delayed(calibration)(input_dict) for input_dict in input_dicts)
+        pool=Pool(n_parallel_processes)
         calib_dicts_2=pool.map(calibration,input_dicts)
+
 
     calibration_results_2=[]
     corrected_proteomes_DF=pandas.DataFrame()
@@ -189,6 +189,7 @@ if __name__ == "__main__":
     warnings.simplefilter('ignore', RuntimeWarning)
     #warnings.simplefilter('ignore', SettingWithCopyWarning)
     main(n_parallel_processes=3,
+        #conditions = ['Hackett_C01']
         conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03']
         #conditions = ['Hackett_N005', 'Hackett_N01', 'Hackett_N016', 'Hackett_N03']
         #conditions = ['Hackett_P005', 'Hackett_P01', 'Hackett_P016', 'Hackett_P022', 'Hackett_P03']
