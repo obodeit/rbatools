@@ -2931,6 +2931,9 @@ def calibration_workflow(proteome,
                                                                                chose_most_likely_isoreactions=True,
                                                                                impose_on_all_isoreactions=False, 
                                                                                zero_on_all_isoreactions=True,
+                                                                               node_degree_identical_enzyme_network=1,
+                                                                               pseudocomplex_concentration_estimation_method="from_individual_isoenzymes",
+                                                                               #pseudocomplex_concentration_estimation_method="from_mean_composition",
                                                                                impose_on_identical_enzymes=True,
                                                                                condition=condition, 
                                                                                store_output=True,
@@ -4233,9 +4236,11 @@ def estimate_specific_enzyme_efficiencies_network(rba_session,
                                                   target_biomass_function=True, 
                                                   parsimonious_fba=True, 
                                                   chose_most_likely_isoreactions=False,
-                                                  impose_on_all_isoreactions=False, 
-                                                  zero_on_all_isoreactions=True,
+                                                  impose_on_all_isoreactions=True, 
+                                                  zero_on_all_isoreactions=False,
                                                   impose_on_identical_enzymes=True,
+                                                  node_degree_identical_enzyme_network=1,
+                                                  pseudocomplex_concentration_estimation_method="from_individual_isoenzymes",
                                                   condition=None, 
                                                   store_output=True,
                                                   rxns_to_ignore_when_parsimonious=[]):
@@ -4266,23 +4271,23 @@ def estimate_specific_enzyme_efficiencies_network(rba_session,
 
     if chose_most_likely_isoreactions:
         # 2: Determine list of all pre_selected isoenzymes --> "pre_selected_enzymes"#
-            ProtoProteinMap = rba_session.ModelStructure.ProteinInfo.return_protein_iso_form_map()
-            measured_Proteins_Isoform_Map = {p_ID: ProtoProteinMap[p_ID] for p_ID in list(proteomicsData['ID']) if p_ID in list(ProtoProteinMap.keys())}
+        ProtoProteinMap = rba_session.ModelStructure.ProteinInfo.return_protein_iso_form_map()
+        measured_Proteins_Isoform_Map = {p_ID: ProtoProteinMap[p_ID] for p_ID in list(proteomicsData['ID']) if p_ID in list(ProtoProteinMap.keys())}
 
-            # identify all model reactions, associated with the measured proteins
-            measured_Proteins_Reaction_Map = determine_reactions_associated_with_measured_proto_protein(measured_Proteins_Isoform_Map=measured_Proteins_Isoform_Map,
+        # identify all model reactions, associated with the measured proteins
+        measured_Proteins_Reaction_Map = determine_reactions_associated_with_measured_proto_protein(measured_Proteins_Isoform_Map=measured_Proteins_Isoform_Map,
                                                                                                         rba_session=rba_session)
 
-            chosen_Isoreactions=pre_select_iso_reactions(measured_Proteins_Reaction_Map=measured_Proteins_Reaction_Map,
-                                                        rba_session=rba_session,
-                                                        chose_most_quantified=True)
-            pre_selected_enzymes=[]
-            for proto_rxn in chosen_Isoreactions.keys():
-                for iso_rxn in chosen_Isoreactions[proto_rxn]:
-                    if rba_session.get_reaction_information(iso_rxn) is not None:
-                        respective_enzyme=rba_session.get_reaction_information(iso_rxn)["Enzyme"]
-                        if respective_enzyme not in pre_selected_enzymes:
-                            pre_selected_enzymes.append(respective_enzyme)
+        chosen_Isoreactions=pre_select_iso_reactions(measured_Proteins_Reaction_Map=measured_Proteins_Reaction_Map,
+                                                     rba_session=rba_session,
+                                                     chose_most_quantified=True)
+        pre_selected_enzymes=[]
+        for proto_rxn in chosen_Isoreactions.keys():
+            for iso_rxn in chosen_Isoreactions[proto_rxn]:
+                if rba_session.get_reaction_information(iso_rxn) is not None:
+                    respective_enzyme=rba_session.get_reaction_information(iso_rxn)["Enzyme"]
+                    if respective_enzyme not in pre_selected_enzymes:
+                        pre_selected_enzymes.append(respective_enzyme)
 
     else:
         # 2: Determine list of all nonzero/quantified model enzymes from proteomics data --> "pre_selected_enzymes"#
@@ -4326,73 +4331,89 @@ def estimate_specific_enzyme_efficiencies_network(rba_session,
             continue
 
         associated_nonzero_concentration_isoenzymatic_complexes=[i for i in list([rxn_enzyme]+rba_session.get_enzyme_information(rxn_enzyme)["Isozymes"]) if i in list(pre_selected_enzymes)]
-        model_enzymes_associated_with_pseudo_complex=[]
+        model_enzymes_associated_with_pseudo_complex={}
         for isoenzymatic_complex in associated_nonzero_concentration_isoenzymatic_complexes:
-            model_enzymes_associated_with_pseudo_complex.append(isoenzymatic_complex)
-            for identical_composition_enzyme in rba_session.get_enzyme_information(rxn_enzyme)["IdenticalEnzymes"]:
-                if identical_composition_enzyme in nonzero_concentration_enzymes_with_associated_fba_flux.keys():
-                    model_enzymes_associated_with_pseudo_complex.append(identical_composition_enzyme)
+            model_enzymes_associated_with_pseudo_complex[isoenzymatic_complex]=[isoenzymatic_complex]
+            if node_degree_identical_enzyme_network==1:
+                ### ??? identical enzymes isoform specific? ###
+                for identical_composition_enzyme in rba_session.get_enzyme_information(rxn_enzyme)["EnzymesWithIdenticalSubunitComposition"]:
+                    if identical_composition_enzyme in nonzero_concentration_enzymes_with_associated_fba_flux.keys():
+                        model_enzymes_associated_with_pseudo_complex[isoenzymatic_complex].append(identical_composition_enzyme)
                     ### potentially add secondary edges here
         # 5.2 ...#
         total_flux_dict={}
-        pseudo_complex_composition_summed={}
-        count=0
-        for associated_pseudocomplex_enzyme in model_enzymes_associated_with_pseudo_complex:
-            respective_composition=rba_session.get_enzyme_information(associated_pseudocomplex_enzyme)["Subunits"]
-            for subunit in respective_composition:
-                if subunit in pseudo_complex_composition_summed.keys():
-                    pseudo_complex_composition_summed[subunit]+=respective_composition[subunit]
-                else:
-                    pseudo_complex_composition_summed[subunit]=respective_composition[subunit]
-            count+=1
-            if associated_pseudocomplex_enzyme in nonzero_concentration_enzymes_with_associated_fba_flux.keys():
-                associated_fba_rxn=nonzero_concentration_enzymes_with_associated_fba_flux[associated_pseudocomplex_enzyme]
-                if associated_fba_rxn not in total_flux_dict.keys():
-                    total_flux_dict[associated_fba_rxn]=abs(FluxDistribution.loc[reaction,'FluxValues'])
-        # 5.3 ...#
-        mean_composition_pseudo_complex={i:pseudo_complex_composition_summed[i]/count for i in pseudo_complex_composition_summed.keys()}
-        concentration_pseudo_complex=determine_enzyme_concentration(rba_session=rba_session,
-                                                                    enzyme_composition=mean_composition_pseudo_complex,
-                                                                    proteomicsData=proteomicsData,
-                                                                    proto_proteins=False)
+        if pseudocomplex_concentration_estimation_method=="from_mean_composition":
+            pseudo_complex_composition_summed={}
+            count=0
+            for associated_pseudocomplex_enzyme in model_enzymes_associated_with_pseudo_complex.keys():
+                respective_composition=rba_session.get_enzyme_information(associated_pseudocomplex_enzyme)["Subunits"]
+                for subunit in respective_composition:
+                    if subunit in pseudo_complex_composition_summed.keys():
+                        pseudo_complex_composition_summed[subunit]+=respective_composition[subunit]
+                    else:
+                        pseudo_complex_composition_summed[subunit]=respective_composition[subunit]
+                count+=1
+                for identical_composition_enzyme in model_enzymes_associated_with_pseudo_complex[associated_pseudocomplex_enzyme]:
+                    if identical_composition_enzyme in nonzero_concentration_enzymes_with_associated_fba_flux.keys():
+                        associated_fba_rxn=nonzero_concentration_enzymes_with_associated_fba_flux[identical_composition_enzyme]
+                        if associated_fba_rxn not in total_flux_dict.keys():
+                            total_flux_dict[associated_fba_rxn]=abs(FluxDistribution.loc[associated_fba_rxn,'FluxValues'])
+            # 5.3 ...#
+            mean_composition_pseudo_complex={i:pseudo_complex_composition_summed[i]/count for i in pseudo_complex_composition_summed.keys()}
+            concentration_pseudo_complex=determine_enzyme_concentration(rba_session=rba_session,
+                                                                        enzyme_composition=mean_composition_pseudo_complex,
+                                                                        proteomicsData=proteomicsData,
+                                                                        proto_proteins=False)
+        elif pseudocomplex_concentration_estimation_method=="from_individual_isoenzymes":
+            individual_constituent_concentrations={i:[] for i in model_enzymes_associated_with_pseudo_complex.keys()}
+            for associated_pseudocomplex_enzyme in model_enzymes_associated_with_pseudo_complex.keys():
+                respective_composition=rba_session.get_enzyme_information(associated_pseudocomplex_enzyme)["Subunits"]
+                respective_concentration=determine_enzyme_concentration(rba_session=rba_session,
+                                                                        enzyme_composition=respective_composition,
+                                                                        proteomicsData=proteomicsData,
+                                                                        proto_proteins=False)
+                if (respective_concentration!=0) and (numpy.isfinite(respective_concentration)):
+                    individual_constituent_concentrations[associated_pseudocomplex_enzyme].append(respective_concentration)
+                for identical_composition_enzyme in model_enzymes_associated_with_pseudo_complex[associated_pseudocomplex_enzyme]:
+                    if identical_composition_enzyme in nonzero_concentration_enzymes_with_associated_fba_flux.keys():
+                        associated_fba_rxn=nonzero_concentration_enzymes_with_associated_fba_flux[identical_composition_enzyme]
+                        if associated_fba_rxn not in total_flux_dict.keys():
+                            total_flux_dict[associated_fba_rxn]=abs(FluxDistribution.loc[associated_fba_rxn,'FluxValues'])
+            concentration_pseudo_complex=len(list(total_flux_dict.keys()))*gmean(numpy.array([individual_constituent_concentrations[i][0] for i in individual_constituent_concentrations.keys()]))
+
         # 5.4 ...#
         total_flux_pseudo_complex=sum(total_flux_dict.values())
         # 5.5 ...#
-        try:
-            kapp_pseudo_complex=total_flux_pseudo_complex/concentration_pseudo_complex
-        except:
-            kapp_pseudo_complex=numpy.nan
-        # 5.6 ...#
+        flux_direction=numpy.nan
         if FluxDistribution.loc[rxn,'FluxValues'] > 0.0:
             flux_direction=1
         elif FluxDistribution.loc[rxn,'FluxValues'] < 0.0:
             flux_direction=-1
-
-        overview_out.loc[rxn,"Enzyme_ID"]=rba_session.get_reaction_information(rxn)["Enzyme"]
-        overview_out.loc[rxn, 'Flux_FBA'] = total_flux_pseudo_complex
-        overview_out.loc[rxn, 'Flux'] = flux_direction
-        overview_out.loc[rxn, 'Concentration'] = concentration_pseudo_complex
-        overview_out.loc[rxn,'Kapp'] = kapp_pseudo_complex
-        overview_out.loc[rxn, 'Comment'] = 'estimated'
-        overview_out.loc[rxn,"Pseudo complex members"]=" , ".join(model_enzymes_associated_with_pseudo_complex)
-        
-        if impose_on_all_isoreactions:
+        if (total_flux_pseudo_complex!=0) and numpy.isfinite(total_flux_pseudo_complex) and (concentration_pseudo_complex!=0) and numpy.isfinite(concentration_pseudo_complex):
+            kapp_pseudo_complex=total_flux_pseudo_complex/concentration_pseudo_complex
+            # 5.6 ...#
+            for considered_isoenzyme in individual_constituent_concentrations.keys():
+                respective_reaction=rba_session.get_enzyme_information(considered_isoenzyme)["Reaction"]
+                overview_out.loc[respective_reaction,"Enzyme_ID"]=considered_isoenzyme
+                overview_out.loc[respective_reaction, 'Flux_FBA'] = total_flux_pseudo_complex
+                overview_out.loc[respective_reaction, 'Flux'] = flux_direction
+                overview_out.loc[respective_reaction, 'Concentration'] = concentration_pseudo_complex
+                overview_out.loc[respective_reaction,'Kapp'] = kapp_pseudo_complex
+                overview_out.loc[respective_reaction, 'Comment'] = 'estimated'
+                overview_out.loc[respective_reaction,"Pseudo complex members"]=" , ".join(model_enzymes_associated_with_pseudo_complex)
             # 5.7 ...#
-            for isozyme in rba_session.get_enzyme_information(rba_session.get_reaction_information(rxn)["Enzyme"])["Isozymes"]:
-                isorxn=rba_session.get_enzyme_information(isozyme)["Reaction"]
-                overview_out.loc[isorxn,"Enzyme_ID"]=rba_session.get_reaction_information(rxn)["Enzyme"]
-                overview_out.loc[isorxn, 'Flux_FBA'] = total_flux_pseudo_complex
-                overview_out.loc[isorxn, 'Flux'] = flux_direction
-                overview_out.loc[isorxn, 'Concentration'] = concentration_pseudo_complex
-                overview_out.loc[isorxn,'Kapp'] = kapp_pseudo_complex
-                overview_out.loc[isorxn, 'Comment'] = 'isoenzyme'
-        elif zero_on_all_isoreactions:
-            for isozyme in rba_session.get_enzyme_information(rba_session.get_reaction_information(rxn)["Enzyme"])["Isozymes"]:
-                isorxn=rba_session.get_enzyme_information(isozyme)["Reaction"]
-                overview_out.loc[isorxn,"Enzyme_ID"]=rba_session.get_reaction_information(rxn)["Enzyme"]
-                overview_out.loc[isorxn,'Kapp'] = 0.0
-                overview_out.loc[isorxn, 'Comment'] = 'isoenzyme'
-
+            for isozyme in list(rba_session.get_enzyme_information(rba_session.get_reaction_information(rxn)["Enzyme"])["Isozymes"])+[rba_session.get_reaction_information(rxn)["Enzyme"]]:
+                respective_reaction=rba_session.get_enzyme_information(isozyme)["Reaction"]
+                if respective_reaction not in overview_out.index:
+                    overview_out.loc[respective_reaction,"Enzyme_ID"]=isozyme
+                    overview_out.loc[respective_reaction, 'Comment'] = 'isoenzyme'
+                    overview_out.loc[respective_reaction, 'Taken from'] = rxn
+                    overview_out.loc[respective_reaction, 'Flux'] = flux_direction
+                    if zero_on_all_isoreactions:
+                        overview_out.loc[respective_reaction,'Kapp'] = 0.0
+                    elif impose_on_all_isoreactions:
+                        overview_out.loc[respective_reaction,'Kapp'] = kapp_pseudo_complex
+                        
     # 6: ...#
     if impose_on_identical_enzymes:
         for rxn in rba_session.get_reactions():
@@ -4403,21 +4424,22 @@ def estimate_specific_enzyme_efficiencies_network(rba_session,
                     if identical_enzymes:
                         kapps_to_average={}
                         for ident_enz in identical_enzymes:
-                            if rba_session.get_enzyme_information(ident_enz)["Reaction"] in overview_out.index:
-                                ident_kapp=overview_out.loc[rba_session.get_enzyme_information(ident_enz)["Reaction"],'Kapp']
-                                if not pandas.isna(ident_kapp):
-                                    kapps_to_average[ident_enz]=ident_kapp
-                        if len(list(kapps_to_average.values()))!=0:
+                            respective_reaction=rba_session.get_enzyme_information(ident_enz)["Reaction"]
+                            if respective_reaction in overview_out.index:
+                                if zero_on_all_isoreactions:
+                                    applicable_comments=["estimated"]
+                                else:
+                                    applicable_comments=["estimated","isoenzyme"]
+                                ident_comment=overview_out.loc[respective_reaction,'Comment']
+                                if ident_comment in applicable_comments:
+                                    ident_kapp=overview_out.loc[respective_reaction,'Kapp']
+                                    if not pandas.isna(ident_kapp):
+                                        kapps_to_average[ident_enz]=ident_kapp
+                        if list(kapps_to_average.values()):
                             overview_out.loc[rxn,"Enzyme_ID"]=respective_enzyme
                             overview_out.loc[rxn,'Kapp'] = numpy.mean(numpy.array(list(kapps_to_average.values())))
                             overview_out.loc[rxn, 'Comment'] = 'twinenzyme'
-                            if impose_on_all_isoreactions:
-                                for isozyme in rba_session.get_enzyme_information(respective_enzyme)["Isozymes"]:
-                                    isorxn=rba_session.get_enzyme_information(isozyme)["Reaction"]
-                                    if isorxn not in overview_out.index:
-                                        overview_out.loc[isorxn,"Enzyme_ID"]=isozyme
-                                        overview_out.loc[isorxn,'Kapp'] = numpy.mean(numpy.array(list(kapps_to_average.values())))
-                                        overview_out.loc[isorxn, 'Comment'] = 'twinenzyme isoreaction'
+                            overview_out.loc[rxn, 'Taken from'] = " , ".join(list(kapps_to_average.keys()))
     # 7: ...#
     rba_session.rebuild_from_model()
     rba_session.set_medium(rba_session.Medium)
