@@ -26,7 +26,7 @@ def calibration(input_dict):
                                          prelim_run=input_dict["preliminary_run"],
                                          final_global_scaling_free_exchanges=False,
                                          Mu_approx_precision=0.001,
-                                         min_kapp=3600,
+                                         min_kapp=360,
                                          fixed_mu_when_above_target_mu_in_correction=True,
                                          mu_misprediction_tolerance=0.01,
                                          print_outputs=False)
@@ -129,8 +129,8 @@ def main(conditions,n_parallel_processes=None):
     regressed_pg_fractions_1=regression_on_pg_fractions(PG_sizes=pg_fractions_from_calibration_1,conditions=conditions,growth_rates=growth_rates,monotonous_quadratic=True)
 
     for i in input_dicts:
-        #i.update({"Compartment_sizes":regressed_compartment_sizes_1,"PG_fractions":regressed_pg_fractions_1,"preliminary_run":False})
-        i.update({"Compartment_sizes":compartment_sizes_from_calibration_1,"PG_fractions":pg_fractions_from_calibration_1,"preliminary_run":False})
+        i.update({"Compartment_sizes":regressed_compartment_sizes_1,"PG_fractions":regressed_pg_fractions_1,"preliminary_run":False})
+        #i.update({"Compartment_sizes":compartment_sizes_from_calibration_1,"PG_fractions":pg_fractions_from_calibration_1,"preliminary_run":False})
 
     if n_parallel_processes is None:
         num_cores=cpu_count()
