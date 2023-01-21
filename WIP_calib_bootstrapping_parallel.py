@@ -77,7 +77,7 @@ def run_full_calib_from_input_dict(input_dict):
                                             rba_session=Simulation,
                                             process_efficiency_estimation_input=input_dict[run]["Process_Input"],
                                             spec_kapps=None,
-                                            corrected_spec_kapps=False,
+                                            corrected_spec_kapps=True,
                                             take_lowest_RSS_parameters=True,
                                             process_efficiencies=None,
                                             Compartment_sizes=regressed_compartment_sizes_1,
@@ -227,6 +227,6 @@ if __name__ == "__main__":
     t0=time.time()
     main(conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
          growth_rates={'Hackett_C005':0.05, 'Hackett_C01':0.105, 'Hackett_C016':0.154, 'Hackett_C022':0.214, 'Hackett_C03':0.294},
-         number_samples=99,
+         number_samples=50,
          n_parallel_processes=4)
     print("Total time: {}".format(time.time()-t0))
