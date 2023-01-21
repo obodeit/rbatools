@@ -54,7 +54,6 @@ def run_full_calib_from_input_dict(input_dict):
                                             spec_kapps=None,
                                             corrected_spec_kapps=False,
                                             take_lowest_RSS_parameters=True,
-                                            pre_optimise_def_kapp=False,
                                             process_efficiencies=None,
                                             Compartment_sizes=None,
                                             PG_fractions=None,
@@ -80,14 +79,14 @@ def run_full_calib_from_input_dict(input_dict):
                                             spec_kapps=None,
                                             corrected_spec_kapps=True,
                                             take_lowest_RSS_parameters=True,
-                                            pre_optimise_def_kapp=False,
                                             process_efficiencies=None,
                                             Compartment_sizes=regressed_compartment_sizes_1,
                                             PG_fractions=regressed_pg_fractions_1,
                                             transporter_multiplier=1,
                                             prelim_run=False,
-                                            final_global_scaling_free_exchanges=False,
-                                            Mu_approx_precision=0.0001,
+                                            final_global_scaling_free_exchanges=True,
+                                            Mu_approx_precision=0.00001,
+                                            feasible_stati=["optimal","feasible"],
                                             min_kapp=None,
                                             fixed_mu_when_above_target_mu_in_correction=True,
                                             mu_misprediction_tolerance=0.05,
@@ -113,12 +112,12 @@ def run_full_calib_from_input_dict(input_dict):
 ##################################################
 
 def main(conditions,growth_rates,number_samples=1,n_parallel_processes=None):
-    Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_restored_160822.csv', sep=';', decimal=',', index_col=0)
+    Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim.csv', sep=';', decimal=',', index_col=0)
     Process_Efficiency_Estimation_Input = pandas.read_csv('../DataSetsYeastRBACalibration/Process_Efficiency_Estimation_Input.csv', sep=';', decimal=',')
     Uniprot = pandas.read_csv('../Yeast_iMM904_RBA_model/uniprot.csv', sep='\t')
     Compartment_Annotations_external = pandas.read_csv('../DataSetsYeastRBACalibration/Manually_curated_Protein_Locations_for_Calibration.csv', index_col=None, sep=';')
     Ribosomal_Proteins_Uniprot = pandas.read_csv('../DataSetsYeastRBACalibration/uniprot_ribosomal_proteins.csv', index_col=None, sep=';')
-    Hackett_Clim_FCs = pandas.read_csv('../DataSetsYeastRBACalibration/Hacket_Clim_ProteinFCs.csv',sep=";")
+    Hackett_Clim_FCs = pandas.read_csv('../DataSetsYeastRBACalibration/Hacket_ProteinFCs.csv',sep=";")
     Nielsen_01 = pandas.read_csv('../DataSetsYeastRBACalibration/Nielsen01_ProteomicsData.csv',sep=";",index_col=0)
     Simulation = SessionRBA('../Yeast_iMM904_RBA_model')
 
@@ -228,6 +227,6 @@ if __name__ == "__main__":
     t0=time.time()
     main(conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
          growth_rates={'Hackett_C005':0.05, 'Hackett_C01':0.105, 'Hackett_C016':0.154, 'Hackett_C022':0.214, 'Hackett_C03':0.294},
-         number_samples=100,
+         number_samples=3,
          n_parallel_processes=4)
     print("Total time: {}".format(time.time()-t0))
