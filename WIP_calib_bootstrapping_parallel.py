@@ -77,7 +77,7 @@ def run_full_calib_from_input_dict(input_dict):
                                             rba_session=Simulation,
                                             process_efficiency_estimation_input=input_dict[run]["Process_Input"],
                                             spec_kapps=None,
-                                            corrected_spec_kapps=True,
+                                            corrected_spec_kapps=False,
                                             take_lowest_RSS_parameters=True,
                                             process_efficiencies=None,
                                             Compartment_sizes=regressed_compartment_sizes_1,
@@ -206,7 +206,7 @@ def main(conditions,growth_rates,number_samples=1,n_parallel_processes=None):
                 Specific_Kapps_directions[condition].loc[i,run_ID]=run[run_ID][condition]["spec_kapps"][i]["Flux"]
             Default_Kapps[condition].loc["Default_Kapp",run_ID]=run[run_ID][condition]["def_kapp"]["default_efficiency"]
 
-    if len(bootstrapping_runs)>1:
+    if number_samples>1:
         for condition in conditions:
             for params in [Reconstructed_Proteomes,Corrected_Proteomes,Compartment_sizes,PG_fractions,Specific_Kapps,Process_efficiencies,Default_Kapps]:
                 df=params[condition]
@@ -227,6 +227,6 @@ if __name__ == "__main__":
     t0=time.time()
     main(conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
          growth_rates={'Hackett_C005':0.05, 'Hackett_C01':0.105, 'Hackett_C016':0.154, 'Hackett_C022':0.214, 'Hackett_C03':0.294},
-         number_samples=3,
+         number_samples=99,
          n_parallel_processes=4)
     print("Total time: {}".format(time.time()-t0))
