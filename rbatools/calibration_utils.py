@@ -2605,27 +2605,28 @@ def efficiency_correction(specific_kapps,
                 if (predicted_protein>0) & (measured_protein>0):
                     #misprediction_coeff=predicted_protein/measured_protein
                     misprediction_coeff=numpy.sqrt(predicted_protein/measured_protein)
-                    squared_residuals.append((numpy.log(predicted_protein)-numpy.log(measured_protein))**2)
-                    #squared_residuals.append((predicted_protein-measured_protein)**2)
-                    for protein in Model_ProtoProtein_Map[protoID]:
-                        for enzyme in rba_session.get_protein_information(protein=protein)["associatedEnzymes"]:
-                            if enzyme in list(specific_kapps["Enzyme_ID"]):
-                                if enzyme not in misprediction_factors_enzymes.keys():
-                                    misprediction_factors_enzymes[enzyme]=[misprediction_coeff]
-                                else:
-                                    misprediction_factors_enzymes[enzyme].append(misprediction_coeff)
-                            else:
-                                if enzyme not in misprediction_factors_defaultKapp_enzymes.keys():
-                                    misprediction_factors_defaultKapp_enzymes[enzyme]=[misprediction_coeff]
-                                else:
-                                    misprediction_factors_defaultKapp_enzymes[enzyme].append(misprediction_coeff)
-                        if correct_process_efficiencies:
-                            for process in rba_session.get_protein_information(protein=protein)["SupportsProcess"]:
-                                if process in process_efficiencies.index:
-                                    if process not in misprediction_factors_processes.keys():
-                                        misprediction_factors_processes[process]=[misprediction_coeff]
+                    if (numpy.isfinite(misprediction_coeff)) and (misprediction_coeff!=0):
+                        squared_residuals.append((numpy.log(predicted_protein)-numpy.log(measured_protein))**2)
+                        #squared_residuals.append((predicted_protein-measured_protein)**2)
+                        for protein in Model_ProtoProtein_Map[protoID]:
+                            for enzyme in rba_session.get_protein_information(protein=protein)["associatedEnzymes"]:
+                                if enzyme in list(specific_kapps["Enzyme_ID"]):
+                                    if enzyme not in misprediction_factors_enzymes.keys():
+                                        misprediction_factors_enzymes[enzyme]=[misprediction_coeff]
                                     else:
-                                        misprediction_factors_processes[process].append(misprediction_coeff)
+                                        misprediction_factors_enzymes[enzyme].append(misprediction_coeff)
+                                else:
+                                    if enzyme not in misprediction_factors_defaultKapp_enzymes.keys():
+                                        misprediction_factors_defaultKapp_enzymes[enzyme]=[misprediction_coeff]
+                                    else:
+                                        misprediction_factors_defaultKapp_enzymes[enzyme].append(misprediction_coeff)
+                            if correct_process_efficiencies:
+                                for process in rba_session.get_protein_information(protein=protein)["SupportsProcess"]:
+                                    if process in process_efficiencies.index:
+                                        if process not in misprediction_factors_processes.keys():
+                                            misprediction_factors_processes[process]=[misprediction_coeff]
+                                        else:
+                                            misprediction_factors_processes[process].append(misprediction_coeff)
 
     enzyme_correction_coefficients={}
     no_change_in_enzyme_efficiencies=True
@@ -2831,6 +2832,7 @@ def calibration_workflow(proteome,
                          prelim_run=False,
                          final_global_scaling_free_exchanges=False,
                          Mu_approx_precision=0.00001,
+                         feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
                          min_kapp=None,
                          fixed_mu_when_above_target_mu_in_correction=True,
                          mu_misprediction_tolerance=0.05,
@@ -3009,7 +3011,7 @@ def calibration_workflow(proteome,
                                                      Specific_Kapps=extract_specific_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Specific_Kapps":Specific_Kapps}]),
                                                      Exchanges_to_impose=Exchanges_to_impose,
                                                      sims_to_perform=[condition_to_look_up],
-                                                     feasible_stati=["optimal","feasible"],
+                                                     feasible_stati=feasible_stati,
                                                      try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
                                                      print_output=print_outputs,
                                                      apply_model=False,
@@ -3050,13 +3052,13 @@ def calibration_workflow(proteome,
                                                         Specific_Kapps=extract_specific_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Specific_Kapps":Specific_Kapps}]),
                                                         Exchanges_to_impose=Exchanges_to_impose,
                                                         sims_to_perform=[condition_to_look_up],
-                                                        feasible_stati=["optimal","feasible"],
+                                                        feasible_stati=feasible_stati,
                                                         try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
                                                         print_output=print_outputs,
                                                         apply_model=False,
                                                         transporter_multiplier=transporter_multiplier,
-                                                        start_val=0,
-                                                        #start_val=mu_measured,
+                                                        #start_val=0,
+                                                        start_val=mu_measured,
                                                         Mu_approx_precision=Mu_approx_precision,
                                                         max_mu_in_dichotomy=2*mu_measured)
                 mumax_predicted=Simulation_results[Growth_rate_to_look_up]
@@ -3080,7 +3082,7 @@ def calibration_workflow(proteome,
                                                                     Specific_Kapps=extract_specific_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Specific_Kapps":Specific_Kapps}]),
                                                                     Exchanges_to_impose=Exchanges_to_impose,
                                                                     sims_to_perform=[condition_to_look_up],
-                                                                    feasible_stati=["optimal","feasible"],
+                                                                    feasible_stati=feasible_stati,
                                                                     try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
                                                                     print_output=print_outputs,
                                                                     apply_model=False,
@@ -3185,7 +3187,7 @@ def calibration_workflow(proteome,
                                                 Specific_Kapps=extract_specific_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Specific_Kapps":Specific_Kapps_to_return}]),
                                                 Exchanges_to_impose=Exchanges_to_impose_here,
                                                 sims_to_perform=["Prokaryotic"],
-                                                feasible_stati=["optimal","feasible"],
+                                                feasible_stati=feasible_stati,
                                                 try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
                                                 print_output=print_outputs,
                                                 apply_model=False,transporter_multiplier=transporter_multiplier,start_val=mu_measured,Mu_approx_precision=Mu_approx_precision,max_mu_in_dichotomy=2*mu_measured)
@@ -3215,7 +3217,7 @@ def calibration_workflow(proteome,
                                                     Specific_Kapps=extract_specific_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Specific_Kapps":Specific_Kapps_to_return}]),
                                                     Exchanges_to_impose=None,
                                                     sims_to_perform=["Prokaryotic"],
-                                                    feasible_stati=["optimal","feasible"],
+                                                    feasible_stati=feasible_stati,
                                                     try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
                                                     print_output=print_outputs,
                                                     apply_model=False,transporter_multiplier=transporter_multiplier,start_val=mu_measured,Mu_approx_precision=Mu_approx_precision,max_mu_in_dichotomy=2*mu_measured)
@@ -3236,7 +3238,7 @@ def calibration_workflow(proteome,
                                                  Specific_Kapps=extract_specific_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Specific_Kapps":Specific_Kapps}]),
                                                  Exchanges_to_impose=Exchanges_to_impose_here,
                                                  sims_to_perform=["Prokaryotic"],
-                                                 feasible_stati=["optimal","feasible"],
+                                                 feasible_stati=feasible_stati,
                                                  try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
                                                  print_output=print_outputs,
                                                  apply_model=False,transporter_multiplier=transporter_multiplier,start_val=mu_measured,Mu_approx_precision=Mu_approx_precision,max_mu_in_dichotomy=2*mu_measured)
@@ -3269,7 +3271,7 @@ def calibration_workflow(proteome,
                                                     Specific_Kapps=extract_specific_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Specific_Kapps":Specific_Kapps}]),
                                                     Exchanges_to_impose=Exchanges_to_impose_here,
                                                     sims_to_perform=[condition_to_look_up],
-                                                    feasible_stati=["optimal","feasible"],
+                                                    feasible_stati=feasible_stati,
                                                     try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
                                                     print_output=print_outputs,
                                                     apply_model=False,transporter_multiplier=transporter_multiplier,start_val=mu_measured,Mu_approx_precision=Mu_approx_precision,max_mu_in_dichotomy=2*mu_measured)
