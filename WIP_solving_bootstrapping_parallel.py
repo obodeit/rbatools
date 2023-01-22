@@ -58,8 +58,8 @@ def simulate_run(input_dict):
                                                         Specific_Kapps=specific_kapps,
                                                         Exchanges_to_impose=Exchanges_to_impose,
                                                         sims_to_perform=["Prokaryotic"],
-                                                        feasibleStatuses=[1,5],
-                                                        try_unscaling_if_sol_status_is_five=True,
+                                                        feasible_stati=["optimal","feasible"],
+                                                        try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
                                                         print_output=False,
                                                         variability_analysis=None,
                                                         mu_factor_for_variability=0.99,
@@ -87,8 +87,8 @@ def simulate_run(input_dict):
                                                     Specific_Kapps=specific_kapps,
                                                     Exchanges_to_impose=None,
                                                     sims_to_perform=["Prokaryotic"],
-                                                    feasibleStatuses=[1,5],
-                                                    try_unscaling_if_sol_status_is_five=True,
+                                                    feasible_stati=["optimal","feasible"],
+                                                    try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
                                                     print_output=False,
                                                     variability_analysis=input_dict["variability_analysis"],
                                                     mu_factor_for_variability=0.99,
@@ -127,11 +127,11 @@ def simulate_run(input_dict):
 
 
 def main(folder,xml_dir,conditions,growth_rates,VA_runs=None,VA_variables=None,list_of_rxns_to_impose=[],n_parallel_processes=None):
-    Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_restored_160822.csv', sep=';', decimal=',', index_col=0)
+    Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim.csv', sep=';', decimal=',', index_col=0)
 
     default_kapps_01=pandas.read_csv("{}/DefaultKapps_Hackett_C01.csv".format(folder),index_col=0)
     runs=list(default_kapps_01.columns)
-
+    #runs=[list(default_kapps_01.columns)[0],list(default_kapps_01.columns)[1],list(default_kapps_01.columns)[2],list(default_kapps_01.columns)[3]]
     input_dicts=[]
     for run in runs:
         dict_to_add={"conditions":conditions,
