@@ -2886,44 +2886,6 @@ def calibration_workflow(proteome,
     proteome[condition]*=1000/6.022e23
     process_efficiencies.to_csv("ProcEffsOrig_{}.csv".format(condition))
     if spec_kapps is None:
-        mets_to_ignore=['M_octa','M_acACP','M_hdca','M_palmACP','M_hdcoa','M_ocACP','M_ocdcea','M_ttdca','M_pmtcoa','M_ddca','M_nadp','M_tdcoa','M_hdeACP','M_tdeACP','M_occoa','M_dca','M_tdecoa','M_ddcacoa','M_ttdcea','M_ocdcyaACP','M_myrsACP','M_hdcea','M_ocdca','M_nadph','M_ocdcaACP','M_octeACP','M_dcaACP','M_ddcaACP','M_ocdcya','M_nadh','M_dcacoa','M_nad','M_stcoa']
-        """
-        Specific_Kapps_Results = estimate_specific_enzyme_efficiencies(rba_session=rba_session,
-                                                                        proteomicsData=build_input_proteome_for_specific_kapp_estimation(proteome, condition),
-                                                                        flux_bounds=flux_bounds_from_input(input=definition_file, condition=condition, specific_exchanges=None, specific_directions=None),
-                                                                        mu=growth_rate_from_input(input=definition_file, condition=condition),
-                                                                        biomass_function=None,
-                                                                        target_biomass_function=True,
-                                                                        parsimonious_fba=True,
-                                                                        only_non_ambigous_proteins=False,
-                                                                        chose_isoreaction=True,
-                                                                        equalize_identical_enzymes=True,
-                                                                        only_identical_reactions_with_twin_enzyme=False,
-                                                                        equalize_identical_reactions=False,
-                                                                        metabolites_to_ignore=mets_to_ignore,
-                                                                        impose_on_all_isoreactions=False,
-                                                                        zero_on_all_isoreactions=True,
-                                                                        condition=condition,
-                                                                        store_output=True,
-                                                                        rxns_to_ignore_when_parsimonious=[]
-                                                                        )
-        """
-        """
-        Specific_Kapps_Results = estimate_specific_enzyme_efficiencies_refactored(rba_session=rba_session, 
-                                                                                  proteomicsData=build_input_proteome_for_specific_kapp_estimation(proteome, condition),
-                                                                                  flux_bounds=flux_bounds_from_input(input=definition_file, condition=condition, specific_exchanges=None, specific_directions=None),
-                                                                                  mu=growth_rate_from_input(input=definition_file, condition=condition),
-                                                                                  biomass_function=None, 
-                                                                                  target_biomass_function=True, 
-                                                                                  parsimonious_fba=True, 
-                                                                                  chose_most_quantified=True, 
-                                                                                  equalize_identical_enzymes=True, 
-                                                                                  impose_on_all_isoreactions=False, 
-                                                                                  zero_on_all_isoreactions=True, 
-                                                                                  condition=condition, 
-                                                                                  store_output=True,
-                                                                                  rxns_to_ignore_when_parsimonious=[])
-        """
         Specific_Kapps_Results = estimate_specific_enzyme_efficiencies_network(rba_session=rba_session, 
                                                                                proteomicsData=build_input_proteome_for_specific_kapp_estimation(proteome, condition), 
                                                                                flux_bounds=flux_bounds_from_input(input=definition_file, condition=condition, specific_exchanges=None, specific_directions=None), 
