@@ -2584,7 +2584,6 @@ def efficiency_correction(specific_kapps,
             protoProtein_results[protoID]+=simulation_results["Proteins"].loc[i,condition]
         else:
             protoProtein_results[protoID]=simulation_results["Proteins"].loc[i,condition]
-
     Model_ProtoProtein_Map={}
     for i in rba_session.get_proteins():
         protoID=rba_session.get_protein_information(protein=i)["ProtoID"]
@@ -3065,7 +3064,7 @@ def calibration_workflow(proteome,
                                                                  also_correct_default=False,
                                                                  default_kapps=Default_Kapps,
                                                                  tolerance=None,
-                                                                 n_th_root_mispred=2,
+                                                                 n_th_root_mispred=1,
                                                                  previous_misprediction_factors=None,
                                                                  process_efficiencies=process_efficiencies,
                                                                  correct_process_efficiencies=True,
