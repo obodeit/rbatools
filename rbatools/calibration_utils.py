@@ -2591,10 +2591,12 @@ def efficiency_correction_new(rba_session,
         if (copy_number!=0) and (numpy.isfinite(copy_number)):
             predicted_proteome.loc[protein,"ID"]=protein
             predicted_proteome.loc[protein,"copy_number"]=copy_number
-        if protein in proteome_measured.index:            
-            mispred_coeff=(numpy.log(copy_number)-numpy.log(proteome_measured.loc[protein,"copy_number"]))**2
-            if numpy.isfinite(mispred_coeff):
-                protein_mispredictions[protein]=mispred_coeff
+            if protein in proteome_measured.index:          
+                measured_copy_number=proteome_measured.loc[protein,"copy_number"]
+                if (measured_copy_number!=0) and (numpy.isfinite(measured_copy_number)):
+                    mispred_coeff=(numpy.log(copy_number)-numpy.log())**2
+                    if numpy.isfinite(mispred_coeff):
+                        protein_mispredictions[protein]=mispred_coeff
     RSS=sum(list(protein_mispredictions.values()))
 
     kapps_out=specific_kapps.copy()
@@ -2603,18 +2605,22 @@ def efficiency_correction_new(rba_session,
         associated_reaction=rba_session.get_enzyme_information(enzyme)["Reaction"]
         enzyme_composition=rba_session.get_enzyme_information(enzyme)["Subunits"]
         concentration_predicted=determine_machinery_concentration(rba_session=rba_session,
-                                                                  enzyme_composition=enzyme_composition,
+                                                                  machinery_composition=enzyme_composition,
                                                                   proteomicsData=predicted_proteome,
                                                                   proto_proteins=False)
         concentration_measured=determine_machinery_concentration(rba_session=rba_session,
-                                                                 enzyme_composition=enzyme_composition,
+                                                                 machinery_composition=enzyme_composition,
                                                                  proteomicsData=proteome_measured,
                                                                  proto_proteins=False)
+        if concentration_predicted==0:
+            continue
+        if concentration_measured==0:
+            continue
         machinery_concentration_misprediction_coeff=concentration_predicted/concentration_measured
         if numpy.isfinite(machinery_concentration_misprediction_coeff):
             enzyme_correction_coefficients[enzyme]=machinery_concentration_misprediction_coeff
             if tolerance is not None:
-                if abs(numpy.log(tolerance)) <= abs(numpy.log(correction_coeff)):
+                if abs(numpy.log(tolerance)) <= abs(numpy.log(machinery_concentration_misprediction_coeff)):
                     if associated_reaction in specific_kapps.index:
                         old_efficiency=specific_kapps.loc[associated_reaction,"Kapp"].copy()
                         new_efficiency=numpy.power(old_efficiency*machinery_concentration_misprediction_coeff,1/n_th_root_mispred)
@@ -2677,18 +2683,22 @@ def efficiency_correction_new(rba_session,
         old_efficiency=process_efficiencies.loc[process,"Value"]
         process_machinery_composition=rba_session.get_process_information(process)["Composition"]
         concentration_predicted=determine_machinery_concentration(rba_session=rba_session,
-                                                                  enzyme_composition=process_machinery_composition,
+                                                                  machinery_composition=process_machinery_composition,
                                                                   proteomicsData=predicted_proteome,
                                                                   proto_proteins=False)
         concentration_measured=determine_machinery_concentration(rba_session=rba_session,
-                                                                 enzyme_composition=process_machinery_composition,
+                                                                 machinery_composition=process_machinery_composition,
                                                                  proteomicsData=proteome_measured,
                                                                  proto_proteins=False)
+        if concentration_predicted==0:
+            continue
+        if concentration_measured==0:
+            continue
         machinery_concentration_misprediction_coeff=concentration_predicted/concentration_measured
         if numpy.isfinite(machinery_concentration_misprediction_coeff):
             process_correction_coefficients[process]=machinery_concentration_misprediction_coeff
             if tolerance is not None:
-                if abs(numpy.log(tolerance)) <= abs(numpy.log(correction_coeff)):
+                if abs(numpy.log(tolerance)) <= abs(numpy.log(machinery_concentration_misprediction_coeff)):
                     old_efficiency=process_efficiencies.loc[process,"Value"].copy()
                     new_efficiency=numpy.power(old_efficiency*machinery_concentration_misprediction_coeff,1/n_th_root_mispred)
                     if numpy.isfinite(new_efficiency):
@@ -4421,7 +4431,7 @@ def estimate_specific_enzyme_efficiencies_network(rba_session,
             if rba_session.get_enzyme_information(model_enzyme) is not None:
                 model_enzyme_composition=rba_session.get_enzyme_information(model_enzyme)["Subunits"]
                 model_enzyme_concentration=determine_machinery_concentration(rba_session=rba_session,
-                                                                             enzyme_composition=model_enzyme_composition,
+                                                                             machinery_composition=model_enzyme_composition,
                                                                              proteomicsData=proteomicsData,
                                                                              proto_proteins=False)
                 if model_enzyme_concentration!=0:
@@ -4486,7 +4496,7 @@ def estimate_specific_enzyme_efficiencies_network(rba_session,
             # 5.3 ...#
             mean_composition_pseudo_complex={i:pseudo_complex_composition_summed[i]/count for i in pseudo_complex_composition_summed.keys()}
             concentration_pseudo_complex=determine_machinery_concentration(rba_session=rba_session,
-                                                                           enzyme_composition=mean_composition_pseudo_complex,
+                                                                           machinery_composition=mean_composition_pseudo_complex,
                                                                            proteomicsData=proteomicsData,
                                                                            proto_proteins=False)
         elif pseudocomplex_concentration_estimation_method=="from_individual_isoenzymes":
@@ -4494,7 +4504,7 @@ def estimate_specific_enzyme_efficiencies_network(rba_session,
             for associated_pseudocomplex_enzyme in model_enzymes_associated_with_pseudo_complex.keys():
                 respective_composition=rba_session.get_enzyme_information(associated_pseudocomplex_enzyme)["Subunits"]
                 respective_concentration=determine_machinery_concentration(rba_session=rba_session,
-                                                                           enzyme_composition=respective_composition,
+                                                                           machinery_composition=respective_composition,
                                                                            proteomicsData=proteomicsData,
                                                                            proto_proteins=False)
                 if (respective_concentration!=0) and (numpy.isfinite(respective_concentration)):
