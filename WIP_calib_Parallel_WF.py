@@ -24,6 +24,7 @@ def calibration(input_dict):
                                          PG_fractions=input_dict["PG_fractions"],
                                          transporter_multiplier=1,
                                          prelim_run=input_dict["preliminary_run"],
+                                         final_global_scaling_after_specific_correction=False,
                                          final_global_scaling_free_exchanges=True,
                                          Mu_approx_precision=0.00001,
                                          feasible_stati=["optimal","feasible"],
