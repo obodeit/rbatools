@@ -2572,6 +2572,7 @@ def efficiency_correction(specific_kapps,
                                also_correct_default,
                                default_kapps,
                                tolerance=2,
+                               n_th_root_mispred=2,
                                previous_misprediction_factors={},
                                process_efficiencies=None,
                                correct_process_efficiencies=False,
@@ -2604,7 +2605,8 @@ def efficiency_correction(specific_kapps,
                 measured_protein=proteinData.loc[protoID,"copy_number"]
                 if (predicted_protein>0) & (measured_protein>0):
                     #misprediction_coeff=predicted_protein/measured_protein
-                    misprediction_coeff=numpy.sqrt(predicted_protein/measured_protein)
+                    #misprediction_coeff=numpy.sqrt(predicted_protein/measured_protein)
+                    misprediction_coeff=numpy.power(predicted_protein/measured_protein,1/n_th_root_mispred)
                     if (numpy.isfinite(misprediction_coeff)) and (misprediction_coeff!=0):
                         squared_residuals.append((numpy.log(predicted_protein)-numpy.log(measured_protein))**2)
                         #squared_residuals.append((predicted_protein-measured_protein)**2)
@@ -3063,6 +3065,7 @@ def calibration_workflow(proteome,
                                                                  also_correct_default=False,
                                                                  default_kapps=Default_Kapps,
                                                                  tolerance=None,
+                                                                 n_th_root_mispred=2,
                                                                  previous_misprediction_factors=None,
                                                                  process_efficiencies=process_efficiencies,
                                                                  correct_process_efficiencies=True,
