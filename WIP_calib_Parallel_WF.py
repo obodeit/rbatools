@@ -9,7 +9,7 @@ from joblib import Parallel, delayed
 def calibration(input_dict):
     Simulation = SessionRBA(input_dict["xml_dir"])
     Simulation.add_exchange_reactions()
-    calib_results = calibration_workflow(proteome=input_dict["proteome"],
+    calib_results = calibration_workflow_new(proteome=input_dict["proteome"],
                                          condition=input_dict["condition"],
                                          reference_condition=input_dict["reference_condition"],
                                          gene_ID_column='Gene',
