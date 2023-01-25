@@ -3730,6 +3730,10 @@ def calibration_workflow_new(proteome,
     misprediction_coeffs=pandas.DataFrame()
     #if condition=="Hackett_C03":
     #    corrected_spec_kapps=False
+    Specific_Kapps_original=Specific_Kapps.copy()
+    Default_Kapps_original=Default_Kapps.copy()
+    process_efficiencies_original=process_efficiencies.copy()
+
     if corrected_spec_kapps:
         misprediction_trajectory={}
         for zero_rxn in zero_flux_rxns:
@@ -3776,6 +3780,7 @@ def calibration_workflow_new(proteome,
             Specific_Kapps=results_global_scaling["specific_kapps"]
             Default_Kapps=results_global_scaling["default_kapps"]
             process_efficiencies=results_global_scaling["process_efficiencies"]
+            product_misprediction_factors=results_global_scaling["correction_factor"]
 
             if len(list(Simulation_results[Results_to_look_up].keys()))!=0:
                 efficiencies_over_correction_iterations.append({"Specific_Kapps":Specific_Kapps.copy(),"Default_Kapps":Default_Kapps.copy(),"Process_Efficiencies":process_efficiencies.copy()})
@@ -3806,11 +3811,7 @@ def calibration_workflow_new(proteome,
                 current_RSS=KappCorrectionResults["Sum_of_squared_residuals"]
                 if print_outputs:
                     print("{} : {}".format(condition,current_RSS))
-                #if numpy.isfinite(initial_RSS):
-                #    if current_RSS>=increasing_RSS_factor*initial_RSS:
-                #        increasing_RSS_count+=1
-                #else:
-                #    initial_RSS=current_RSS
+
                 if numpy.isfinite(lowest_RSS_soFar):
                     if current_RSS>=increasing_RSS_factor*lowest_RSS_soFar:
                         increasing_RSS_count+=1
@@ -3994,7 +3995,10 @@ def calibration_workflow_new(proteome,
             'Correction_Results': correction_results,
             'Default_Kapps': Default_Kapps_to_return,
             'Specific_Kapps': Specific_Kapps_to_return,
-            'Process_Efficiencies': process_efficiencies_to_return})
+            'Process_Efficiencies': process_efficiencies_to_return,
+            'Default_Kapps_original': Default_Kapps_original,
+            'Specific_Kapps_original': Specific_Kapps_original,
+            'Process_Efficiencies_original': process_efficiencies_original})
 
 
 
@@ -4023,7 +4027,7 @@ def global_efficiency_scaling(condition,
     specific_kapps_for_scaling=copy.deepcopy(specific_kapps)
 
     total_product_correction_factor=1
-    total_product_correction_factors=[total_product_correction_factor.copy()]
+    total_product_correction_factors=[total_product_correction_factor]
 
     simulation_results = perform_simulations(condition=condition,
                                              rba_session=rba_session,
@@ -4065,7 +4069,7 @@ def global_efficiency_scaling(condition,
             specific_kapps_for_scaling.loc[:,"Kapp"]*=mu_misprediction_factor
 
             total_product_correction_factor*=mu_misprediction_factor
-            total_product_correction_factors.append(total_product_correction_factor.copy())
+            total_product_correction_factors.append(total_product_correction_factor)
 
             simulation_results = perform_simulations(condition=condition,
                                                     rba_session=rba_session,
@@ -4141,7 +4145,7 @@ def global_efficiency_scaling(condition,
             specific_kapps_for_scaling.loc[:,"Kapp"]*=mu_misprediction_factor
 
             total_product_correction_factor*=mu_misprediction_factor
-            total_product_correction_factors.append(total_product_correction_factor.copy())
+            total_product_correction_factors.append(total_product_correction_factor)
 
             simulation_results = perform_simulations(condition=condition,
                                                     rba_session=rba_session,
@@ -4207,7 +4211,7 @@ def global_efficiency_scaling(condition,
                                                 Mu_approx_precision=mu_approx_precision,
                                                 max_mu_in_dichotomy=2*mu_measured)
 
-    return({"specific_kapps":specific_kapps_out,"default_kapps":default_kapps_out,"process_efficiencies":process_efficiencies_out,"simulation_results":simulation_results})
+    return({"specific_kapps":specific_kapps_out,"default_kapps":default_kapps_out,"process_efficiencies":process_efficiencies_out,"correction_factor":best_cumulative_correction_factor,"simulation_results":simulation_results})
 
 def get_flux_distribution(simulation_outputs,result_object='Simulation_Results', run='Prokaryotic'):
     out=pandas.DataFrame(columns=[sim_result["Condition"] for sim_result in simulation_outputs])
