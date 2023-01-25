@@ -4082,7 +4082,6 @@ def global_efficiency_scaling(condition,
                                                     print_output=False,
                                                     apply_model=False,
                                                     transporter_multiplier=transporter_multiplier,
-                                                    #start_val=0,
                                                     start_val=mu_measured,
                                                     Mu_approx_precision=mu_approx_precision,
                                                     max_mu_in_dichotomy=2*mu_measured)
@@ -4159,7 +4158,6 @@ def global_efficiency_scaling(condition,
                                                     print_output=False,
                                                     apply_model=False,
                                                     transporter_multiplier=transporter_multiplier,
-                                                    #start_val=0,
                                                     start_val=mu_measured,
                                                     Mu_approx_precision=mu_approx_precision,
                                                     max_mu_in_dichotomy=2*mu_measured)
@@ -4189,6 +4187,25 @@ def global_efficiency_scaling(condition,
         default_kapps_out["default_transporter_efficiency"]*=best_cumulative_correction_factor
         process_efficiencies_out.loc[:,"Value"]*=best_cumulative_correction_factor
         specific_kapps_out.loc[:,"Kapp"]*=best_cumulative_correction_factor
+
+        simulation_results = perform_simulations(condition=condition,
+                                                rba_session=rba_session,
+                                                definition_file=definition_file,
+                                                compartment_sizes=extract_compartment_sizes_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Densities_PGs":compartment_densities_and_pg}]),
+                                                pg_fractions=extract_pg_fractions_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Densities_PGs":compartment_densities_and_pg}]),
+                                                process_efficiencies=extract_process_capacities_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Process_Efficiencies":process_efficiencies_out}]),
+                                                Default_Kapps=extract_default_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Default_Kapps":default_kapps_out}]),
+                                                Specific_Kapps=extract_specific_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Specific_Kapps":specific_kapps_out}]),
+                                                Exchanges_to_impose=exchanges_to_impose,
+                                                sims_to_perform=[condition_to_look_up],
+                                                feasible_stati=feasible_stati,
+                                                try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
+                                                print_output=False,
+                                                apply_model=False,
+                                                transporter_multiplier=transporter_multiplier,
+                                                start_val=mu_measured,
+                                                Mu_approx_precision=mu_approx_precision,
+                                                max_mu_in_dichotomy=2*mu_measured)
 
     return({"specific_kapps":specific_kapps_out,"default_kapps":default_kapps_out,"process_efficiencies":process_efficiencies_out,"simulation_results":simulation_results})
 
