@@ -3603,8 +3603,6 @@ def calibration_workflow(proteome,
             'Specific_Kapps': Specific_Kapps_to_return,
             'Process_Efficiencies': process_efficiencies_to_return})
 
-
-
 def calibration_workflow_new(proteome,
                          condition,
                          reference_condition,
@@ -3625,11 +3623,10 @@ def calibration_workflow_new(proteome,
                          Mu_approx_precision=0.00001,
                          feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
                          min_kapp=None,
-                         fixed_mu_when_above_target_mu_in_correction=True,
                          mu_misprediction_tolerance=0.05,
                          print_outputs=True):
     t0 = time.time()
-    correction_results = correction_pipeline(input=proteome,
+    correction_results_compartement_sizes = correction_pipeline(input=proteome,
                                              condition=condition,
                                              definition_file=definition_file,
                                              reference_condition=reference_condition,
@@ -3642,26 +3639,26 @@ def calibration_workflow_new(proteome,
                                              min_compartment_fraction=0.00000)
     rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
     if prelim_run:
-        compartment_densities_and_PGs = extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=correction_results,rows_to_exclude=["Ribosomes","Total"]+[i for i in correction_results.index if i.startswith("pg_")])
-        correction_results.to_csv(str('Correction_overview_HackettNielsen_'+condition+'.csv'))
+        compartment_densities_and_PGs = extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=correction_results_compartement_sizes,rows_to_exclude=["Ribosomes","Total"]+[i for i in correction_results_compartement_sizes.index if i.startswith("pg_")])
+        correction_results_compartement_sizes.to_csv(str('Correction_overview_HackettNielsen_'+condition+'.csv'))
         return({"Densities_PGs":compartment_densities_and_PGs,
                 "Condition":condition})
     if Compartment_sizes is not None:
         for i in Compartment_sizes.index:
-            correction_results.loc[i,"new_protein_fraction"]=Compartment_sizes.loc[i,condition]
+            correction_results_compartement_sizes.loc[i,"new_protein_fraction"]=Compartment_sizes.loc[i,condition]
             if i in PG_fractions.index:
-                correction_results.loc[i,"new_PG_fraction"]=PG_fractions.loc[i,condition]
+                correction_results_compartement_sizes.loc[i,"new_PG_fraction"]=PG_fractions.loc[i,condition]
 
-    for i in correction_results.index:
+    for i in correction_results_compartement_sizes.index:
         abundance_coeff=1
         if i =="c":
-            abundance_coeff=(correction_results.loc[i,"new_protein_fraction"]*(1-correction_results.loc[i,"new_PG_fraction"])-correction_results.loc["Ribosomes","new_protein_fraction"])/(correction_results.loc[i,"original_protein_fraction"]*(1-correction_results.loc[i,"original_PG_fraction"]))
+            abundance_coeff=(correction_results_compartement_sizes.loc[i,"new_protein_fraction"]*(1-correction_results_compartement_sizes.loc[i,"new_PG_fraction"])-correction_results_compartement_sizes.loc["Ribosomes","new_protein_fraction"])/(correction_results_compartement_sizes.loc[i,"original_protein_fraction"]*(1-correction_results_compartement_sizes.loc[i,"original_PG_fraction"]))
         else:
-            abundance_coeff=(correction_results.loc[i,"new_protein_fraction"]*(1-correction_results.loc[i,"new_PG_fraction"]))/(correction_results.loc[i,"original_protein_fraction"]*(1-correction_results.loc[i,"original_PG_fraction"]))
+            abundance_coeff=(correction_results_compartement_sizes.loc[i,"new_protein_fraction"]*(1-correction_results_compartement_sizes.loc[i,"new_PG_fraction"]))/(correction_results_compartement_sizes.loc[i,"original_protein_fraction"]*(1-correction_results_compartement_sizes.loc[i,"original_PG_fraction"]))
         proteome.loc[proteome["Location"]==i,condition]*=abundance_coeff
-        correction_results.loc[i,"copy_number_scaling"]=abundance_coeff
+        correction_results_compartement_sizes.loc[i,"copy_number_scaling"]=abundance_coeff
 
-    correction_results.to_csv(str('Correction_overview_HackettNielsen_corrected_'+condition+'.csv'))
+    correction_results_compartement_sizes.to_csv(str('Correction_overview_HackettNielsen_corrected_'+condition+'.csv'))
     if process_efficiencies is None:
         if process_efficiency_estimation_input is not None:
             process_efficiencies = determine_apparent_process_efficiencies(growth_rate=growth_rate_from_input(input=definition_file,
@@ -3669,7 +3666,7 @@ def calibration_workflow_new(proteome,
                                                                            input=process_efficiency_estimation_input,
                                                                            rba_session=rba_session,
                                                                            protein_data=proteome.copy(),
-                                                                           proteome_summary=correction_results.copy(),
+                                                                           proteome_summary=correction_results_compartement_sizes.copy(),
                                                                            condition=condition,
                                                                            gene_id_col=gene_ID_column,
                                                                            fit_nucleotide_assembly_machinery=True)
@@ -3694,7 +3691,6 @@ def calibration_workflow_new(proteome,
                                                                                store_output=True,
                                                                                rxns_to_ignore_when_parsimonious=[])
 
-        #Specific_Kapps=Specific_Kapps_Results["Overview"].loc[Specific_Kapps_Results["Overview"]["Kapp"]>=360,:]
         Specific_Kapps=Specific_Kapps_Results["Overview"]
         if min_kapp is not None:
             Specific_Kapps.loc[(Specific_Kapps['Kapp']<min_kapp)&(Specific_Kapps['Kapp']!=0)&(pandas.isna(Specific_Kapps['Kapp'])==False),'Kapp']=min_kapp
@@ -3707,39 +3703,23 @@ def calibration_workflow_new(proteome,
         Specific_Kapps['Kapp'] = spec_kapps[condition]
         Specific_Kapps['Flux'] = spec_kapps[str(condition+'_Flux')]
 
-    #Specific_Kapps['Kapp']*=100
     spec_kapp_median=Specific_Kapps.loc[(Specific_Kapps['Kapp']!=0)&(pandas.isna(Specific_Kapps['Kapp'])==False),'Kapp'].median()
-    #spec_kapp_median=numpy.median(list(set(list(Specific_Kapps.loc[(Specific_Kapps['Kapp']!=0)&(pandas.isna(Specific_Kapps['Kapp'])==False),'Kapp']))))
     Default_Kapps={"default_efficiency":spec_kapp_median,"default_transporter_efficiency":transporter_multiplier*spec_kapp_median}
-    ##
-    zero_flux_rxns=[]
-    ##
 
     flux_bounds_data=flux_bounds_from_input(input=definition_file, condition=condition, specific_exchanges=None, specific_directions=[])
     Exchanges_to_impose={i:{"LB":flux_bounds_data.loc[i,"LB"],"UB":flux_bounds_data.loc[i,"UB"]} for i in list(flux_bounds_data["Reaction_ID"])}
-    compartment_densities_and_PGs = extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=correction_results,rows_to_exclude=["Ribosomes","Total"]+[i for i in correction_results.index if i.startswith("pg_")])
+    compartment_densities_and_PGs = extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=correction_results_compartement_sizes,rows_to_exclude=["Ribosomes","Total"]+[i for i in correction_results_compartement_sizes.index if i.startswith("pg_")])
     mu_measured=growth_rate_from_input(input=definition_file, condition=condition)
 
     Results_to_look_up="Simulation_Results"
-    #Results_to_look_up="Simulation_Results_Euk"
     condition_to_look_up="Prokaryotic"
-    #condition_to_look_up="Eukaryotic"
     Growth_rate_to_look_up="Mu_prok"
-    #Growth_rate_to_look_up="Mu_euk"
 
-    misprediction_coeffs=pandas.DataFrame()
-    #if condition=="Hackett_C03":
-    #    corrected_spec_kapps=False
     Specific_Kapps_original=Specific_Kapps.copy()
     Default_Kapps_original=Default_Kapps.copy()
     process_efficiencies_original=process_efficiencies.copy()
 
     if corrected_spec_kapps:
-        misprediction_trajectory={}
-        for zero_rxn in zero_flux_rxns:
-            Exchanges_to_impose[zero_rxn]={"LB":0,"UB":0}
-        #####
-        #Exchanges_to_impose=None
         steady_count=0
         iteration_count=0
         iteration_limit=10
@@ -3753,11 +3733,9 @@ def calibration_workflow_new(proteome,
         RSS_trajectory=[]
         increasing_RSS_count=0
         increasing_RSS_factor=1
-        initial_RSS=numpy.nan
         increasing_RSS_limit=2
         while continuation_criterion:
             iteration_count+=1
-            no_change_in_global_scaling=True
             ### GLOBAL SCALING
             results_global_scaling=global_efficiency_scaling(condition=condition,
                                                              definition_file=definition_file,
@@ -3829,14 +3807,6 @@ def calibration_workflow_new(proteome,
                 ###
                 spec_kapp_median=Specific_Kapps.loc[(Specific_Kapps['Kapp']!=0)&(pandas.isna(Specific_Kapps['Kapp'])==False),'Kapp'].median()
                 Default_Kapps={"default_efficiency":spec_kapp_median,"default_transporter_efficiency":transporter_multiplier*spec_kapp_median}
-                ###
-                mispred_enzymes=KappCorrectionResults["Enzyme_MispredictionFactors"]
-                mispred_processes=KappCorrectionResults["Process_MispredictionFactors"]
-                for mispred_enzyme in mispred_enzymes.keys():
-                    misprediction_coeffs.loc[mispred_enzyme,str(iteration_count)]=mispred_enzymes[mispred_enzyme]*product_misprediction_factors
-                for mispred_process in mispred_processes.keys():
-                    misprediction_coeffs.loc[str("Process_"+mispred_process),str(iteration_count)]=mispred_processes[mispred_process]*product_misprediction_factors
-                misprediction_coeffs.loc["Global Misprediction",str(iteration_count)]=product_misprediction_factors
 
                 if iteration_count>=minimum_iteration_number:
                     if not pandas.isna(previous_RSS):
@@ -3876,123 +3846,64 @@ def calibration_workflow_new(proteome,
                 Exchanges_to_impose_here=None
             else:
                 Exchanges_to_impose_here=Exchanges_to_impose
-            Simulation_results = perform_simulations(condition=condition,
-                                                    rba_session=rba_session,
-                                                    definition_file=definition_file,
-                                                    compartment_sizes=extract_compartment_sizes_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Densities_PGs":compartment_densities_and_PGs}]),
-                                                    pg_fractions=extract_pg_fractions_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Densities_PGs":compartment_densities_and_PGs}]),
-                                                    process_efficiencies=extract_process_capacities_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Process_Efficiencies":process_efficiencies_to_return}]),
-                                                    Default_Kapps=extract_default_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Default_Kapps":Default_Kapps_to_return}]),
-                                                    Specific_Kapps=extract_specific_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Specific_Kapps":Specific_Kapps_to_return}]),
-                                                    Exchanges_to_impose=Exchanges_to_impose_here,
-                                                    sims_to_perform=["Prokaryotic"],
-                                                    feasible_stati=feasible_stati,
-                                                    try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
-                                                    print_output=print_outputs,
-                                                    apply_model=False,transporter_multiplier=transporter_multiplier,start_val=mu_measured,Mu_approx_precision=Mu_approx_precision,max_mu_in_dichotomy=2*mu_measured)
-            mumax_predicted=Simulation_results["Mu_prok"]
-            mu_misprediction_factor=mu_measured/mumax_predicted
-            product_misprediction_factors=1
-            mu_iteration_count=0
-            while not (mu_measured-mu_measured*mu_misprediction_tolerance) <= mumax_predicted <= (mu_measured+mu_measured*mu_misprediction_tolerance):
-                mu_iteration_count+=1
-                if mu_iteration_count>=10:
-                    break
-                no_change_in_global_scaling=False
-                product_misprediction_factors*=mu_misprediction_factor
-                Default_Kapps_to_return["default_efficiency"]*=mu_misprediction_factor
-                Default_Kapps_to_return["default_transporter_efficiency"]*=mu_misprediction_factor
-                process_efficiencies_to_return["Value"]*=mu_misprediction_factor
-                Specific_Kapps_to_return["Kapp"]*=mu_misprediction_factor
-                if min_kapp is not None:
-                    Specific_Kapps_to_return.loc[(Specific_Kapps['Kapp']<min_kapp)&(Specific_Kapps_to_return['Kapp']!=0)&(pandas.isna(Specific_Kapps_to_return['Kapp'])==False),'Kapp']=min_kapp
-                Simulation_results = perform_simulations(condition=condition,
-                                                        rba_session=rba_session,
-                                                        definition_file=definition_file,
-                                                        compartment_sizes=extract_compartment_sizes_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Densities_PGs":compartment_densities_and_PGs}]),
-                                                        pg_fractions=extract_pg_fractions_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Densities_PGs":compartment_densities_and_PGs}]),
-                                                        process_efficiencies=extract_process_capacities_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Process_Efficiencies":process_efficiencies_to_return}]),
-                                                        Default_Kapps=extract_default_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Default_Kapps":Default_Kapps_to_return}]),
-                                                        Specific_Kapps=extract_specific_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Specific_Kapps":Specific_Kapps_to_return}]),
-                                                        Exchanges_to_impose=Exchanges_to_impose_here,
-                                                        sims_to_perform=["Prokaryotic"],
-                                                        feasible_stati=feasible_stati,
-                                                        try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
-                                                        print_output=print_outputs,
-                                                        apply_model=False,transporter_multiplier=transporter_multiplier,start_val=mu_measured,Mu_approx_precision=Mu_approx_precision,max_mu_in_dichotomy=2*mu_measured)
-                mumax_predicted=Simulation_results["Mu_prok"]
-                mu_misprediction_factor=mu_measured/mumax_predicted
+            results_global_scaling=global_efficiency_scaling(condition=condition,
+                                                             definition_file=definition_file,
+                                                             rba_session=rba_session,
+                                                             compartment_densities_and_pg=compartment_densities_and_PGs,
+                                                             process_efficiencies=process_efficiencies_to_return,
+                                                             default_kapps=Default_Kapps_to_return,
+                                                             specific_kapps=Specific_Kapps_to_return,
+                                                             exchanges_to_impose=Exchanges_to_impose_here,
+                                                             feasible_stati=feasible_stati,
+                                                             transporter_multiplier=transporter_multiplier,
+                                                             mu_approx_precision=Mu_approx_precision,
+                                                             mu_misprediction_tolerance=mu_misprediction_tolerance,
+                                                             condition_to_look_up=condition_to_look_up,
+                                                             growth_rate_to_look_up=Growth_rate_to_look_up,
+                                                             results_to_look_up=Results_to_look_up,
+                                                             fixed_mu_when_above_target_mu_in_correction=True)
+            
+            Simulation_results=results_global_scaling["simulation_results"]
+            Specific_Kapps_to_return=results_global_scaling["specific_kapps"]
+            Default_Kapps_to_return=results_global_scaling["default_kapps"]
+            process_efficiencies_to_return=results_global_scaling["process_efficiencies"]
+            product_misprediction_factors=results_global_scaling["correction_factor"]
     else:
         if final_global_scaling_free_exchanges:
             Exchanges_to_impose_here=None
         else:
             Exchanges_to_impose_here=Exchanges_to_impose
-        Simulation_results = perform_simulations(condition=condition,
-                                                 rba_session=rba_session,
-                                                 definition_file=definition_file,
-                                                 compartment_sizes=extract_compartment_sizes_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Densities_PGs":compartment_densities_and_PGs}]),
-                                                 pg_fractions=extract_pg_fractions_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Densities_PGs":compartment_densities_and_PGs}]),
-                                                 process_efficiencies=extract_process_capacities_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Process_Efficiencies":process_efficiencies}]),
-                                                 Default_Kapps=extract_default_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Default_Kapps":Default_Kapps}]),
-                                                 Specific_Kapps=extract_specific_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Specific_Kapps":Specific_Kapps}]),
-                                                 Exchanges_to_impose=Exchanges_to_impose_here,
-                                                 sims_to_perform=["Prokaryotic"],
-                                                 feasible_stati=feasible_stati,
-                                                 try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
-                                                 print_output=print_outputs,
-                                                 apply_model=False,transporter_multiplier=transporter_multiplier,start_val=mu_measured,Mu_approx_precision=Mu_approx_precision,max_mu_in_dichotomy=2*mu_measured)
-        mumax_predicted=Simulation_results["Mu_prok"]
-        if mumax_predicted == 0:
-            mu_misprediction_factor=10
-        else:
-            mu_misprediction_factor=mu_measured/mumax_predicted
-        product_misprediction_factors=1
-        mu_iteration_count=0
-        while not (mu_measured-mu_measured*mu_misprediction_tolerance) <= mumax_predicted <= (mu_measured+mu_measured*mu_misprediction_tolerance):
-            mu_iteration_count+=1
-            if mu_iteration_count>=10:
-                break
-            no_change_in_global_scaling=False
-            product_misprediction_factors*=mu_misprediction_factor
-            Default_Kapps["default_efficiency"]*=mu_misprediction_factor
-            Default_Kapps["default_transporter_efficiency"]*=mu_misprediction_factor
-            process_efficiencies.loc[:,"Value"]*=mu_misprediction_factor
-            Specific_Kapps.loc[:,"Kapp"]*=mu_misprediction_factor
-            if min_kapp is not None:
-                Specific_Kapps.loc[(Specific_Kapps['Kapp']<min_kapp)&(Specific_Kapps['Kapp']!=0)&(pandas.isna(Specific_Kapps['Kapp'])==False),'Kapp']=min_kapp
-            Simulation_results = perform_simulations(condition=condition,
-                                                    rba_session=rba_session,
-                                                    definition_file=definition_file,
-                                                    compartment_sizes=extract_compartment_sizes_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Densities_PGs":compartment_densities_and_PGs}]),
-                                                    pg_fractions=extract_pg_fractions_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Densities_PGs":compartment_densities_and_PGs}]),
-                                                    process_efficiencies=extract_process_capacities_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Process_Efficiencies":process_efficiencies}]),
-                                                    Default_Kapps=extract_default_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Default_Kapps":Default_Kapps}]),
-                                                    Specific_Kapps=extract_specific_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Specific_Kapps":Specific_Kapps}]),
-                                                    Exchanges_to_impose=Exchanges_to_impose_here,
-                                                    sims_to_perform=[condition_to_look_up],
-                                                    feasible_stati=feasible_stati,
-                                                    try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
-                                                    print_output=print_outputs,
-                                                    apply_model=False,transporter_multiplier=transporter_multiplier,start_val=mu_measured,Mu_approx_precision=Mu_approx_precision,max_mu_in_dichotomy=2*mu_measured)
-            mumax_predicted=Simulation_results["Mu_prok"]
-            if mumax_predicted == 0:
-                mu_misprediction_factor=10
-            else:
-                mu_misprediction_factor=mu_measured/mumax_predicted
-        RSS_trajectory=[]
-        Default_Kapps_to_return=Default_Kapps
-        Specific_Kapps_to_return=Specific_Kapps
-        process_efficiencies_to_return=process_efficiencies
-
-
+        results_global_scaling=global_efficiency_scaling(condition=condition,
+                                                         definition_file=definition_file,
+                                                         rba_session=rba_session,
+                                                         compartment_densities_and_pg=compartment_densities_and_PGs,
+                                                         process_efficiencies=process_efficiencies,
+                                                         default_kapps=Default_Kapps,
+                                                         specific_kapps=Specific_Kapps,
+                                                         exchanges_to_impose=Exchanges_to_impose_here,
+                                                         feasible_stati=feasible_stati,
+                                                         transporter_multiplier=transporter_multiplier,
+                                                         mu_approx_precision=Mu_approx_precision,
+                                                         mu_misprediction_tolerance=mu_misprediction_tolerance,
+                                                         condition_to_look_up=condition_to_look_up,
+                                                         growth_rate_to_look_up=Growth_rate_to_look_up,
+                                                         results_to_look_up=Results_to_look_up,
+                                                         fixed_mu_when_above_target_mu_in_correction=True)
+            
+        Simulation_results=results_global_scaling["simulation_results"]
+        Specific_Kapps_to_return=results_global_scaling["specific_kapps"]
+        Default_Kapps_to_return=results_global_scaling["default_kapps"]
+        process_efficiencies_to_return=results_global_scaling["process_efficiencies"]
+        RSS_trajectory=None
     if print_outputs:
-        print(time.time() - t0)
+        print("")
+        print("Runtime - {} : {}".format(condition,time.time() - t0))
+        print("")
     return({"RSS_trajectory":RSS_trajectory,
             "Densities_PGs":compartment_densities_and_PGs,
-            "Misprediction_Coeffs":misprediction_coeffs,
             "Condition":condition,
             'Proteome': build_input_proteome_for_specific_kapp_estimation(proteome, condition),
-            'Correction_Results': correction_results,
+            'correction_results_compartement_sizes': correction_results_compartement_sizes,
             'Default_Kapps': Default_Kapps_to_return,
             'Specific_Kapps': Specific_Kapps_to_return,
             'Process_Efficiencies': process_efficiencies_to_return,
