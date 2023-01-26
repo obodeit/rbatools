@@ -3735,10 +3735,13 @@ def calibration_workflow_new(proteome,
     process_efficiencies_original=process_efficiencies.copy()
     fix_mus={'Hackett_C03':False,'Hackett_C005':True, 'Hackett_C022':True, 'Hackett_C01':True, 'Hackett_C016':True}
     adjust_roots={'Hackett_C03':False,'Hackett_C005':True, 'Hackett_C022':True, 'Hackett_C01':True, 'Hackett_C016':True}
+    iteration_limits={'Hackett_C03':15,'Hackett_C005':15, 'Hackett_C022':15, 'Hackett_C01':15, 'Hackett_C016':15}
+    increasing_RSS_limits={'Hackett_C03':2,'Hackett_C005':2, 'Hackett_C022':2, 'Hackett_C01':2, 'Hackett_C016':2}
+    roots_efficiency_correctiond={'Hackett_C03':1,'Hackett_C005':1, 'Hackett_C022':1, 'Hackett_C01':1, 'Hackett_C016':1}
     if corrected_spec_kapps:
         steady_count=0
         iteration_count=0
-        iteration_limit=15
+        iteration_limit=iteration_limits[condition]
         minimum_iteration_number=2
         steady_limit=2
         continuation_criterion=True
@@ -3749,7 +3752,7 @@ def calibration_workflow_new(proteome,
         RSS_trajectory=[]
         increasing_RSS_count=0
         increasing_RSS_factor=1
-        increasing_RSS_limit=2
+        increasing_RSS_limit=increasing_RSS_limits[condition]
         while continuation_criterion:
             iteration_count+=1
             ### GLOBAL SCALING
@@ -3769,6 +3772,7 @@ def calibration_workflow_new(proteome,
                                                              growth_rate_to_look_up=Growth_rate_to_look_up,
                                                              results_to_look_up=Results_to_look_up,
                                                              fixed_mu_when_above_target_mu_in_correction=fix_mus[condition],
+                                                             n_th_root_mispred=roots_efficiency_correctiond[condition],
                                                              print_outputs=False,
                                                              adjust_root=adjust_roots[condition])
 
