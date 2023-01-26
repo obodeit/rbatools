@@ -3733,7 +3733,8 @@ def calibration_workflow_new(proteome,
     Specific_Kapps_original=Specific_Kapps.copy()
     Default_Kapps_original=Default_Kapps.copy()
     process_efficiencies_original=process_efficiencies.copy()
-
+    fix_mus={'Hackett_C03':False,'Hackett_C005':True, 'Hackett_C022':True, 'Hackett_C01':True, 'Hackett_C016':True}
+    adjust_roots={'Hackett_C03':False,'Hackett_C005':True, 'Hackett_C022':True, 'Hackett_C01':True, 'Hackett_C016':True}
     if corrected_spec_kapps:
         steady_count=0
         iteration_count=0
@@ -3767,8 +3768,10 @@ def calibration_workflow_new(proteome,
                                                              condition_to_look_up=condition_to_look_up,
                                                              growth_rate_to_look_up=Growth_rate_to_look_up,
                                                              results_to_look_up=Results_to_look_up,
-                                                             fixed_mu_when_above_target_mu_in_correction=True,
-                                                             print_outputs=False)
+                                                             fixed_mu_when_above_target_mu_in_correction=fix_mus[condition],
+                                                             print_outputs=False,
+                                                             adjust_root=adjust_roots[condition])
+
             
             Simulation_results=results_global_scaling["simulation_results"]
             Specific_Kapps=results_global_scaling["specific_kapps"]
@@ -3947,7 +3950,8 @@ def global_efficiency_scaling(condition,
                               results_to_look_up,
                               fixed_mu_when_above_target_mu_in_correction,
                               n_th_root_mispred=1,
-                              print_outputs=False):
+                              print_outputs=False,
+                              adjust_root=True):
     
     mu_measured=growth_rate_from_input(input=definition_file, condition=condition)
 
@@ -3997,7 +4001,8 @@ def global_efficiency_scaling(condition,
             mu_iteration_count+=1
 
             if runs_of_sign>=2:
-                n_th_root_mispred=2
+                if adjust_root:
+                    n_th_root_mispred=2
 
             default_kapps_for_scaling["default_efficiency"]*=numpy.power(mu_misprediction_factor,1/n_th_root_mispred)
             default_kapps_for_scaling["default_transporter_efficiency"]*=numpy.power(mu_misprediction_factor,1/n_th_root_mispred)
@@ -4095,7 +4100,8 @@ def global_efficiency_scaling(condition,
             if mu_iteration_count>=10:
                 break
             if runs_of_sign>=2:
-                n_th_root_mispred=2
+                if adjust_root:
+                    n_th_root_mispred=2
 
             default_kapps_for_scaling["default_efficiency"]*=numpy.power(mu_misprediction_factor,1/n_th_root_mispred)
             default_kapps_for_scaling["default_transporter_efficiency"]*=numpy.power(mu_misprediction_factor,1/n_th_root_mispred)
