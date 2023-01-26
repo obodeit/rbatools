@@ -2616,7 +2616,17 @@ def efficiency_correction_new(rba_session,
             continue
         if concentration_measured==0:
             continue
-        machinery_concentration_misprediction_coeff=concentration_predicted/concentration_measured
+        subunit_misprediction_factors=[]
+        for subunit in enzyme_composition.keys():
+            proto_protein_id=rba_session.get_protein_information(subunit)["ProtoID"]
+            if proto_protein_id in protein_mispredictions.keys():
+                subunit_misprediction_factors+=[protein_mispredictions[proto_protein_id]]
+                #subunit_misprediction_factors+=[protein_mispredictions[proto_protein_id]*enzyme_composition[subunit]]
+        
+#        machinery_concentration_misprediction_coeff=gmean(numpy.array(subunit_misprediction_factors))
+        machinery_concentration_misprediction_coeff=numpy.median(numpy.array(subunit_misprediction_factors))
+        #machinery_concentration_misprediction_coeff=concentration_predicted/concentration_measured
+
         if numpy.isfinite(machinery_concentration_misprediction_coeff):
             enzyme_correction_coefficients[enzyme]=machinery_concentration_misprediction_coeff
             if tolerance is not None:
@@ -2694,7 +2704,15 @@ def efficiency_correction_new(rba_session,
             continue
         if concentration_measured==0:
             continue
-        machinery_concentration_misprediction_coeff=concentration_predicted/concentration_measured
+        subunit_misprediction_factors=[]
+        for subunit in process_machinery_composition.keys():
+            proto_protein_id=rba_session.get_protein_information(subunit)["ProtoID"]
+            if proto_protein_id in protein_mispredictions.keys():
+                subunit_misprediction_factors+=[protein_mispredictions[proto_protein_id]]
+                #subunit_misprediction_factors+=[protein_mispredictions[proto_protein_id]*process_machinery_composition[subunit]]
+        #machinery_concentration_misprediction_coeff=gmean(numpy.array(subunit_misprediction_factors))
+        machinery_concentration_misprediction_coeff=numpy.median(numpy.array(subunit_misprediction_factors))
+#        machinery_concentration_misprediction_coeff=concentration_predicted/concentration_measured
         if numpy.isfinite(machinery_concentration_misprediction_coeff):
             process_correction_coefficients[process]=machinery_concentration_misprediction_coeff
             if tolerance is not None:
@@ -2973,8 +2991,6 @@ def efficiency_correction_refactored(specific_kapps,
                 predicted_protein=protoProtein_results[protoID]
                 measured_protein=proteinData.loc[protoID,"copy_number"]
                 if (predicted_protein>0) & (measured_protein>0):
-                    #misprediction_coeff=predicted_protein/measured_protein
-                    #misprediction_coeff=numpy.sqrt(predicted_protein/measured_protein)
                     misprediction_coeff=numpy.power(predicted_protein/measured_protein,1/n_th_root_mispred)
                     if (numpy.isfinite(misprediction_coeff)) and (misprediction_coeff!=0):
                         squared_residuals.append((numpy.log(predicted_protein)-numpy.log(measured_protein))**2)
@@ -3709,7 +3725,6 @@ def calibration_workflow_new(proteome,
     flux_bounds_data=flux_bounds_from_input(input=definition_file, condition=condition, specific_exchanges=None, specific_directions=[])
     Exchanges_to_impose={i:{"LB":flux_bounds_data.loc[i,"LB"],"UB":flux_bounds_data.loc[i,"UB"]} for i in list(flux_bounds_data["Reaction_ID"])}
     compartment_densities_and_PGs = extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=correction_results_compartement_sizes,rows_to_exclude=["Ribosomes","Total"]+[i for i in correction_results_compartement_sizes.index if i.startswith("pg_")])
-    mu_measured=growth_rate_from_input(input=definition_file, condition=condition)
 
     Results_to_look_up="Simulation_Results"
     condition_to_look_up="Prokaryotic"
@@ -3722,7 +3737,7 @@ def calibration_workflow_new(proteome,
     if corrected_spec_kapps:
         steady_count=0
         iteration_count=0
-        iteration_limit=10
+        iteration_limit=15
         minimum_iteration_number=2
         steady_limit=2
         continuation_criterion=True
@@ -3733,7 +3748,7 @@ def calibration_workflow_new(proteome,
         RSS_trajectory=[]
         increasing_RSS_count=0
         increasing_RSS_factor=1
-        increasing_RSS_limit=2
+        increasing_RSS_limit=3
         while continuation_criterion:
             iteration_count+=1
             ### GLOBAL SCALING
@@ -3752,7 +3767,8 @@ def calibration_workflow_new(proteome,
                                                              condition_to_look_up=condition_to_look_up,
                                                              growth_rate_to_look_up=Growth_rate_to_look_up,
                                                              results_to_look_up=Results_to_look_up,
-                                                             fixed_mu_when_above_target_mu_in_correction=True)
+                                                             fixed_mu_when_above_target_mu_in_correction=True,
+                                                             print_outputs=False)
             
             Simulation_results=results_global_scaling["simulation_results"]
             Specific_Kapps=results_global_scaling["specific_kapps"]
@@ -3929,7 +3945,9 @@ def global_efficiency_scaling(condition,
                               condition_to_look_up,
                               growth_rate_to_look_up,
                               results_to_look_up,
-                              fixed_mu_when_above_target_mu_in_correction):
+                              fixed_mu_when_above_target_mu_in_correction,
+                              n_th_root_mispred=1,
+                              print_outputs=False):
     
     mu_measured=growth_rate_from_input(input=definition_file, condition=condition)
 
@@ -3969,17 +3987,24 @@ def global_efficiency_scaling(condition,
         mu_misprediction_factor=mu_measured/mumax_predicted
 
     mu_iteration_count=0
+    runs_of_sign=0
+    last_misprediction_direction=0
     if fixed_mu_when_above_target_mu_in_correction:
         while not mu_measured <= mumax_predicted <= (mu_measured+mu_measured*mu_misprediction_tolerance):
-            mu_iteration_count+=1
             if mu_iteration_count>=10:
                 break
-            default_kapps_for_scaling["default_efficiency"]*=mu_misprediction_factor
-            default_kapps_for_scaling["default_transporter_efficiency"]*=mu_misprediction_factor
-            process_efficiencies_for_scaling.loc[:,"Value"]*=mu_misprediction_factor
-            specific_kapps_for_scaling.loc[:,"Kapp"]*=mu_misprediction_factor
 
-            total_product_correction_factor*=mu_misprediction_factor
+            mu_iteration_count+=1
+
+            if runs_of_sign>=2:
+                n_th_root_mispred=2
+
+            default_kapps_for_scaling["default_efficiency"]*=numpy.power(mu_misprediction_factor,1/n_th_root_mispred)
+            default_kapps_for_scaling["default_transporter_efficiency"]*=numpy.power(mu_misprediction_factor,1/n_th_root_mispred)
+            process_efficiencies_for_scaling.loc[:,"Value"]*=numpy.power(mu_misprediction_factor,1/n_th_root_mispred)
+            specific_kapps_for_scaling.loc[:,"Kapp"]*=numpy.power(mu_misprediction_factor,1/n_th_root_mispred)
+            
+            total_product_correction_factor*=numpy.power(mu_misprediction_factor,1/n_th_root_mispred)
             total_product_correction_factors.append(total_product_correction_factor)
 
             simulation_results = perform_simulations(condition=condition,
@@ -4008,6 +4033,26 @@ def global_efficiency_scaling(condition,
                 mu_misprediction_factor=10
             else:
                 mu_misprediction_factor=mu_measured/mumax_predicted
+                if mu_misprediction_factor<1:
+                    current_misprediction_direction = 1
+                elif mu_misprediction_factor>1:
+                    current_misprediction_direction = -1
+                else:
+                    current_misprediction_direction=0
+
+                if (current_misprediction_direction!=0) and (last_misprediction_direction!=0):
+                    if current_misprediction_direction==last_misprediction_direction:
+                        runs_of_sign=0
+                    else:
+                        if current_misprediction_direction==1:
+                            runs_of_sign+=1
+                else:
+                    runs_of_sign=0
+
+                last_misprediction_direction=current_misprediction_direction
+
+            if print_outputs:
+                print("Measured: {} - Predicted: {} - mispred coeff: {} - root: {} - runs_of_sign: {} -- status: {}".format(mu_measured,mumax_predicted,mu_misprediction_factor,n_th_root_mispred,runs_of_sign,simulation_results["SolutionStatus"]))
 
         prediction_residulas_growth_rates=[mu_measured-mu_pred for mu_pred in predicted_growth_rates]
         minimum_prediction_residual=min([abs(i) for i in prediction_residulas_growth_rates])
@@ -4044,18 +4089,20 @@ def global_efficiency_scaling(condition,
                                                         transporter_multiplier=transporter_multiplier)
         if len(list(simulation_results_fixed[results_to_look_up].keys()))>0:
             simulation_results=simulation_results_fixed
-
     else:
         while not (mu_measured-mu_measured*mu_misprediction_tolerance) <= mumax_predicted <= (mu_measured+mu_measured*mu_misprediction_tolerance):
             mu_iteration_count+=1
             if mu_iteration_count>=10:
                 break
-            default_kapps_for_scaling["default_efficiency"]*=mu_misprediction_factor
-            default_kapps_for_scaling["default_transporter_efficiency"]*=mu_misprediction_factor
-            process_efficiencies_for_scaling.loc[:,"Value"]*=mu_misprediction_factor
-            specific_kapps_for_scaling.loc[:,"Kapp"]*=mu_misprediction_factor
+            if runs_of_sign>=2:
+                n_th_root_mispred=2
 
-            total_product_correction_factor*=mu_misprediction_factor
+            default_kapps_for_scaling["default_efficiency"]*=numpy.power(mu_misprediction_factor,1/n_th_root_mispred)
+            default_kapps_for_scaling["default_transporter_efficiency"]*=numpy.power(mu_misprediction_factor,1/n_th_root_mispred)
+            process_efficiencies_for_scaling.loc[:,"Value"]*=numpy.power(mu_misprediction_factor,1/n_th_root_mispred)
+            specific_kapps_for_scaling.loc[:,"Kapp"]*=numpy.power(mu_misprediction_factor,1/n_th_root_mispred)
+            
+            total_product_correction_factor*=numpy.power(mu_misprediction_factor,1/n_th_root_mispred)
             total_product_correction_factors.append(total_product_correction_factor)
 
             simulation_results = perform_simulations(condition=condition,
@@ -4077,6 +4124,8 @@ def global_efficiency_scaling(condition,
                                                     Mu_approx_precision=mu_approx_precision,
                                                     max_mu_in_dichotomy=2*mu_measured)
             mumax_predicted=simulation_results[growth_rate_to_look_up]
+            if print_outputs:
+                print("Measured: {} - Predicted: {} - mispred coeff: {} - root: {} - runs_of_sign: {}-- status: {}".format(mu_measured,mumax_predicted,mu_misprediction_factor,n_th_root_mispred,runs_of_sign,simulation_results["SolutionStatus"]))
 
             predicted_growth_rates.append(mumax_predicted)
 
@@ -4084,6 +4133,23 @@ def global_efficiency_scaling(condition,
                 mu_misprediction_factor=10
             else:
                 mu_misprediction_factor=mu_measured/mumax_predicted
+                if mu_misprediction_factor<1:
+                    current_misprediction_direction = 1
+                elif mu_misprediction_factor>1:
+                    current_misprediction_direction = -1
+                else:
+                    current_misprediction_direction=0
+
+                if (current_misprediction_direction!=0) and (last_misprediction_direction!=0):
+                    if current_misprediction_direction==last_misprediction_direction:
+                        runs_of_sign=0
+                    else:
+                        if current_misprediction_direction==1:
+                            runs_of_sign+=1
+                else:
+                    runs_of_sign=0
+
+                last_misprediction_direction=current_misprediction_direction
 
         prediction_residulas_growth_rates=[mu_measured-mu_pred for mu_pred in predicted_growth_rates]
         minimum_prediction_residual=min([abs(i) for i in prediction_residulas_growth_rates])
