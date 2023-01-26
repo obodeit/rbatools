@@ -2531,7 +2531,7 @@ def plot_rss_trajectory(calibration_outputs):
     count=0
     for cal_input in calibration_outputs:
         axs[ax_indices[count][0],ax_indices[count][1]].plot([i+1 for i in range(len(cal_input["RSS_trajectory"]))],cal_input["RSS_trajectory"])
-        axs[ax_indices[count][0],ax_indices[count][1]].scatter([cal_input["RSS_trajectory"].index(min(cal_input["RSS_trajectory"]))+1],min(cal_input["RSS_trajectory"]),color="red")
+        axs[ax_indices[count][0],ax_indices[count][1]].scatter([cal_input["RSS_trajectory"].index(min(cal_input["RSS_trajectory"]))+1] , min(cal_input["RSS_trajectory"]) , color="red")
         axs[ax_indices[count][0],ax_indices[count][1]].set_title("RSS: {}".format(cal_input["Condition"]))
         axs[ax_indices[count][0],ax_indices[count][1]].set_xlabel("Iteration")
         axs[ax_indices[count][0],ax_indices[count][1]].set_ylabel("Residual Sum of squares")
@@ -3748,7 +3748,7 @@ def calibration_workflow_new(proteome,
         RSS_trajectory=[]
         increasing_RSS_count=0
         increasing_RSS_factor=1
-        increasing_RSS_limit=3
+        increasing_RSS_limit=2
         while continuation_criterion:
             iteration_count+=1
             ### GLOBAL SCALING
@@ -3833,7 +3833,7 @@ def calibration_workflow_new(proteome,
                             else:
                                 steady_count=0
                 if print_outputs:
-                    print("{} : {} : {}".format(iteration_count,current_RSS,current_RSS/previous_RSS))
+                    print("{} : {} : {} : {}".format(iteration_count,current_RSS,current_RSS/previous_RSS,increasing_RSS_count))
                 previous_RSS=current_RSS
 
             if steady_count>=steady_limit:
