@@ -1,3 +1,4 @@
+"""
     #global
     fix_mus={'Hackett_C03':False,'Hackett_C005':True, 'Hackett_C022':True, 'Hackett_C01':True, 'Hackett_C016':True}
     adjust_roots={'Hackett_C03':False,'Hackett_C005':True, 'Hackett_C022':True, 'Hackett_C01':True, 'Hackett_C016':True}
@@ -160,8 +161,8 @@ def compartment_correction_settings_from_input(input, condition):
 
 def general_calibration_settings_from_input(input, condition):
 
-"""
-transporter_multiplier
-Mu_approx_precision
-proteome scaling
+#transporter_multiplier
+#Mu_approx_precision
+#proteome scaling
+
 """
