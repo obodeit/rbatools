@@ -3136,6 +3136,440 @@ def efficiency_correction_refactored(specific_kapps,
             changes_applied=False
     return({"Sum_of_squared_residuals":sum(squared_residuals),"Changes":changes_applied,"Kapps":kapps_out,"ProcessEfficiencies":process_efficiencies_out,"Process_MispredictionFactors":process_correction_coefficients,"Enzyme_MispredictionFactors":enzyme_correction_coefficients})
 
+def efficiency_correction_refactored_2(specific_kapps,
+                               simulation_results,
+                               proteinData,
+                               rba_session,
+                               condition,
+                               default_kapps,
+                               tolerance=2,
+                               n_th_root_mispred=2,
+                               process_efficiencies=None,
+                               correct_process_efficiencies=False,
+                               correct_default_kapp_enzymes=False):
+    protoProtein_results={}
+    for i in simulation_results["Proteins"].index:
+        protoID=rba_session.get_protein_information(protein=i)["ProtoID"]
+        if protoID in protoProtein_results:
+            protoProtein_results[protoID]+=simulation_results["Proteins"].loc[i,condition]
+        else:
+            protoProtein_results[protoID]=simulation_results["Proteins"].loc[i,condition]
+    
+    Model_ProtoProtein_Map={}
+    for i in rba_session.get_proteins():
+        protoID=rba_session.get_protein_information(protein=i)["ProtoID"]
+        if protoID in Model_ProtoProtein_Map:
+            Model_ProtoProtein_Map[protoID].append(i)
+        else:
+            Model_ProtoProtein_Map[protoID]=[i]
+    kapps_out=specific_kapps.copy()
+    process_efficiencies_out=process_efficiencies.copy()
+    misprediction_factors_enzymes={}
+    misprediction_factors_defaultKapp_enzymes={}
+    misprediction_factors_processes={}
+    squared_residuals=[]
+    for protoID in protoProtein_results:
+        if protoID in Model_ProtoProtein_Map:
+            if protoID in proteinData["ID"]:
+                predicted_protein=protoProtein_results[protoID]
+                measured_protein=proteinData.loc[protoID,"copy_number"]
+                if (predicted_protein>0) & (measured_protein>0):
+                    misprediction_coeff=predicted_protein/measured_protein
+                    if (numpy.isfinite(misprediction_coeff)) and (misprediction_coeff!=0):
+                        squared_residuals.append((numpy.log(predicted_protein)-numpy.log(measured_protein))**2)
+                        #squared_residuals.append((predicted_protein-measured_protein)**2)
+                        #squared_residuals.append(((predicted_protein-measured_protein)*rba_session.get_protein_information(protein=Model_ProtoProtein_Map[protoID][0])["AAnumber"])**2)
+                        for protein in Model_ProtoProtein_Map[protoID]:
+                            for enzyme in rba_session.get_protein_information(protein=protein)["associatedEnzymes"]:
+                                if enzyme in list(specific_kapps["Enzyme_ID"]):
+                                    if enzyme not in misprediction_factors_enzymes.keys():
+                                        misprediction_factors_enzymes[enzyme]=[misprediction_coeff]
+                                    else:
+                                        misprediction_factors_enzymes[enzyme].append(misprediction_coeff)
+                                else:
+                                    if enzyme not in misprediction_factors_defaultKapp_enzymes.keys():
+                                        misprediction_factors_defaultKapp_enzymes[enzyme]=[misprediction_coeff]
+                                    else:
+                                        misprediction_factors_defaultKapp_enzymes[enzyme].append(misprediction_coeff)
+                            if correct_process_efficiencies:
+                                for process in rba_session.get_protein_information(protein=protein)["SupportsProcess"]:
+                                    if process in process_efficiencies.index:
+                                        if process not in misprediction_factors_processes.keys():
+                                            misprediction_factors_processes[process]=[misprediction_coeff]
+                                        else:
+                                            misprediction_factors_processes[process].append(misprediction_coeff)
+
+    enzyme_correction_coefficients={}
+    for enzyme in misprediction_factors_enzymes.keys():
+        if enzyme in list(specific_kapps["Enzyme_ID"]):
+            enzyme_correction_coefficients[enzyme]=numpy.power(numpy.median(misprediction_factors_enzymes[enzyme]),1/n_th_root_mispred)
+    enzymes_already_handled=[]
+    for enzyme in enzyme_correction_coefficients.keys():
+        if enzyme not in enzymes_already_handled:
+            iso_enzme_correction_coeffs={enzyme:enzyme_correction_coefficients[enzyme]}
+            for iso_enzyme in rba_session.get_enzyme_information(enzyme)["Isozymes"]:
+                if iso_enzyme in enzyme_correction_coefficients.keys():
+                    iso_enzme_correction_coeffs.update({iso_enzyme:enzyme_correction_coefficients[iso_enzyme]})
+            correction_coeff=numpy.median(numpy.array([i for i in list(iso_enzme_correction_coeffs.values()) if numpy.isfinite(i)]))
+            for iso_enzyme_to_consider in iso_enzme_correction_coeffs.keys():
+                enzymes_already_handled.append(iso_enzyme_to_consider)
+                old_kapp=specific_kapps.loc[specific_kapps["Enzyme_ID"]==iso_enzyme_to_consider,"Kapp"].values[0]
+                new_kapp=old_kapp*correction_coeff
+                if tolerance is None:
+                    kapps_out.loc[kapps_out["Enzyme_ID"]==iso_enzyme_to_consider,"Kapp"]=new_kapp
+                else:
+                    if abs(numpy.log(tolerance)) <= abs(numpy.log(correction_coeff)):
+                        kapps_out.loc[kapps_out["Enzyme_ID"]==iso_enzyme_to_consider,"Kapp"]=new_kapp
+
+    if correct_default_kapp_enzymes:
+        default_efficiency_enzyme_correction_coefficients={}
+        for enzyme in misprediction_factors_defaultKapp_enzymes.keys():
+            if enzyme not in list(specific_kapps["Enzyme_ID"]):
+                default_efficiency_enzyme_correction_coefficients[enzyme]=numpy.power(numpy.median(misprediction_factors_defaultKapp_enzymes[enzyme]),1/n_th_root_mispred)
+        for enzyme in default_efficiency_enzyme_correction_coefficients.keys():
+            if enzyme not in enzymes_already_handled:
+                respective_reaction=rba_session.get_enzyme_information(enzyme)["Reaction"].split("_duplicate_")[0]
+                if respective_reaction in simulation_results["Reactions"].index:
+                    flux=simulation_results["Reactions"].loc[respective_reaction,condition]
+                    if flux < 0:
+                        flux_direction=-1
+                        efficiency_parameter= rba_session.model.enzymes.enzymes._elements_by_id[enzyme].backward_efficiency
+                    elif flux > 0:
+                        flux_direction=1
+                        efficiency_parameter= rba_session.model.enzymes.enzymes._elements_by_id[enzyme].forward_efficiency
+                    else:
+                        continue
+                    iso_enzme_correction_coeffs={enzyme:default_efficiency_enzyme_correction_coefficients[enzyme]}
+                    for iso_enzyme in rba_session.get_enzyme_information(enzyme)["Isozymes"]:
+                        if iso_enzyme in default_efficiency_enzyme_correction_coefficients.keys():
+                            iso_enzme_correction_coeffs.update({iso_enzyme:default_efficiency_enzyme_correction_coefficients[iso_enzyme]})
+                    correction_coeff=numpy.median(numpy.array([i for i in list(iso_enzme_correction_coeffs.values()) if numpy.isfinite(i)]))
+                    for iso_enzyme_to_consider in iso_enzme_correction_coeffs.keys():
+                        enzymes_already_handled.append(iso_enzyme_to_consider)
+                        old_kapp=default_kapps[efficiency_parameter]
+                        new_kapp=old_kapp*enzyme_correction_coefficients[enzyme]
+                        if tolerance is None:
+                            kapps_out.loc[kapps_out["Enzyme_ID"]==enzyme,"Kapp"]=new_kapp
+                            kapps_out.loc[kapps_out["Enzyme_ID"]==enzyme,"Flux"]=flux_direction
+                            kapps_out.loc[kapps_out["Comment"]==enzyme,"Flux"]="Corrected Default"
+                        else:
+                            if abs(numpy.log(tolerance)) <= abs(numpy.log(correction_coeff)):
+                                kapps_out.loc[kapps_out["Enzyme_ID"]==enzyme,"Kapp"]=new_kapp
+                                kapps_out.loc[kapps_out["Enzyme_ID"]==enzyme,"Flux"]=flux_direction
+                                kapps_out.loc[kapps_out["Comment"]==enzyme,"Flux"]="Corrected Default"
+
+    if correct_process_efficiencies:
+        process_correction_coefficients={}
+        for process in misprediction_factors_processes.keys():
+            if process in list(process_efficiencies.index):
+                process_correction_coefficients[process]=numpy.power(numpy.median(misprediction_factors_processes[process]),1/n_th_root_mispred)
+        for process in process_correction_coefficients.keys():
+            correction_coeff=process_correction_coefficients[process]
+            old_efficiency=process_efficiencies.loc[process,"Value"]
+            new_efficiency=old_efficiency*correction_coeff
+            if tolerance is None:
+                process_efficiencies_out.loc[process,"Value"]=new_efficiency
+            else:
+                if abs(numpy.log(tolerance)) <= abs(numpy.log(correction_coeff)):
+                    process_efficiencies_out.loc[process,"Value"]=new_efficiency
+    return({"Sum_of_squared_residuals":sum(squared_residuals),"Kapps":kapps_out,"ProcessEfficiencies":process_efficiencies_out,"Process_MispredictionFactors":process_correction_coefficients,"Enzyme_MispredictionFactors":enzyme_correction_coefficients})
+
+def efficiency_correction_refactored_3(enzyme_efficiencies,
+                               simulation_results,
+                               protein_data,
+                               rba_session,
+                               condition,
+                               default_enzyme_efficiencies,
+                               tolerance=2,
+                               n_th_root_mispred=2,
+                               process_efficiencies=None,
+                               correct_default_kapp_enzymes=False):
+    proto_protein_quantities={}
+    for i in simulation_results["Proteins"].index:
+        proto_protein_ID=rba_session.get_protein_information(protein=i)["ProtoID"]
+        if proto_protein_ID in proto_protein_quantities:
+            proto_protein_quantities[proto_protein_ID]+=simulation_results["Proteins"].loc[i,condition]
+        else:
+            proto_protein_quantities[proto_protein_ID]=simulation_results["Proteins"].loc[i,condition]
+    
+    proto_protein_isoform_map={} 
+    for i in rba_session.get_proteins():
+        proto_protein_ID=rba_session.get_protein_information(protein=i)["ProtoID"]
+        if proto_protein_ID in proto_protein_isoform_map:
+            proto_protein_isoform_map[proto_protein_ID].append(i)
+        else:
+            proto_protein_isoform_map[proto_protein_ID]=[i]
+
+    enzyme_efficiencies_out=enzyme_efficiencies.copy() 
+    process_efficiencies_out=process_efficiencies.copy()
+    subunit_misprediction_factors_enzymes={}
+    subunit_misprediction_factors_default_efficiency_enzymes={}
+    subunit_misprediction_factors_processes={}
+    squared_residuals=[]
+    for proto_protein_ID in proto_protein_quantities:
+        if proto_protein_ID in proto_protein_isoform_map:
+            if proto_protein_ID in protein_data["ID"]:
+                predicted_protein=proto_protein_quantities[proto_protein_ID]
+                measured_protein=protein_data.loc[proto_protein_ID,"copy_number"]
+                if (predicted_protein>0) & (measured_protein>0):
+                    misprediction_coeff=predicted_protein/measured_protein
+                    if (numpy.isfinite(misprediction_coeff)) and (misprediction_coeff!=0):
+                        squared_residuals.append((numpy.log(predicted_protein)-numpy.log(measured_protein))**2)
+                        #squared_residuals.append((predicted_protein-measured_protein)**2)
+                        #squared_residuals.append(((predicted_protein-measured_protein)*rba_session.get_protein_information(protein=proto_protein_isoform_map[proto_protein_ID][0])["AAnumber"])**2)
+                        for protein in proto_protein_isoform_map[proto_protein_ID]:
+                            for enzyme in rba_session.get_protein_information(protein=protein)["associatedEnzymes"]:
+                                if enzyme in list(enzyme_efficiencies["Enzyme_ID"]):
+                                    if enzyme not in subunit_misprediction_factors_enzymes.keys():
+                                        subunit_misprediction_factors_enzymes[enzyme]=[misprediction_coeff]
+                                    else:
+                                        subunit_misprediction_factors_enzymes[enzyme].append(misprediction_coeff)
+                                else:
+                                    if enzyme not in subunit_misprediction_factors_default_efficiency_enzymes.keys():
+                                        subunit_misprediction_factors_default_efficiency_enzymes[enzyme]=[misprediction_coeff]
+                                    else:
+                                        subunit_misprediction_factors_default_efficiency_enzymes[enzyme].append(misprediction_coeff)
+                            for process in rba_session.get_protein_information(protein=protein)["SupportsProcess"]:
+                                if process in process_efficiencies.index:
+                                    if process not in subunit_misprediction_factors_processes.keys():
+                                        subunit_misprediction_factors_processes[process]=[misprediction_coeff]
+                                    else:
+                                        subunit_misprediction_factors_processes[process].append(misprediction_coeff)
+
+    enzyme_correction_coefficients={}
+    for enzyme in subunit_misprediction_factors_enzymes.keys():
+        if enzyme in list(enzyme_efficiencies["Enzyme_ID"]):
+            enzyme_correction_coefficients[enzyme]=numpy.power(numpy.median(subunit_misprediction_factors_enzymes[enzyme]),1/n_th_root_mispred)
+    enzymes_already_handled=[]
+    for enzyme in enzyme_correction_coefficients.keys():
+        if enzyme not in enzymes_already_handled:
+            iso_enzme_correction_coeffs={enzyme:enzyme_correction_coefficients[enzyme]}
+            for iso_enzyme in rba_session.get_enzyme_information(enzyme)["Isozymes"]:
+                if iso_enzyme in enzyme_correction_coefficients.keys():
+                    iso_enzme_correction_coeffs.update({iso_enzyme:enzyme_correction_coefficients[iso_enzyme]})
+            correction_coeff=numpy.median(numpy.array([i for i in list(iso_enzme_correction_coeffs.values()) if numpy.isfinite(i)]))
+            for iso_enzyme_to_consider in iso_enzme_correction_coeffs.keys():
+                enzymes_already_handled.append(iso_enzyme_to_consider)
+                old_kapp=enzyme_efficiencies.loc[enzyme_efficiencies["Enzyme_ID"]==iso_enzyme_to_consider,"Kapp"].values[0]
+                new_kapp=old_kapp*correction_coeff
+                if tolerance is None:
+                    enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Enzyme_ID"]==iso_enzyme_to_consider,"Kapp"]=new_kapp
+                else:
+                    if abs(numpy.log(tolerance)) <= abs(numpy.log(correction_coeff)):
+                        enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Enzyme_ID"]==iso_enzyme_to_consider,"Kapp"]=new_kapp
+
+    if correct_default_kapp_enzymes:
+        default_efficiency_enzyme_correction_coefficients={}
+        for enzyme in subunit_misprediction_factors_default_efficiency_enzymes.keys():
+            if enzyme not in list(enzyme_efficiencies["Enzyme_ID"]):
+                default_efficiency_enzyme_correction_coefficients[enzyme]=numpy.power(numpy.median(subunit_misprediction_factors_default_efficiency_enzymes[enzyme]),1/n_th_root_mispred)
+        for enzyme in default_efficiency_enzyme_correction_coefficients.keys():
+            if enzyme not in enzymes_already_handled:
+                respective_reaction=rba_session.get_enzyme_information(enzyme)["Reaction"].split("_duplicate_")[0]
+                if respective_reaction in simulation_results["Reactions"].index:
+                    flux=simulation_results["Reactions"].loc[respective_reaction,condition]
+                    if flux < 0:
+                        flux_direction=-1
+                        efficiency_parameter= rba_session.model.enzymes.enzymes._elements_by_id[enzyme].backward_efficiency
+                    elif flux > 0:
+                        flux_direction=1
+                        efficiency_parameter= rba_session.model.enzymes.enzymes._elements_by_id[enzyme].forward_efficiency
+                    else:
+                        continue
+                    iso_enzme_correction_coeffs={enzyme:default_efficiency_enzyme_correction_coefficients[enzyme]}
+                    for iso_enzyme in rba_session.get_enzyme_information(enzyme)["Isozymes"]:
+                        if iso_enzyme in default_efficiency_enzyme_correction_coefficients.keys():
+                            iso_enzme_correction_coeffs.update({iso_enzyme:default_efficiency_enzyme_correction_coefficients[iso_enzyme]})
+                    correction_coeff=numpy.median(numpy.array([i for i in list(iso_enzme_correction_coeffs.values()) if numpy.isfinite(i)]))
+                    for iso_enzyme_to_consider in iso_enzme_correction_coeffs.keys():
+                        enzymes_already_handled.append(iso_enzyme_to_consider)
+                        old_kapp=default_enzyme_efficiencies[efficiency_parameter]
+                        new_kapp=old_kapp*correction_coeff
+                        if tolerance is None:
+                            enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Enzyme_ID"]==enzyme,"Kapp"]=new_kapp
+                            enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Enzyme_ID"]==enzyme,"Flux"]=flux_direction
+                            enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Comment"]==enzyme,"Flux"]="Corrected Default"
+                        else:
+                            if abs(numpy.log(tolerance)) <= abs(numpy.log(correction_coeff)):
+                                enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Enzyme_ID"]==enzyme,"Kapp"]=new_kapp
+                                enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Enzyme_ID"]==enzyme,"Flux"]=flux_direction
+                                enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Comment"]==enzyme,"Flux"]="Corrected Default"
+
+    process_correction_coefficients={}
+    for process in subunit_misprediction_factors_processes.keys():
+        if process in list(process_efficiencies.index):
+            process_correction_coefficients[process]=numpy.power(numpy.median(subunit_misprediction_factors_processes[process]),1/n_th_root_mispred)
+    for process in process_correction_coefficients.keys():
+        correction_coeff=process_correction_coefficients[process]
+        old_efficiency=process_efficiencies.loc[process,"Value"]
+        new_efficiency=old_efficiency*correction_coeff
+        if tolerance is None:
+            process_efficiencies_out.loc[process,"Value"]=new_efficiency
+        else:
+            if abs(numpy.log(tolerance)) <= abs(numpy.log(correction_coeff)):
+                process_efficiencies_out.loc[process,"Value"]=new_efficiency
+
+#    return({"sum_of_squared_residuals":sum(squared_residuals),"enzyme_efficiencies":enzyme_efficiencies_out,"process_efficiencies":process_efficiencies_out,"process_efficiency_correction_factors":process_correction_coefficients,"enzyme_efficiency_correction_factors":enzyme_correction_coefficients})
+    return({"Sum_of_squared_residuals":sum(squared_residuals),"Kapps":enzyme_efficiencies_out,"ProcessEfficiencies":process_efficiencies_out,"Process_MispredictionFactors":process_correction_coefficients,"Enzyme_MispredictionFactors":enzyme_correction_coefficients})
+
+
+def efficiency_correction_refactored_4(enzyme_efficiencies,
+                               simulation_results,
+                               protein_data,
+                               rba_session,
+                               condition,
+                               default_enzyme_efficiencies,
+                               tolerance=2,
+                               n_th_root_mispred=2,
+                               process_efficiencies=None,
+                               correct_default_kapp_enzymes=False,
+                               only_consider_misprediction_for_predicted_nonzero_enzymes=False):
+    proto_protein_quantities={}
+    for i in simulation_results["Proteins"].index:
+        proto_protein_ID=rba_session.get_protein_information(protein=i)["ProtoID"]
+        if proto_protein_ID in proto_protein_quantities:
+            proto_protein_quantities[proto_protein_ID]+=simulation_results["Proteins"].loc[i,condition]
+        else:
+            proto_protein_quantities[proto_protein_ID]=simulation_results["Proteins"].loc[i,condition]
+    
+    proto_protein_isoform_map={} 
+    for i in rba_session.get_proteins():
+        proto_protein_ID=rba_session.get_protein_information(protein=i)["ProtoID"]
+        if proto_protein_ID in proto_protein_isoform_map:
+            proto_protein_isoform_map[proto_protein_ID].append(i)
+        else:
+            proto_protein_isoform_map[proto_protein_ID]=[i]
+
+    enzyme_efficiencies_out=enzyme_efficiencies.copy() 
+    process_efficiencies_out=process_efficiencies.copy()
+    subunit_misprediction_factors_enzymes={}
+    subunit_misprediction_factors_default_efficiency_enzymes={}
+    subunit_misprediction_factors_processes={}
+    squared_residuals=[]
+    for proto_protein_ID in proto_protein_quantities:
+        if proto_protein_ID in proto_protein_isoform_map:
+            if proto_protein_ID in protein_data["ID"]:
+                predicted_protein=proto_protein_quantities[proto_protein_ID]
+                measured_protein=protein_data.loc[proto_protein_ID,"copy_number"]
+                if (predicted_protein>0) & (measured_protein>0):
+                    misprediction_coeff=predicted_protein/measured_protein
+                    if (numpy.isfinite(misprediction_coeff)) and (misprediction_coeff!=0):
+                        squared_residuals.append((numpy.log(predicted_protein)-numpy.log(measured_protein))**2)
+                        #squared_residuals.append((predicted_protein-measured_protein)**2)
+                        #squared_residuals.append(((predicted_protein-measured_protein)*rba_session.get_protein_information(protein=proto_protein_isoform_map[proto_protein_ID][0])["AAnumber"])**2)
+                        for protein in proto_protein_isoform_map[proto_protein_ID]:
+                            for enzyme in rba_session.get_protein_information(protein=protein)["associatedEnzymes"]:
+                                if only_consider_misprediction_for_predicted_nonzero_enzymes:
+                                    if enzyme not in simulation_results["Enzymes"].index:
+                                        continue
+                                    elif numpy.isfinite(simulation_results["Enzymes"].loc[enzyme,condition])==False:
+                                        continue
+                                    elif simulation_results["Enzymes"].loc[enzyme,condition]==0:
+                                        continue
+                                if enzyme in list(enzyme_efficiencies["Enzyme_ID"]):
+                                    if enzyme not in subunit_misprediction_factors_enzymes.keys():
+                                        subunit_misprediction_factors_enzymes[enzyme]=[misprediction_coeff]
+                                    else:
+                                        subunit_misprediction_factors_enzymes[enzyme].append(misprediction_coeff)
+                                else:
+                                    if enzyme not in subunit_misprediction_factors_default_efficiency_enzymes.keys():
+                                        subunit_misprediction_factors_default_efficiency_enzymes[enzyme]=[misprediction_coeff]
+                                    else:
+                                        subunit_misprediction_factors_default_efficiency_enzymes[enzyme].append(misprediction_coeff)
+                            for process in rba_session.get_protein_information(protein=protein)["SupportsProcess"]:
+                                if process in process_efficiencies.index:
+                                    if process not in subunit_misprediction_factors_processes.keys():
+                                        subunit_misprediction_factors_processes[process]=[misprediction_coeff]
+                                    else:
+                                        subunit_misprediction_factors_processes[process].append(misprediction_coeff)
+
+    enzyme_correction_coefficients={}
+    for enzyme in subunit_misprediction_factors_enzymes.keys():
+        enzyme_correction_coefficients[enzyme]=numpy.power(numpy.median(subunit_misprediction_factors_enzymes[enzyme]),1/n_th_root_mispred)
+    enzymes_already_handled=[]
+    for enzyme in enzyme_correction_coefficients.keys():
+        if enzyme not in enzymes_already_handled:
+            iso_enzyme_correction_coeffs={enzyme:enzyme_correction_coefficients[enzyme]}
+            for iso_enzyme in rba_session.get_enzyme_information(enzyme)["Isozymes"]:
+                if iso_enzyme in enzyme_correction_coefficients.keys():
+                    iso_enzyme_correction_coeffs.update({iso_enzyme:enzyme_correction_coefficients[iso_enzyme]})
+                else:
+                    iso_enzyme_correction_coeffs.update({iso_enzyme:numpy.nan})
+            correction_coeff=numpy.median(numpy.array([i for i in list(iso_enzyme_correction_coeffs.values()) if numpy.isfinite(i)]))
+            for iso_enzyme_to_consider in iso_enzyme_correction_coeffs.keys():
+                if iso_enzyme_to_consider in list(enzyme_efficiencies["Enzyme_ID"]):
+                    enzymes_already_handled.append(iso_enzyme_to_consider)
+                    old_kapp=enzyme_efficiencies.loc[enzyme_efficiencies["Enzyme_ID"]==iso_enzyme_to_consider,"Kapp"].values[0]
+                    new_kapp=old_kapp*correction_coeff
+                    if tolerance is None:
+                        enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Enzyme_ID"]==iso_enzyme_to_consider,"Kapp"]=new_kapp
+                    else:
+                        if abs(numpy.log(tolerance)) <= abs(numpy.log(correction_coeff)):
+                            enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Enzyme_ID"]==iso_enzyme_to_consider,"Kapp"]=new_kapp
+
+    if correct_default_kapp_enzymes:
+        default_efficiency_enzyme_correction_coefficients={}
+        for enzyme in subunit_misprediction_factors_default_efficiency_enzymes.keys():
+            if enzyme not in list(enzyme_efficiencies["Enzyme_ID"]):
+                default_efficiency_enzyme_correction_coefficients[enzyme]=numpy.power(numpy.median(subunit_misprediction_factors_default_efficiency_enzymes[enzyme]),1/n_th_root_mispred)
+        for enzyme in default_efficiency_enzyme_correction_coefficients.keys():
+            if enzyme not in enzymes_already_handled:
+                respective_reaction=rba_session.get_enzyme_information(enzyme)["Reaction"].split("_duplicate_")[0]
+                if respective_reaction in simulation_results["Reactions"].index:
+                    flux=simulation_results["Reactions"].loc[respective_reaction,condition]
+                    try:
+                        if flux < 0:
+                            flux_direction=-1
+                            efficiency_parameter= rba_session.model.enzymes.enzymes._elements_by_id[enzyme].backward_efficiency
+                        elif flux > 0:
+                            flux_direction=1
+                            efficiency_parameter= rba_session.model.enzymes.enzymes._elements_by_id[enzyme].forward_efficiency
+                        else:
+                            continue
+                    except:
+                        continue
+                    iso_enzyme_correction_coeffs={enzyme:default_efficiency_enzyme_correction_coefficients[enzyme]}
+                    for iso_enzyme in rba_session.get_enzyme_information(enzyme)["Isozymes"]:
+                        if iso_enzyme in default_efficiency_enzyme_correction_coefficients.keys():
+                            iso_enzyme_correction_coeffs.update({iso_enzyme:default_efficiency_enzyme_correction_coefficients[iso_enzyme]})
+                        else:
+                            iso_enzyme_correction_coeffs.update({iso_enzyme:numpy.nan})
+                    correction_coeff=numpy.median(numpy.array([i for i in list(iso_enzyme_correction_coeffs.values()) if numpy.isfinite(i)]))
+                    for iso_enzyme_to_consider in iso_enzyme_correction_coeffs.keys():
+                        enzymes_already_handled.append(iso_enzyme_to_consider)
+                        old_kapp=default_enzyme_efficiencies[efficiency_parameter]
+                        new_kapp=old_kapp*correction_coeff
+                        associated_reaction=rba_session.get_enzyme_information(iso_enzyme_to_consider)["Reaction"]
+                        if tolerance is None:
+                            enzyme_efficiencies_out.loc[associated_reaction,"Kapp"]=new_kapp
+                            enzyme_efficiencies_out.loc[associated_reaction,"Enzyme_ID"]=iso_enzyme_to_consider
+                            enzyme_efficiencies_out.loc[associated_reaction,"Flux"]=flux_direction
+                            enzyme_efficiencies_out.loc[associated_reaction,"Comment"]="Corrected Default"
+                        else:
+                            if abs(numpy.log(tolerance)) <= abs(numpy.log(correction_coeff)):
+                                enzyme_efficiencies_out.loc[associated_reaction,"Kapp"]=new_kapp
+                                enzyme_efficiencies_out.loc[associated_reaction,"Enzyme_ID"]=iso_enzyme_to_consider
+                                enzyme_efficiencies_out.loc[associated_reaction,"Flux"]=flux_direction
+                                enzyme_efficiencies_out.loc[associated_reaction,"Comment"]="Corrected Default"
+
+    process_correction_coefficients={}
+    for process in subunit_misprediction_factors_processes.keys():
+        if process in list(process_efficiencies.index):
+            process_correction_coefficients[process]=numpy.power(numpy.median(subunit_misprediction_factors_processes[process]),1/n_th_root_mispred)
+    for process in process_correction_coefficients.keys():
+        correction_coeff=process_correction_coefficients[process]
+        old_efficiency=process_efficiencies.loc[process,"Value"]
+        new_efficiency=old_efficiency*correction_coeff
+        if tolerance is None:
+            process_efficiencies_out.loc[process,"Value"]=new_efficiency
+        else:
+            if abs(numpy.log(tolerance)) <= abs(numpy.log(correction_coeff)):
+                process_efficiencies_out.loc[process,"Value"]=new_efficiency
+
+#    return({"sum_of_squared_residuals":sum(squared_residuals),"enzyme_efficiencies":enzyme_efficiencies_out,"process_efficiencies":process_efficiencies_out,"process_efficiency_correction_factors":process_correction_coefficients,"enzyme_efficiency_correction_factors":enzyme_correction_coefficients})
+    return({"Sum_of_squared_residuals":sum(squared_residuals),"Kapps":enzyme_efficiencies_out,"ProcessEfficiencies":process_efficiencies_out,"Process_MispredictionFactors":process_correction_coefficients,"Enzyme_MispredictionFactors":enzyme_correction_coefficients})
+
+
 
 def extract_proteomes_from_calibration_results(calib_results):
     proteomes=pandas.DataFrame()
@@ -3243,9 +3677,10 @@ def calibration_workflow_new(proteome,
     proteome[condition]*=1000/6.022e23
     process_efficiencies.to_csv("ProcEffsOrig_{}.csv".format(condition))
     if spec_kapps is None:
+        flux_bounds_fba=flux_bounds_from_input(input=definition_file,rba_session=rba_session, condition=condition, specific_exchanges=None, specific_directions=None,also_consider_iso_enzmes=False)
         Specific_Kapps_Results = estimate_specific_enzyme_efficiencies_network(rba_session=rba_session, 
                                                                                proteomicsData=build_input_proteome_for_specific_kapp_estimation(proteome, condition), 
-                                                                               flux_bounds=flux_bounds_from_input(input=definition_file,rba_session=rba_session, condition=condition, specific_exchanges=None, specific_directions=None,also_consider_iso_enzmes=False), 
+                                                                               flux_bounds=flux_bounds_fba, 
                                                                                mu=growth_rate_from_input(input=definition_file, condition=condition), 
                                                                                biomass_function=None, 
                                                                                target_biomass_function=True, 
@@ -3255,7 +3690,6 @@ def calibration_workflow_new(proteome,
                                                                                zero_on_all_isoreactions=True,
                                                                                node_degree_identical_enzyme_network=1,
                                                                                pseudocomplex_concentration_estimation_method="from_individual_isoenzymes",
-                                                                               #pseudocomplex_concentration_estimation_method="from_mean_composition",
                                                                                impose_on_identical_enzymes=True,
                                                                                condition=condition, 
                                                                                store_output=True,
@@ -3268,13 +3702,19 @@ def calibration_workflow_new(proteome,
         fba_flux_directions={}
         if impose_directions_from_fba_on_rba:
             for fba_rxn in list(Spec_Kapp_estim_FD.index):
-                flux_value=Spec_Kapp_estim_FD.loc[fba_rxn,'FluxValues']
-                if flux_value!=0:
-                    if flux_value<0:
-                        fba_flux_directions.update({fba_rxn:{"LB":numpy.nan,"UB":0}})
+                if fba_rxn not in list(flux_bounds_fba.index):
+                    flux_value=Spec_Kapp_estim_FD.loc[fba_rxn,'FluxValues']
+                    if fba_rxn in list(rba_session.get_reactions()):
+                        if flux_value<0:
+                            fba_flux_directions.update({fba_rxn:{"LB":numpy.nan,"UB":0}})
+                        elif flux_value>0:
+                            fba_flux_directions.update({fba_rxn:{"LB":0,"UB":numpy.nan}})
+                        for iso_rxn in rba_session.get_reaction_information(fba_rxn)['Twins']:
+                            if flux_value<0:
+                                fba_flux_directions.update({iso_rxn:{"LB":numpy.nan,"UB":0}})
+                            elif flux_value>0:
+                                fba_flux_directions.update({iso_rxn:{"LB":0,"UB":numpy.nan}})
 
-                    elif flux_value>0:
-                        fba_flux_directions.update({fba_rxn:{"LB":0,"UB":numpy.nan}})
 
 
         Specific_Kapps.to_csv("Specific_Kapps_Hackett__{}.csv".format(condition), sep=";", decimal=",")
@@ -3291,6 +3731,9 @@ def calibration_workflow_new(proteome,
     flux_bounds_data=flux_bounds_from_input(input=definition_file,rba_session=rba_session, condition=condition, specific_exchanges=None, specific_directions=None,also_consider_iso_enzmes=True)
     Exchanges_to_impose={i:{"LB":flux_bounds_data.loc[i,"LB"],"UB":flux_bounds_data.loc[i,"UB"]} for i in list(flux_bounds_data["Reaction_ID"])}
     if impose_directions_from_fba_on_rba:
+        for rxn in fba_flux_directions.keys():
+            if rxn not in Exchanges_to_impose.keys():
+                Exchanges_to_impose.update({rxn:fba_flux_directions[rxn]})
         Exchanges_to_impose.update(fba_flux_directions)
     compartment_densities_and_PGs = extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=correction_results_compartement_sizes,rows_to_exclude=["Ribosomes","Total"]+[i for i in correction_results_compartement_sizes.index if i.startswith("pg_")])
 
@@ -3301,26 +3744,32 @@ def calibration_workflow_new(proteome,
     Specific_Kapps_original=Specific_Kapps.copy()
     Default_Kapps_original=Default_Kapps.copy()
     process_efficiencies_original=process_efficiencies.copy()
+
     fix_mus={'Hackett_C03':False,'Hackett_C005':True, 'Hackett_C022':True, 'Hackett_C01':True, 'Hackett_C016':True}
     adjust_roots={'Hackett_C03':False,'Hackett_C005':True, 'Hackett_C022':True, 'Hackett_C01':True, 'Hackett_C016':True}
-    iteration_limits={'Hackett_C03':15,'Hackett_C005':15, 'Hackett_C022':15, 'Hackett_C01':15, 'Hackett_C016':15}
-    increasing_RSS_limits={'Hackett_C03':2,'Hackett_C005':2, 'Hackett_C022':2, 'Hackett_C01':2, 'Hackett_C016':2}
+    iteration_limits={'Hackett_C03':10,'Hackett_C005':10, 'Hackett_C022':10, 'Hackett_C01':10, 'Hackett_C016':10}
+    increasing_RSS_limits={'Hackett_C03':3,'Hackett_C005':3, 'Hackett_C022':3, 'Hackett_C01':3, 'Hackett_C016':3}
+    steady_RSS_limits={'Hackett_C03':5,'Hackett_C005':5, 'Hackett_C022':5, 'Hackett_C01':5, 'Hackett_C016':5}
     roots_efficiency_correctiond={'Hackett_C03':1,'Hackett_C005':1, 'Hackett_C022':1, 'Hackett_C01':1, 'Hackett_C016':1}
+    minimum_iteration_numbers={'Hackett_C03':2,'Hackett_C005':2, 'Hackett_C022':2, 'Hackett_C01':2, 'Hackett_C016':2}
+    rss_tolerances={'Hackett_C03':0.1,'Hackett_C005':0.1, 'Hackett_C022':0.1, 'Hackett_C01':0.1, 'Hackett_C016':0.1}
+    increasing_rss_factors={'Hackett_C03':1.1,'Hackett_C005':1.1, 'Hackett_C022':1.1, 'Hackett_C01':1.1, 'Hackett_C016':1.1}
+    mu_misprediction_tolerances={'Hackett_C03':0.1,'Hackett_C005':0.05, 'Hackett_C022':0.05, 'Hackett_C01':0.05, 'Hackett_C016':0.05}
+
     if corrected_spec_kapps:
         steady_count=0
+        increasing_RSS_count=0
         iteration_count=0
-        iteration_limit=iteration_limits[condition]
-        minimum_iteration_number=2
-        steady_limit=2
         continuation_criterion=True
         previous_RSS=numpy.nan
-        lowest_RSS_soFar=numpy.nan
-        RSS_tolerance=0.01
         efficiencies_over_correction_iterations=[]
         RSS_trajectory=[]
-        increasing_RSS_count=0
-        increasing_RSS_factor=1
+        minimum_iteration_number=minimum_iteration_numbers[condition]
+        iteration_limit=iteration_limits[condition]
+        steady_limit=steady_RSS_limits[condition]
         increasing_RSS_limit=increasing_RSS_limits[condition]
+        RSS_tolerance=rss_tolerances[condition]
+        increasing_RSS_factor=increasing_rss_factors[condition]
         while continuation_criterion:
             iteration_count+=1
             ### GLOBAL SCALING
@@ -3335,13 +3784,13 @@ def calibration_workflow_new(proteome,
                                                              feasible_stati=feasible_stati,
                                                              transporter_multiplier=transporter_multiplier,
                                                              mu_approx_precision=Mu_approx_precision,
-                                                             mu_misprediction_tolerance=mu_misprediction_tolerance,
+                                                             mu_misprediction_tolerance=mu_misprediction_tolerances[condition],
                                                              condition_to_look_up=condition_to_look_up,
                                                              growth_rate_to_look_up=Growth_rate_to_look_up,
                                                              results_to_look_up=Results_to_look_up,
                                                              fixed_mu_when_above_target_mu_in_correction=fix_mus[condition],
                                                              n_th_root_mispred=roots_efficiency_correctiond[condition],
-                                                             print_outputs=True,
+                                                             print_outputs=False,
                                                              adjust_root=adjust_roots[condition])
 
             
@@ -3353,7 +3802,21 @@ def calibration_workflow_new(proteome,
 
             if len(list(Simulation_results[Results_to_look_up].keys()))!=0:
                 efficiencies_over_correction_iterations.append({"Specific_Kapps":Specific_Kapps.copy(),"Default_Kapps":Default_Kapps.copy(),"Process_Efficiencies":process_efficiencies.copy()})
-                KappCorrectionResults=efficiency_correction_refactored(specific_kapps=Specific_Kapps,
+
+                KappCorrectionResults=efficiency_correction_refactored_4(enzyme_efficiencies=Specific_Kapps,
+                                                                         simulation_results=Simulation_results[Results_to_look_up],
+                                                                         protein_data=build_input_proteome_for_specific_kapp_estimation(proteome, condition),
+                                                                         rba_session=rba_session,
+                                                                         condition=condition_to_look_up,
+                                                                         default_enzyme_efficiencies=Default_Kapps,
+                                                                         tolerance=None,
+                                                                         n_th_root_mispred=1,
+                                                                         process_efficiencies=process_efficiencies,
+                                                                         correct_default_kapp_enzymes=True,
+                                                                         only_consider_misprediction_for_predicted_nonzero_enzymes=True)
+
+                """
+                KappCorrectionResults=efficiency_correction_refactored_2(specific_kapps=Specific_Kapps,
                                                                  simulation_results=Simulation_results[Results_to_look_up],
                                                                  proteinData=build_input_proteome_for_specific_kapp_estimation(proteome, condition),
                                                                  rba_session=rba_session,
@@ -3364,6 +3827,7 @@ def calibration_workflow_new(proteome,
                                                                  process_efficiencies=process_efficiencies,
                                                                  correct_process_efficiencies=True,
                                                                  correct_default_kapp_enzymes=True)
+                """
                 """
                 KappCorrectionResults=efficiency_correction_new(rba_session=rba_session,
                                                                 condition=condition_to_look_up,
@@ -3378,17 +3842,17 @@ def calibration_workflow_new(proteome,
                                                                 )
                 """
                 current_RSS=KappCorrectionResults["Sum_of_squared_residuals"]
-                if print_outputs:
-                    print("{} : {}".format(condition,current_RSS))
+                #if print_outputs:
+                 #   print("{} : {}".format(condition,current_RSS))
 
-                if numpy.isfinite(lowest_RSS_soFar):
-                    if current_RSS>=increasing_RSS_factor*lowest_RSS_soFar:
-                        increasing_RSS_count+=1
-                    else:
-                        increasing_RSS_count=0
+                #if numpy.isfinite(lowest_RSS_soFar):
+                #    if current_RSS>=increasing_RSS_factor*lowest_RSS_soFar:
+                #        increasing_RSS_count+=1
+                #    else:
+                #        increasing_RSS_count=0
 
                 RSS_trajectory.append(current_RSS)
-                lowest_RSS_soFar=min(RSS_trajectory)
+                #lowest_RSS_soFar=min(RSS_trajectory)
 
                 Specific_Kapps=KappCorrectionResults["Kapps"]
                 if min_kapp is not None:
@@ -3404,13 +3868,20 @@ def calibration_workflow_new(proteome,
                         if not pandas.isna(current_RSS):
                             if (1-RSS_tolerance)<=current_RSS/previous_RSS<=(1+RSS_tolerance):
                                 steady_count+=1
-                                #steady_count=0
                             else:
                                 steady_count=0
+                                #
+                                if current_RSS>=increasing_RSS_factor*previous_RSS:
+                                    increasing_RSS_count+=1
+                                else:
+                                    increasing_RSS_count=0
+                                #
                 if print_outputs:
-                    print("{} : {} : {} : {}".format(iteration_count,current_RSS,current_RSS/previous_RSS,increasing_RSS_count))
+                    print("{} - {} - RSS:{} - Relative change:{} - n_inc:{} - n_steady:{}".format(condition,iteration_count,current_RSS,current_RSS/previous_RSS,increasing_RSS_count,steady_count))
                 previous_RSS=current_RSS
 
+            if current_RSS>RSS_trajectory[0]:
+                continuation_criterion=False
             if steady_count>=steady_limit:
                 continuation_criterion=False
             elif iteration_count>=iteration_limit:
@@ -4698,7 +5169,6 @@ def estimate_specific_enzyme_efficiencies_refactored(rba_session,
     #overview_out.to_csv('SpecKapp_5_method_.csv'.format(), sep=';')
     return({"Overview":overview_out,"Flux_Distribution":FluxDistribution})
 
-
 def estimate_specific_enzyme_efficiencies_network(rba_session, 
                                                   proteomicsData, 
                                                   flux_bounds, 
@@ -4889,6 +5359,14 @@ def estimate_specific_enzyme_efficiencies_network(rba_session,
     if impose_on_identical_enzymes:
         for rxn in rba_session.get_reactions():
             if rxn not in overview_out.index:
+                #
+                iso_rxn_already_in_kapp_output=False
+                for iso_rxn in rba_session.get_reaction_information(rxn)["Twins"]:
+                    if iso_rxn in overview_out.index:
+                        iso_rxn_already_in_kapp_output=True
+                if iso_rxn_already_in_kapp_output:
+                    continue
+                #
                 respective_enzyme=rba_session.get_reaction_information(rxn)["Enzyme"]
                 if respective_enzyme in rba_session.get_enzymes():
                     identical_enzymes=rba_session.get_enzyme_information(respective_enzyme)["EnzymesWithIdenticalSubunitComposition"]
