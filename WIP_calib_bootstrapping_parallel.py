@@ -44,7 +44,7 @@ def run_full_calib_from_input_dict(input_dict):
     calibration_results_1=[]
     for condition in input_dict[run]["conditions"]:
         Simulation.reload_model()
-        calib_results = calibration_workflow(proteome=input_dict[run]["proteome"],
+        calib_results = calibration_workflow_new(proteome=input_dict[run]["proteome"],
                                             condition=condition,
                                             reference_condition=run,
                                             gene_ID_column='Gene',
@@ -69,7 +69,7 @@ def run_full_calib_from_input_dict(input_dict):
     for condition in input_dict[run]["conditions"]:
         Simulation.reload_model()
         print("Run {} - Calib 2: {}".format(run,condition))
-        calib_results = calibration_workflow(proteome=input_dict[run]["proteome"],
+        calib_results = calibration_workflow_new(proteome=input_dict[run]["proteome"],
                                             condition=condition,
                                             reference_condition=run,
                                             gene_ID_column='Gene',
@@ -84,13 +84,15 @@ def run_full_calib_from_input_dict(input_dict):
                                             PG_fractions=regressed_pg_fractions_1,
                                             transporter_multiplier=1,
                                             prelim_run=False,
-                                            final_global_scaling_free_exchanges=True,
+                                            final_global_scaling_after_specific_correction=False,
+                                            final_global_scaling_free_exchanges=False,
                                             Mu_approx_precision=0.00001,
                                             feasible_stati=["optimal","feasible"],
                                             min_kapp=None,
-                                            fixed_mu_when_above_target_mu_in_correction=True,
+                                            #fixed_mu_when_above_target_mu_in_correction=True,
                                             mu_misprediction_tolerance=0.05,
-                                            print_outputs=False)
+                                            print_outputs=False,
+                                            impose_directions_from_fba_on_rba=True)
 
         proteome_input={i:input_dict[run]["proteome"].loc[i,condition] for i in input_dict[run]["proteome"].index}
         proteome_corrected={i:calib_results["Proteome"].loc[i,"copy_number"] for i in calib_results["Proteome"].index}

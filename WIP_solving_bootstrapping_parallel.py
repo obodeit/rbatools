@@ -45,7 +45,7 @@ def simulate_run(input_dict):
         print("Fixed {}".format(input_dict["run"]))
         simulation_outputs_fixed=[]
         for condition in input_dict["conditions"]:
-            flux_bounds_data=flux_bounds_from_input(input=input_dict["Input_Data"], condition=condition, specific_exchanges=None)
+            flux_bounds_data=flux_bounds_from_input(input=input_dict["Input_Data"],rba_session=Simulation, condition=condition, specific_exchanges=None,specific_directions=[],also_consider_iso_enzmes=False)
             Exchanges_to_impose={i:{"LB":flux_bounds_data.loc[i,"LB"],"UB":flux_bounds_data.loc[i,"UB"]} for i in input_dict["list_of_rxns_to_impose"] if i in list(flux_bounds_data["Reaction_ID"])}
             Simulation.reload_model()
             simulation_result=perform_simulations(condition=condition,

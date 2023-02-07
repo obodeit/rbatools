@@ -46,7 +46,7 @@ functions_to_include_list=["Compartment_Sizes","PG_Fractions"]
 list_of_rxns_to_impose=[]
 simulation_results_Js_not_imposed=[]
 for condition in conditions:
-    flux_bounds_data=flux_bounds_from_input(input=Input_Data, condition=condition, specific_exchanges=[])
+    flux_bounds_data=flux_bounds_from_input(input=Input_Data,rba_session=Simulation, condition=condition, specific_exchanges=[],specific_directions=[],also_consider_iso_enzmes=False)
     if len(list_of_rxns_to_impose)>0:
         Exchanges_to_impose={i:{"LB":flux_bounds_data.loc[i,"LB"],"UB":flux_bounds_data.loc[i,"UB"]} for i in list_of_rxns_to_impose if i in list(flux_bounds_data["Reaction_ID"])}
     else:
@@ -58,12 +58,12 @@ for condition in conditions:
                                                   rba_session=Simulation,
                                                   compartment_sizes=compartment_sizes_from_calibration,
                                                   pg_fractions=pg_fractions_from_calibration,
-                                                  process_efficiencies=process_efficiencies_from_calibration,
-                                                  #process_efficiencies=regressed_process_efficiencies,
-                                                  Default_Kapps=default_kapps_from_calibration,
-                                                  #Default_Kapps=regressed_default_kapps,
-                                                  Specific_Kapps=specific_kapps_from_calibration,
-                                                  #Specific_Kapps=regressed_specific_kapps,
+                                                  #process_efficiencies=process_efficiencies_from_calibration,
+                                                  process_efficiencies=regressed_process_efficiencies,
+                                                  #Default_Kapps=default_kapps_from_calibration,
+                                                  Default_Kapps=regressed_default_kapps,
+                                                  #Specific_Kapps=specific_kapps_from_calibration,
+                                                  Specific_Kapps=regressed_specific_kapps,
                                                   Exchanges_to_impose=Exchanges_to_impose,
                                                   #sims_to_perform=["DefaultKapp","Prokaryotic","Eukaryotic"],
                                                   #sims_to_perform=["Prokaryotic","Eukaryotic"],
@@ -84,7 +84,7 @@ for condition in conditions:
 
 simulation_results_Js_imposed=[]
 for condition in conditions:
-    flux_bounds_data=flux_bounds_from_input(input=Input_Data, condition=condition, specific_exchanges=None,specific_directions=[])
+    flux_bounds_data=flux_bounds_from_input(input=Input_Data,rba_session=Simulation, condition=condition, specific_exchanges=None,specific_directions=[],also_consider_iso_enzmes=False)
     list_of_rxns_to_impose=["R_EX_glc__D_e","R_EX_etoh_e","R_EX_ac_e","R_EX_glyc_e","R_EX_acald_e","R_EX_succ_e"]
     if len(list_of_rxns_to_impose)>0:
         Exchanges_to_impose={i:{"LB":flux_bounds_data.loc[i,"LB"],"UB":flux_bounds_data.loc[i,"UB"]} for i in list_of_rxns_to_impose if i in list(flux_bounds_data["Reaction_ID"])}
@@ -98,12 +98,12 @@ for condition in conditions:
                                                   rba_session=Simulation,
                                                   compartment_sizes=compartment_sizes_from_calibration,
                                                   pg_fractions=pg_fractions_from_calibration,
-                                                  process_efficiencies=process_efficiencies_from_calibration,
-                                                  #process_efficiencies=regressed_process_efficiencies,
-                                                  Default_Kapps=default_kapps_from_calibration,
-                                                  #Default_Kapps=regressed_default_kapps,
-                                                  Specific_Kapps=specific_kapps_from_calibration,
-                                                  #Specific_Kapps=regressed_specific_kapps,
+                                                  #process_efficiencies=process_efficiencies_from_calibration,
+                                                  process_efficiencies=regressed_process_efficiencies,
+                                                  #Default_Kapps=default_kapps_from_calibration,
+                                                  Default_Kapps=regressed_default_kapps,
+                                                  #Specific_Kapps=specific_kapps_from_calibration,
+                                                  Specific_Kapps=regressed_specific_kapps,
                                                   Exchanges_to_impose=Exchanges_to_impose,
                                                   #sims_to_perform=["DefaultKapp","Prokaryotic","Eukaryotic"],
                                                   #sims_to_perform=["Prokaryotic","Eukaryotic"],
