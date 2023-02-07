@@ -9,7 +9,7 @@ from joblib import Parallel, delayed
 def calibration(input_dict):
     Simulation = SessionRBA(input_dict["xml_dir"])
     Simulation.add_exchange_reactions()
-    calib_results = calibration_workflow_new(proteome=input_dict["proteome"],
+    calib_results = calibration_workflow(proteome=input_dict["proteome"],
                                          condition=input_dict["condition"],
                                          reference_condition=input_dict["reference_condition"],
                                          gene_ID_column='Gene',
@@ -17,22 +17,15 @@ def calibration(input_dict):
                                          rba_session=Simulation,
                                          process_efficiency_estimation_input=input_dict["process_efficiency_estimation_input"],
                                          spec_kapps=None,
-                                         corrected_spec_kapps=True,
-                                         take_lowest_RSS_parameters=True,
                                          process_efficiencies=None,
                                          Compartment_sizes=input_dict["Compartment_sizes"],
                                          PG_fractions=input_dict["PG_fractions"],
                                          transporter_multiplier=1,
                                          prelim_run=input_dict["preliminary_run"],
-                                         final_global_scaling_after_specific_correction=False,
-                                         final_global_scaling_free_exchanges=False,
                                          Mu_approx_precision=0.00001,
                                          feasible_stati=["optimal","feasible"],
                                          min_kapp=None,
-                                         #fixed_mu_when_above_target_mu_in_correction=True,
-                                         mu_misprediction_tolerance=0.1,
-                                         print_outputs=True,
-                                         impose_directions_from_fba_on_rba=True)
+                                         print_outputs=True)
     return({input_dict["condition"]:calib_results})
 
 def generate_input_proteome(fold_changes,
