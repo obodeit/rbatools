@@ -184,7 +184,6 @@ def determine_compartment_occupation(Data_input,
             if j != "AA_abundance":
                 Data.loc[i,j]=Data_intermediate.loc[i,j]
         Data.loc[i,"AA_abundance"]=Data_intermediate.loc[i,Condition]*Data_intermediate.loc[i,mass_col]
-    #Data.loc[:,"AA_abundance"]=Data.loc[:,Condition]*Data.loc[:,mass_col]
 
     out.loc["Total","original_amino_acid_occupation"]=sum([i for i in list(Data["AA_abundance"]) if not pandas.isna(i)])
     for i in compartments_to_replace.keys():
@@ -2798,7 +2797,8 @@ def calibration_workflow(proteome,
                          Mu_approx_precision=0.00001,
                          feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
                          min_kapp=None,
-                         print_outputs=True):
+                         print_outputs=True,
+                         global_protein_scaling_coeff=1):
     
     correction_settings=machinery_efficiency_correction_settings_from_input(input=definition_file, condition=condition)
     enzyme_efficiency_estimation_settings=enzyme_efficiency_estimation_settings_from_input(input=definition_file, condition=condition)
@@ -2850,7 +2850,7 @@ def calibration_workflow(proteome,
                                                                            gene_id_col=gene_ID_column,
                                                                            fit_nucleotide_assembly_machinery=True)
     ### define coeff as input ###
-    proteome[condition]*=1000/6.022e23
+    proteome[condition]*=global_protein_scaling_coeff
     ###
 
     process_efficiencies.to_csv("ProcEffsOrig_{}.csv".format(condition))
@@ -2964,16 +2964,16 @@ def calibration_workflow(proteome,
                 efficiencies_over_correction_iterations.append({"Specific_Kapps":Specific_Kapps.copy(),"Default_Kapps":Default_Kapps.copy(),"Process_Efficiencies":process_efficiencies.copy()})
 
                 KappCorrectionResults=efficiency_correction(enzyme_efficiencies=Specific_Kapps,
-                                                                         simulation_results=Simulation_results["Simulation_Results"],
-                                                                         protein_data=build_input_proteome_for_specific_kapp_estimation(proteome, condition),
-                                                                         rba_session=rba_session,
-                                                                         condition="Prokaryotic",
-                                                                         default_enzyme_efficiencies=Default_Kapps,
-                                                                         tolerance=None,
-                                                                         n_th_root_mispred=1,
-                                                                         process_efficiencies=process_efficiencies,
-                                                                         correct_default_kapp_enzymes=True,
-                                                                         only_consider_misprediction_for_predicted_nonzero_enzymes=True)
+                                                            simulation_results=Simulation_results["Simulation_Results"],
+                                                            protein_data=build_input_proteome_for_specific_kapp_estimation(proteome, condition),
+                                                            rba_session=rba_session,
+                                                            condition_to_look_up="Prokaryotic",
+                                                            default_enzyme_efficiencies=Default_Kapps,
+                                                            tolerance=None,
+                                                            n_th_root_mispred=1,
+                                                            process_efficiencies=process_efficiencies,
+                                                            correct_default_kapp_enzymes=True,
+                                                            only_consider_misprediction_for_predicted_nonzero_enzymes=True)
                 current_RSS=KappCorrectionResults["Sum_of_squared_residuals"]
 
                 rss_trajectory.append(current_RSS)
@@ -3276,14 +3276,14 @@ def global_efficiency_scaling(condition,
                                              max_mu_in_dichotomy=2*mu_measured)
 
     mumax_predicted=simulation_results[growth_rate_to_look_up]
-
+    print("Global start - {}:{}".format(condition,mumax_predicted))
     predicted_growth_rates=[mumax_predicted]
 
     if mumax_predicted == 0:
         mu_misprediction_factor=10
     else:
         mu_misprediction_factor=mu_measured/mumax_predicted
-
+    print("Global start - {}:{}".format(condition,mu_misprediction_factor))
     mu_iteration_count=0
     runs_of_sign=0
     last_misprediction_direction=0
@@ -3963,7 +3963,6 @@ def estimate_specific_enzyme_efficiencies(rba_session,
     eukaryotic : bool
     """
 
-
     #####
     # 1: Determine Flux Distribution from parsimonious FBA#
     FluxDistribution=determine_calibration_flux_distribution(rba_session=rba_session,
@@ -4063,7 +4062,12 @@ def estimate_specific_enzyme_efficiencies(rba_session,
                     associated_fba_rxn=nonzero_concentration_enzymes_with_associated_fba_flux[identical_composition_enzyme]
                     if associated_fba_rxn not in total_flux_dict.keys():
                         total_flux_dict[associated_fba_rxn]=abs(FluxDistribution.loc[associated_fba_rxn,'FluxValues'])
-        concentration_pseudo_complex=len(list(total_flux_dict.keys()))*gmean(numpy.array([individual_constituent_concentrations[i][0] for i in individual_constituent_concentrations.keys()]))
+
+        pseudocomplex_constituent_concentrations=[individual_constituent_concentrations[i][0] for i in individual_constituent_concentrations.keys() if len(individual_constituent_concentrations[i])!=0]
+        if len(pseudocomplex_constituent_concentrations)>0:
+            concentration_pseudo_complex=len(list(total_flux_dict.keys()))*gmean(numpy.array(pseudocomplex_constituent_concentrations))
+        else:
+            concentration_pseudo_complex=numpy.nan
 
         # 5.4 ...#
         total_flux_pseudo_complex=sum(total_flux_dict.values())
