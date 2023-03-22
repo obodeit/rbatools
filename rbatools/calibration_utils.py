@@ -2951,7 +2951,7 @@ def calibration_workflow(proteome,
                                                              results_to_look_up="Simulation_Results",
                                                              fixed_mu_when_above_target_mu_in_correction=correction_settings['fixed_growth_rate_global_scaling'],
                                                              n_th_root_mispred=1,
-                                                             print_outputs=True,
+                                                             print_outputs=False,
                                                              adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'])
 
             
@@ -3762,6 +3762,7 @@ def sample_copy_numbers_from_residuals_quantiles(Input_data,replicate_cols,mean_
     out["Mean_of_log_samples"]=out.loc[:,[col for col in out.columns if col.startswith("MeanSampleLog__run_")]].mean(axis=1)
     return(out2)
 
+
 def determine_calibration_flux_distribution(rba_session,
                                             mu,
                                             flux_bounds,
@@ -3843,6 +3844,7 @@ def determine_calibration_flux_distribution(rba_session,
             FluxDistribution.loc[rxn,'FluxValues']=rba_session.FBA.SolutionValues[rxn]
     return(FluxDistribution)
 
+
 def determine_machinery_concentration(rba_session,machinery_composition,proteomicsData,proto_proteins=False):
     subunit_derived_concentrations={}
     for subunit in machinery_composition.keys():
@@ -3875,6 +3877,7 @@ def determine_machinery_concentration(rba_session,machinery_composition,proteomi
         concentration=0
     return(concentration)
 
+
 def determine_fba_flux_carrying_isoreaction(rba_session,reaction_id,flux_distribution):
     out=None
     if reaction_id in rba_session.get_reactions():
@@ -3889,6 +3892,7 @@ def determine_fba_flux_carrying_isoreaction(rba_session,reaction_id,flux_distrib
                         if flux_distribution.loc[iso_reaction_id,'FluxValues']!=0:
                             out=iso_reaction_id
     return(out)
+
 
 def pre_select_iso_reactions(measured_Proteins_Reaction_Map,rba_session,chose_most_quantified):
     # choose most likely iso-reaction for each measured-protein associated reaction
@@ -3923,6 +3927,7 @@ def pre_select_iso_reactions(measured_Proteins_Reaction_Map,rba_session,chose_mo
         selected.sort()
         out[prx] = selected
     return(out)
+
 
 def determine_reactions_associated_with_measured_proto_protein(measured_Proteins_Isoform_Map,rba_session):
     # identify all model reactions, associated with the measured proteins
