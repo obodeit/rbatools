@@ -13,6 +13,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from scipy.stats.mstats import gmean
 # import matplotlib.pyplot as plt
 
+
 def generate_proto_protein_map(rba_session):
     protomap={}
     for i in rba_session.get_proteins():
@@ -3079,6 +3080,7 @@ def calibration_workflow(proteome,
         print("")
         print("Runtime - {} : {}".format(condition,time.time() - t0))
         print("")
+
     return({"RSS_trajectory":rss_trajectory,
             "Densities_PGs":compartment_densities_and_PGs,
             "Condition":condition,
@@ -3894,11 +3896,11 @@ def determine_fba_flux_carrying_isoreaction(rba_session,reaction_id,flux_distrib
     return(out)
 
 
-def pre_select_iso_reactions(measured_Proteins_Reaction_Map,rba_session,chose_most_quantified):
+def pre_select_iso_reactions(measured_proteins_reaction_map,rba_session,chose_most_quantified):
     # choose most likely iso-reaction for each measured-protein associated reaction
     protoRxnDict = {}
-    for p_ID in measured_Proteins_Reaction_Map.keys():
-        for rxn in measured_Proteins_Reaction_Map[p_ID]:
+    for p_ID in measured_proteins_reaction_map.keys():
+        for rxn in measured_proteins_reaction_map[p_ID]:
             rxn_to_split=str(rxn)
             protoRxn = rxn_to_split.split('_duplicate')[0]
             if protoRxn in list(protoRxnDict.keys()):
@@ -3929,33 +3931,33 @@ def pre_select_iso_reactions(measured_Proteins_Reaction_Map,rba_session,chose_mo
     return(out)
 
 
-def determine_reactions_associated_with_measured_proto_protein(measured_Proteins_Isoform_Map,rba_session):
+def determine_reactions_associated_with_measured_proto_protein(measured_proteins_isoform_map,rba_session):
     # identify all model reactions, associated with the measured proteins
     out = {}
-    for p_ID in measured_Proteins_Isoform_Map.keys():
-        reactions_associated_with_proto_Protein = []
-        for isoform in measured_Proteins_Isoform_Map[p_ID]:
+    for p_ID in measured_proteins_isoform_map.keys():
+        reactions_associated_with_proto_protein = []
+        for isoform in measured_proteins_isoform_map[p_ID]:
             for reaction in rba_session.ModelStructure.ProteinInfo.Elements[isoform]['associatedReactions']:
-                reactions_associated_with_proto_Protein.append(reaction)
-        out[p_ID] = list(set(reactions_associated_with_proto_Protein))
+                reactions_associated_with_proto_protein.append(reaction)
+        out[p_ID] = list(set(reactions_associated_with_proto_protein))
     return(out)
 
 
 def estimate_specific_enzyme_efficiencies(rba_session, 
-                                                  proteomicsData, 
-                                                  flux_bounds, 
-                                                  mu, 
-                                                  biomass_function=None, 
-                                                  target_biomass_function=True, 
-                                                  parsimonious_fba=True, 
-                                                  chose_most_likely_isoreactions=False,
-                                                  impose_on_all_isoreactions=True, 
-                                                  zero_on_all_isoreactions=False,
-                                                  impose_on_identical_enzymes=True,
-                                                  node_degree_identical_enzyme_network=1,
-                                                  condition=None, 
-                                                  store_output=True,
-                                                  rxns_to_ignore_when_parsimonious=[]):
+                                          proteomicsData, 
+                                          flux_bounds, 
+                                          mu, 
+                                          biomass_function=None, 
+                                          target_biomass_function=True, 
+                                          parsimonious_fba=True, 
+                                          chose_most_likely_isoreactions=False,
+                                          impose_on_all_isoreactions=True, 
+                                          zero_on_all_isoreactions=False,
+                                          impose_on_identical_enzymes=True,
+                                          node_degree_identical_enzyme_network=1,
+                                          condition=None, 
+                                          store_output=True,
+                                          rxns_to_ignore_when_parsimonious=[]):
     """
     Parameters
     ----------
@@ -3981,20 +3983,23 @@ def estimate_specific_enzyme_efficiencies(rba_session,
     FluxDistribution.to_csv('Calib_FluxDist_'+condition+'_.csv', sep=';')
 
     if chose_most_likely_isoreactions:
+        ### INCORPORATE ANA´s REMARK ON NOT ELIMINATING ISOENZYMES WITH SUs ONLY PRESENT IN THIS ISOENZYMES ###
         # 2: Determine list of all pre_selected isoenzymes --> "pre_selected_enzymes"#
         ProtoProteinMap = rba_session.ModelStructure.ProteinInfo.return_protein_iso_form_map()
-        measured_Proteins_Isoform_Map = {p_ID: ProtoProteinMap[p_ID] for p_ID in list(proteomicsData['ID']) if p_ID in list(ProtoProteinMap.keys())}
+        measured_proteins_isoform_map = {p_ID: ProtoProteinMap[p_ID] for p_ID in list(proteomicsData['ID']) if p_ID in list(ProtoProteinMap.keys())}
 
         # identify all model reactions, associated with the measured proteins
-        measured_Proteins_Reaction_Map = determine_reactions_associated_with_measured_proto_protein(measured_Proteins_Isoform_Map=measured_Proteins_Isoform_Map,
+        measured_proteins_reaction_map = determine_reactions_associated_with_measured_proto_protein(measured_proteins_isoform_map=measured_proteins_isoform_map,
                                                                                                         rba_session=rba_session)
+        #protein_with_only_one_function_isoreactions=[measured_proteins_reaction_map[i][0] for i in measured_proteins_reaction_map.keys() if len(measured_proteins_reaction_map[i])==1]
 
-        chosen_Isoreactions=pre_select_iso_reactions(measured_Proteins_Reaction_Map=measured_Proteins_Reaction_Map,
+
+        chosen_isoreactions=pre_select_iso_reactions(measured_proteins_reaction_map=measured_proteins_reaction_map,
                                                      rba_session=rba_session,
                                                      chose_most_quantified=True)
         pre_selected_enzymes=[]
-        for proto_rxn in chosen_Isoreactions.keys():
-            for iso_rxn in chosen_Isoreactions[proto_rxn]:
+        for proto_rxn in chosen_isoreactions.keys():
+            for iso_rxn in chosen_isoreactions[proto_rxn]:
                 if rba_session.get_reaction_information(iso_rxn) is not None:
                     respective_enzyme=rba_session.get_reaction_information(iso_rxn)["Enzyme"]
                     if respective_enzyme not in pre_selected_enzymes:
