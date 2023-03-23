@@ -3896,36 +3896,44 @@ def determine_fba_flux_carrying_isoreaction(rba_session,reaction_id,flux_distrib
     return(out)
 
 
-def pre_select_iso_reactions(measured_proteins_reaction_map,rba_session,chose_most_quantified):
+def pre_select_iso_reactions(measured_proteins_reaction_map,rba_session,chose_most_quantified,keep_isorxns_specific_to_quantified_proteins=False):
     # choose most likely iso-reaction for each measured-protein associated reaction
-    protoRxnDict = {}
+
+    proto_rxn_dict = {}
     for p_ID in measured_proteins_reaction_map.keys():
         for rxn in measured_proteins_reaction_map[p_ID]:
             rxn_to_split=str(rxn)
-            protoRxn = rxn_to_split.split('_duplicate')[0]
-            if protoRxn in list(protoRxnDict.keys()):
-                if rxn in list(protoRxnDict[protoRxn].keys()):
-                    protoRxnDict[protoRxn][rxn] += 1
+            proto_rxn = rxn_to_split.split('_duplicate')[0]
+            if proto_rxn in list(proto_rxn_dict.keys()):
+                if rxn in list(proto_rxn_dict[proto_rxn].keys()):
+                    proto_rxn_dict[proto_rxn][rxn] += 1
                 else:
-                    protoRxnDict[protoRxn].update({rxn: 1})
+                    proto_rxn_dict[proto_rxn].update({rxn: 1})
             else:
-                protoRxnDict[protoRxn] = {rxn: 1}
+                proto_rxn_dict[proto_rxn] = {rxn: 1}
     out = {}
-    for prx in protoRxnDict.keys():
-        unique_SU_dict={}
-        for irx in protoRxnDict[prx].keys():
+    for prx in proto_rxn_dict.keys():
+        unique_subunit_dict={}
+        for irx in proto_rxn_dict[prx].keys():
             enzyme = rba_session.ModelStructure.ReactionInfo.Elements[irx]['Enzyme']
-            unique_SU_dict[irx] = len(list(rba_session.ModelStructure.EnzymeInfo.Elements[enzyme]['Subunits'].keys()))
+            unique_subunit_dict[irx] = len(list(rba_session.ModelStructure.EnzymeInfo.Elements[enzyme]['Subunits'].keys()))
         if chose_most_quantified:
-            max_val = max([protoRxnDict[prx][i]/unique_SU_dict[i] for i in protoRxnDict[prx].keys()])
-            list_isorxns = [i for i in protoRxnDict[prx].keys() if protoRxnDict[prx][i]/unique_SU_dict[i] == max_val]
+            max_val = max([proto_rxn_dict[prx][i]/unique_subunit_dict[i] for i in proto_rxn_dict[prx].keys()])
+            list_isorxns = [i for i in proto_rxn_dict[prx].keys() if proto_rxn_dict[prx][i]/unique_subunit_dict[i] == max_val]
             if len(list_isorxns)>1:
-                max_SU_number=max([unique_SU_dict[i] for i in list_isorxns])
-                selected=[i for i in list_isorxns if unique_SU_dict[i]==max_SU_number]
+                max_SU_number=max([unique_subunit_dict[i] for i in list_isorxns])
+                selected=[i for i in list_isorxns if unique_subunit_dict[i]==max_SU_number]
             else:
                 selected=list_isorxns
+            ## proposal of Ana in Oberseminar:
+            if keep_isorxns_specific_to_quantified_proteins:
+                protein_with_only_one_function_isoreactions=[measured_proteins_reaction_map[i][0] for i in measured_proteins_reaction_map.keys() if len(measured_proteins_reaction_map[i])==1]
+                for irx in proto_rxn_dict[prx].keys():
+                    if not irx in selected:
+                        if irx in protein_with_only_one_function_isoreactions:
+                            selected.append(irx)
         else:
-            selected = [i for i in protoRxnDict[prx].keys() if protoRxnDict[prx][i] != 0]
+            selected = [i for i in proto_rxn_dict[prx].keys() if proto_rxn_dict[prx][i] != 0]
         selected.sort()
         out[prx] = selected
     return(out)
@@ -3991,12 +3999,11 @@ def estimate_specific_enzyme_efficiencies(rba_session,
         # identify all model reactions, associated with the measured proteins
         measured_proteins_reaction_map = determine_reactions_associated_with_measured_proto_protein(measured_proteins_isoform_map=measured_proteins_isoform_map,
                                                                                                         rba_session=rba_session)
-        #protein_with_only_one_function_isoreactions=[measured_proteins_reaction_map[i][0] for i in measured_proteins_reaction_map.keys() if len(measured_proteins_reaction_map[i])==1]
-
 
         chosen_isoreactions=pre_select_iso_reactions(measured_proteins_reaction_map=measured_proteins_reaction_map,
                                                      rba_session=rba_session,
-                                                     chose_most_quantified=True)
+                                                     chose_most_quantified=True,
+                                                     keep_isorxns_specific_to_quantified_proteins=False)
         pre_selected_enzymes=[]
         for proto_rxn in chosen_isoreactions.keys():
             for iso_rxn in chosen_isoreactions[proto_rxn]:
