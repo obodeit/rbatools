@@ -25,7 +25,8 @@ def calibration(input_dict):
                                          Mu_approx_precision=0.00001,
                                          feasible_stati=["optimal","feasible"],
                                          min_kapp=None,
-                                         print_outputs=True)
+                                         print_outputs=True,
+                                         use_mean_enzyme_composition_for_calibration=True)
     return({input_dict["condition"]:calib_results})
 
 def generate_input_proteome(fold_changes,
