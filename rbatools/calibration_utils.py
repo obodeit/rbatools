@@ -5,6 +5,7 @@ import time
 import numpy
 import json
 import math
+import os
 import matplotlib.pyplot as plt
 import scipy.signal
 from scipy.optimize import curve_fit
@@ -2783,10 +2784,14 @@ def extract_feasible_bounds(inputs=[],feasible_range_object='FeasibleRange_prok'
 
 def generate_mean_enzyme_composition_model(rba_session,condition):
     enzymes_already_handled=[]
-    for i in rba_session.get_enzymes():
+    model_enzymes=rba_session.get_enzymes()
+    for i in model_enzymes:
         if i in enzymes_already_handled:
             continue
         all_iso_enzymes=list([i]+rba_session.get_enzyme_information(i)['Isozymes'])
+        enzymes_already_handled+=all_iso_enzymes    
+        if len(all_iso_enzymes)==1:
+            continue
         reactant_dict={}
         product_dict={}
         for j in all_iso_enzymes:
@@ -2804,7 +2809,6 @@ def generate_mean_enzyme_composition_model(rba_session,condition):
                     else:
                         product_dict[species]=product.stoichiometry
             except:
-                print(j)
                 continue
         mean_reactants={species:reactant_dict[species]/len(all_iso_enzymes) for species in reactant_dict.keys()}
         mean_products={species:product_dict[species]/len(all_iso_enzymes) for species in product_dict.keys()}
@@ -2826,8 +2830,7 @@ def generate_mean_enzyme_composition_model(rba_session,condition):
                 rba_session.model.enzymes.enzymes.remove(rba_session.model.enzymes.enzymes.get_by_id(iso_enzyme))
                 rba_session.model.metabolism.reactions.remove(rba_session.model.metabolism.reactions.get_by_id(reaction_id))
             #delete other isoenzymes and isorxns
-        enzymes_already_handled+=all_iso_enzymes    
-        rba_session.build_model_structure(file_name='/ModelStructure_meancompo_{}.json'.format(condition),print_warnings=False)
+    rba_session.build_model_structure(file_name='/ModelStructure_meancompo_{}.json'.format(condition),print_warnings=False)
     
 
 
@@ -3131,10 +3134,21 @@ def calibration_workflow(proteome,
         process_efficiencies_to_return=results_global_scaling["process_efficiencies"]
         rss_trajectory=None
 
-    #if use_mean_enzyme_composition_for_calibration:
-        #rba_session.reload_model()
-        #if enzyme_efficiency_estimation_settings['impose_on_all_isoreactions']:
-        #elif enzyme_efficiency_estimation_settings['zero_on_all_isoreactions']:
+    if use_mean_enzyme_composition_for_calibration:
+        rba_session.reload_model()
+        for kapp_reaction in Specific_Kapps_to_return.index:
+            respective_enzyme=rba_session.get_reaction_information(kapp_reaction)["Enzyme"]
+            for iso_enzyme in rba_session.get_enzyme_information(respective_enzyme)['Isozymes']:
+                respective_iso_reaction=rba_session.get_enzyme_information(iso_enzyme)['Reaction']
+                if respective_iso_reaction not in Specific_Kapps_to_return.index:
+                    Specific_Kapps_to_return.loc[respective_iso_reaction,"Enzyme_ID"]=iso_enzyme
+                    Specific_Kapps_to_return.loc[respective_iso_reaction, 'Comment'] = 'isoenzyme'
+                    Specific_Kapps_to_return.loc[respective_iso_reaction, 'Taken from'] = kapp_reaction
+                    Specific_Kapps_to_return.loc[respective_iso_reaction, 'Flux'] = Specific_Kapps_to_return.loc[kapp_reaction, 'Flux']
+                    if enzyme_efficiency_estimation_settings['zero_on_all_isoreactions']:
+                        Specific_Kapps_to_return.loc[respective_iso_reaction,'Kapp'] = 0.0
+                    elif enzyme_efficiency_estimation_settings['impose_on_all_isoreactions']:
+                        Specific_Kapps_to_return.loc[respective_iso_reaction,'Kapp'] = Specific_Kapps_to_return.loc[kapp_reaction, 'Kapp']
         #os.remove('{}/ModelStructure_meancompo_{}.json'.format(rba_session.xml_dir,condition))
 
     if print_outputs:
@@ -3871,10 +3885,12 @@ def determine_calibration_flux_distribution(rba_session,
         ub = flux_bounds.loc[flux_bounds['Reaction_ID'] == rx, 'UB'].values[0]
         if not pandas.isna(lb):
             rxn_LBs.update({rx: lb})
+            #rba_session.FBA.set_lb({rx: lb})
         if not pandas.isna(ub):
             rxn_UBs.update({rx: ub})
-    rba_session.FBA.set_lb(rxn_LBs)
+            #rba_session.FBA.set_ub({rx: ub})
     rba_session.FBA.set_ub(rxn_UBs)
+    rba_session.FBA.set_lb(rxn_LBs)
 
     rba_session.FBA.clear_objective()
 
@@ -4064,7 +4080,7 @@ def estimate_specific_enzyme_efficiencies(rba_session,
         chosen_isoreactions=pre_select_iso_reactions(measured_proteins_reaction_map=measured_proteins_reaction_map,
                                                      rba_session=rba_session,
                                                      chose_most_quantified=True,
-                                                     keep_isorxns_specific_to_quantified_proteins=False)
+                                                     keep_isorxns_specific_to_quantified_proteins=True)
         pre_selected_enzymes=[]
         for proto_rxn in chosen_isoreactions.keys():
             for iso_rxn in chosen_isoreactions[proto_rxn]:
@@ -4143,11 +4159,14 @@ def estimate_specific_enzyme_efficiencies(rba_session,
 
         pseudocomplex_constituent_concentrations=[individual_constituent_concentrations[i][0] for i in individual_constituent_concentrations.keys() if len(individual_constituent_concentrations[i])!=0]
         if len(pseudocomplex_constituent_concentrations)>0:
+#            concentration_pseudo_complex=gmean(numpy.array(pseudocomplex_constituent_concentrations))
             concentration_pseudo_complex=len(list(total_flux_dict.keys()))*gmean(numpy.array(pseudocomplex_constituent_concentrations))
         else:
             concentration_pseudo_complex=numpy.nan
 
         # 5.4 ...#
+        total_flux_pseudo_complex=gmean(numpy.array(list(total_flux_dict.values())))
+#        total_flux_pseudo_complex=numpy.mean(list(total_flux_dict.values()))
         total_flux_pseudo_complex=sum(total_flux_dict.values())
         # 5.5 ...#
         flux_direction=numpy.nan
