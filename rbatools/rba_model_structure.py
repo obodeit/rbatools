@@ -81,7 +81,7 @@ class ModelStructureRBA(object):
         List of constraint_IDs, which are affected by the growth-rate
     """
 
-    def from_files(self, xml_dir:str):
+    def from_files(self, xml_dir:str,rba_model=None,verbose=True):
         """
         Generates model-structure object from model-files and provided auxilliary information.
 
@@ -91,16 +91,18 @@ class ModelStructureRBA(object):
             Directory, where RBA-model is located
         """
 
-        UniprotFile = _import_uniprot_file(xml_dir)
-        GeneMap = _import_gene_annotations(xml_dir)
-        Info = _import_model_info(xml_dir)
+        UniprotFile = _import_uniprot_file(xml_dir,verbose=verbose)
+        GeneMap = _import_gene_annotations(xml_dir,verbose=verbose)
+        Info = _import_model_info(xml_dir,verbose=verbose)
         SBMLfile = str('Not There')
         if Info['Value']['SBML-file'] != 'Not Provided':
-            SBMLfile = _import_sbml_file(xml_dir, str(Info['Value']['SBML-file']))
-        MetaboliteAnnotations = _import_metabolite_annotations(xml_dir)
-        ReactionAnnotations = _import_reaction_annotations(xml_dir)
-
-        model = RbaModel.from_xml(xml_dir)
+            SBMLfile = _import_sbml_file(xml_dir, str(Info['Value']['SBML-file']),verbose=verbose)
+        MetaboliteAnnotations = _import_metabolite_annotations(xml_dir,verbose=verbose)
+        ReactionAnnotations = _import_reaction_annotations(xml_dir,verbose=verbose)
+        if rba_model is None:
+            model = RbaModel.from_xml(xml_dir)
+        else:
+            model=rba_model
         Zero_matrix = ConstraintMatrix(model)
         Zero_matrix.build_matrices(0)
         constraints = _sort_constraints(Zero_matrix, model)
@@ -313,8 +315,7 @@ class ModelStructureRBA(object):
         Block['ProteinMatrix']['Matrix'] = Block['ProteinMatrix']['Matrix'].tolist()
         Block['ProteinGeneMatrix']['Matrix'] = Block['ProteinGeneMatrix']['Matrix'].tolist()
         JSONstring = json.dumps(Block, default=_json_int64_compensation)
-        filename = path + '/ModelStructure.json'
-        f = open(filename, 'w')
+        f = open(path, 'w')
         f.write(JSONstring)
         f.close()
         return(JSONstring)
@@ -916,22 +917,24 @@ def _generate_protein_matrix(ModelStructure):
     return({'Matrix': numpy.array(ProteinMatrix), 'Consumers': Consumers, 'Proteins': Proteins})
 
 
-def _import_uniprot_file(xml_dir):
+def _import_uniprot_file(xml_dir,verbose=True):
     if os.path.isfile(str(xml_dir+'/uniprot.csv')):
         return(pandas.read_csv(str(xml_dir+'/uniprot.csv'), sep='\t'))
     elif os.path.isfile(str(xml_dir+'/data/uniprot.csv')):
         return(pandas.read_csv(str(xml_dir+'/data/uniprot.csv'), sep='\t'))
     else:
-        print('WARNING: Uniprot-file "uniprot.csv" not found.\n' + ' Continuing without additional information...\n')
+        if verbose:
+            print('WARNING: Uniprot-file "uniprot.csv" not found.\n' + ' Continuing without additional information...\n')
         return(str('Not There'))
 
 
-def _import_sbml_file(xml_dir, filename):
+def _import_sbml_file(xml_dir, filename,verbose=True):
     if os.path.isfile(str(xml_dir+'/'+filename)):
         SBfile = libsbml.readSBML(str(xml_dir+'/'+filename))
         if SBfile.getNumErrors() > 0:
             SBfile.printErrors()
-            print('WARNING: Invalid SBML')
+            if verbose:
+                print('WARNING: Invalid SBML')
             return(str('Not There'))
         else:
             sbml = SBfile
@@ -940,87 +943,101 @@ def _import_sbml_file(xml_dir, filename):
         SBfile = libsbml.readSBML(str(xml_dir+'/data/'+filename))
         if SBfile.getNumErrors() > 0:
             SBfile.printErrors()
-            print('WARNING: Invalid SBML')
+            if verbose:
+                print('WARNING: Invalid SBML')
             return(str('Not There'))
         else:
             sbml = SBfile
             return(sbml)
     else:
-        print('WARNING: SBML-file {} not found.\n' + ' Continuing without additional information...\n'.format(filename))
+        if verbose:
+            print('WARNING: SBML-file {} not found.\n' + ' Continuing without additional information...\n'.format(filename))
         return(str('Not There'))
 
 
-def _import_gene_annotations(xml_dir):
+def _import_gene_annotations(xml_dir,verbose=True):
     if os.path.isfile(str(xml_dir+'/GeneAnnotations.csv')):
         out = pandas.read_csv(str(xml_dir+'/GeneAnnotations.csv'), sep=',', index_col=0)
         if not list(out):
-            print('WARNING: File "GeneAnnotations.csv" seems to be empty or has the wrong delimiter (comma required).')
+            if verbose:
+                print('WARNING: File "GeneAnnotations.csv" seems to be empty or has the wrong delimiter (comma required).')
             return(str('Not There'))
         return(out)
     elif os.path.isfile(str(xml_dir+'/data/GeneAnnotations.csv')):
         out = pandas.read_csv(str(xml_dir+'/data/GeneAnnotations.csv'), sep=',', index_col=0)
         if not list(out):
-            print('WARNING: File "GeneAnnotations.csv" seems to be empty or has the wrong delimiter (comma required).')
+            if verbose:
+                print('WARNING: File "GeneAnnotations.csv" seems to be empty or has the wrong delimiter (comma required).')
             return(str('Not There'))
         return(out)
     else:
-        print('WARNING: No Gene-annotation file "GeneAnnotations.csv" provided.\n' + ' Continuing without additional information...\n')
+        if verbose:
+            print('WARNING: No Gene-annotation file "GeneAnnotations.csv" provided.\n' + ' Continuing without additional information...\n')
         return(str('Not There'))
 
 
-def _import_reaction_annotations(xml_dir):
+def _import_reaction_annotations(xml_dir,verbose=True):
     if os.path.isfile(str(xml_dir+'/ReactionAnnotations.csv')):
         out = pandas.read_csv(str(xml_dir+'/ReactionAnnotations.csv'), sep=',', index_col=0)
         if not list(out):
-            print('WARNING: File "ReactionAnnotations.csv" seems to be empty or has the wrong delimiter (comma required).')
+            if verbose:
+                print('WARNING: File "ReactionAnnotations.csv" seems to be empty or has the wrong delimiter (comma required).')
             return(str('Not There'))
         return(out)
     elif os.path.isfile(str(xml_dir+'/data/ReactionAnnotations.csv')):
         out = pandas.read_csv(str(xml_dir+'/data/ReactionAnnotations.csv'), sep=',', index_col=0)
         if not list(out):
-            print('WARNING: File "ReactionAnnotations.csv" seems to be empty or has the wrong delimiter (comma required).')
+            if verbose:
+                print('WARNING: File "ReactionAnnotations.csv" seems to be empty or has the wrong delimiter (comma required).')
             return(str('Not There'))
         return(out)
     else:
-        print('WARNING: No Reaction-annotation file "ReactionAnnotations.csv" provided.\n' + ' Continuing without additional information...\n')
+        if verbose:
+            print('WARNING: No Reaction-annotation file "ReactionAnnotations.csv" provided.\n' + ' Continuing without additional information...\n')
         return(str('Not There'))
 
 
-def _import_metabolite_annotations(xml_dir):
+def _import_metabolite_annotations(xml_dir,verbose=True):
     if os.path.isfile(str(xml_dir+'/MetaboliteAnnotations.csv')):
         out = pandas.read_csv(str(xml_dir+'/MetaboliteAnnotations.csv'), sep=',', index_col=0)
         if not list(out):
-            print('WARNING: File "MetaboliteAnnotations.csv" seems to be empty or has the wrong delimiter (comma required).')
+            if verbose:
+                print('WARNING: File "MetaboliteAnnotations.csv" seems to be empty or has the wrong delimiter (comma required).')
             return(str('Not There'))
         return(out)
     elif os.path.isfile(str(xml_dir+'/data/MetaboliteAnnotations.csv')):
         out = pandas.read_csv(str(xml_dir+'/data/MetaboliteAnnotations.csv'), sep=',', index_col=0)
         if not list(out):
-            print('WARNING: File "MetaboliteAnnotations.csv" seems to be empty or has the wrong delimiter (comma required).')
+            if verbose:
+                print('WARNING: File "MetaboliteAnnotations.csv" seems to be empty or has the wrong delimiter (comma required).')
             return(str('Not There'))
         return(out)
     else:
-        print('WARNING: No Reaction-annotation file "MetaboliteAnnotations.csv" provided.\n' + ' Continuing without additional information...\n')
+        if verbose:
+            print('WARNING: No Reaction-annotation file "MetaboliteAnnotations.csv" provided.\n' + ' Continuing without additional information...\n')
         return(str('Not There'))
 
 
-def _import_model_info(xml_dir):
+def _import_model_info(xml_dir,verbose=True):
     if os.path.isfile(str(xml_dir+'/ModelInformation.csv')):
         out = pandas.read_csv(str(xml_dir+'/ModelInformation.csv'),sep=',', header=0)
         out.index = list(out['Key'])
         if list(out):
-            print('WARNING: File "ModelInformation.csv" seems to be empty or has the wrong delimiter (comma required).')
+            if verbose:
+                print('WARNING: File "ModelInformation.csv" seems to be empty or has the wrong delimiter (comma required).')
             return(pandas.DataFrame([['Name', 'ModelName'], ['Author', 'John Doe'], ['Organism', 'Life'], ['Reconstruction', 'GSMM'], ['SBML-file', 'Not Provided']], index=['Name', 'Author', 'Organism', 'Reconstruction', 'SBML-file'], columns=['Key', 'Value']))
         return(out)
     elif os.path.isfile(str(xml_dir+'/data/ModelInformation.csv')):
         out = pandas.read_csv(str(xml_dir+'/data/ModelInformation.csv'),sep=',', header=0)
         out.index = list(out['Key'])
         if list(out):
-            print('WARNING: File "ModelInformation.csv" seems to be empty or has the wrong delimiter (comma required).')
+            if verbose:
+                print('WARNING: File "ModelInformation.csv" seems to be empty or has the wrong delimiter (comma required).')
             return(pandas.DataFrame([['Name', 'ModelName'], ['Author', 'John Doe'], ['Organism', 'Life'], ['Reconstruction', 'GSMM'], ['SBML-file', 'Not Provided']], index=['Name', 'Author', 'Organism', 'Reconstruction', 'SBML-file'], columns=['Key', 'Value']))
         return(out)
     else:
-        print('WARNING: No model-info file "ModelInformation.csv" provided.\n' + ' Using dummy-information\n')
+        if verbose:
+            print('WARNING: No model-info file "ModelInformation.csv" provided.\n' + ' Using dummy-information\n')
         return(pandas.DataFrame([['Name', 'ModelName'], ['Author', 'John Doe'], ['Organism', 'Life'], ['Reconstruction', 'GSMM'], ['SBML-file', 'Not Provided']], index=['Name', 'Author', 'Organism', 'Reconstruction', 'SBML-file'], columns=['Key', 'Value']))
 
 
