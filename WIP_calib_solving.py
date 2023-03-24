@@ -4,11 +4,12 @@ from rbatools.calibration_utils import *
 
 conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03']
 #conditions = ['Hackett_N005', 'Hackett_N01', 'Hackett_N016', 'Hackett_N03']
-#conditions = ['Hackett_P005', 'Hackett_P01', 'Hackett_P016', 'Hackett_P022', 'Hackett_P03']
+#conditions = ['Hackett_P005', 'Hackett_P01', 'Hackett_P016', 'Hackett_P022']
+#conditions = ['0102_mean', '0152_mean', '0214_mean', '0254_mean', '0284_mean', '0334_mean', '0379_mean']
 
 
-Input_Data = pandas.read_csv(
-    '../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim.csv', sep=';', decimal=',', index_col=0)
+Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim.csv', sep=';', decimal=',', index_col=0)
+#Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nielsen.csv', sep=';', decimal=',', index_col=0)
 
 default_kapps_from_calibration=pandas.read_csv("../default_kapps_refactored_WF.csv",index_col=0)
 specific_kapps_from_calibration=pandas.read_csv("../specific_kapps_refactored_WF.csv",index_col=0)
@@ -33,6 +34,7 @@ plot_specific_enzyme_efficiencies(point_calibration_kapps=specific_kapps_from_ca
                     filename="Specific_Kapp_Plots_sim.pdf")
 
 Simulation = SessionRBA('../Yeast_iMM904_RBA_model')
+#Simulation = SessionRBA('../Yeast_iMM904_RBA_model_no_BMcompo_targets')
 Simulation.add_exchange_reactions()
 
 
@@ -58,12 +60,12 @@ for condition in conditions:
                                                   rba_session=Simulation,
                                                   compartment_sizes=compartment_sizes_from_calibration,
                                                   pg_fractions=pg_fractions_from_calibration,
-                                                  #process_efficiencies=process_efficiencies_from_calibration,
-                                                  process_efficiencies=regressed_process_efficiencies,
-                                                  #Default_Kapps=default_kapps_from_calibration,
-                                                  Default_Kapps=regressed_default_kapps,
-                                                  #Specific_Kapps=specific_kapps_from_calibration,
-                                                  Specific_Kapps=regressed_specific_kapps,
+                                                  process_efficiencies=process_efficiencies_from_calibration,
+                                                  #process_efficiencies=regressed_process_efficiencies,
+                                                  Default_Kapps=default_kapps_from_calibration,
+                                                  #Default_Kapps=regressed_default_kapps,
+                                                  Specific_Kapps=specific_kapps_from_calibration,
+                                                  #Specific_Kapps=regressed_specific_kapps,
                                                   Exchanges_to_impose=Exchanges_to_impose,
                                                   #sims_to_perform=["DefaultKapp","Prokaryotic","Eukaryotic"],
                                                   #sims_to_perform=["Prokaryotic","Eukaryotic"],
@@ -98,12 +100,12 @@ for condition in conditions:
                                                   rba_session=Simulation,
                                                   compartment_sizes=compartment_sizes_from_calibration,
                                                   pg_fractions=pg_fractions_from_calibration,
-                                                  #process_efficiencies=process_efficiencies_from_calibration,
-                                                  process_efficiencies=regressed_process_efficiencies,
-                                                  #Default_Kapps=default_kapps_from_calibration,
-                                                  Default_Kapps=regressed_default_kapps,
-                                                  #Specific_Kapps=specific_kapps_from_calibration,
-                                                  Specific_Kapps=regressed_specific_kapps,
+                                                  process_efficiencies=process_efficiencies_from_calibration,
+                                                  #process_efficiencies=regressed_process_efficiencies,
+                                                  Default_Kapps=default_kapps_from_calibration,
+                                                  #Default_Kapps=regressed_default_kapps,
+                                                  Specific_Kapps=specific_kapps_from_calibration,
+                                                  #Specific_Kapps=regressed_specific_kapps,
                                                   Exchanges_to_impose=Exchanges_to_impose,
                                                   #sims_to_perform=["DefaultKapp","Prokaryotic","Eukaryotic"],
                                                   #sims_to_perform=["Prokaryotic","Eukaryotic"],
@@ -111,7 +113,8 @@ for condition in conditions:
                                                   feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
                                                   try_unscaling_if_sol_status_is_feasible_only_before_unscaling=False,
                                                   print_output=True,
-                                                  variability_analysis=None,
+                                                  #variability_analysis=None,
+                                                  variability_analysis=["R_EX_glc__D_e","R_EX_etoh_e","R_EX_ac_e","R_EX_glyc_e","R_EX_acald_e","R_EX_lac__D_e","R_EX_succ_e","R_EX_o2_e"],
                                                   mu_factor_for_variability=0.99,
                                                   apply_model=False,
                                                   functions_to_include_list=functions_to_include_list,
