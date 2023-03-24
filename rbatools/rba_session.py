@@ -69,15 +69,13 @@ class SessionRBA(object):
         self.xml_dir = xml_dir
         self.lp_solver=lp_solver
 
+        self.model = rba.RbaModel.from_xml(input_dir=xml_dir)
         if not hasattr(self, 'ModelStructure'):
             if os.path.isfile(str(self.xml_dir+'/ModelStructure.json')):
-                self.ModelStructure = ModelStructureRBA()
-                with open(str(self.xml_dir+'/ModelStructure.json'), 'r') as myfile:
-                    data = myfile.read()
-                self.ModelStructure.from_json(inputString=data)
+                self.load_model_structure(file_name='/ModelStructure.json')
             else:
-                self.build_model_structure()
-        self.model = rba.RbaModel.from_xml(input_dir=xml_dir)
+                self.build_model_structure(file_name='/ModelStructure.json',print_warnings=True)
+
         self.Problem = ProblemRBA(matrix=rba.ConstraintMatrix(model=self.model),ModelStructure=self.ModelStructure,lp_solver=self.lp_solver)
 
         medium = pandas.read_csv(xml_dir+'/medium.tsv', sep='\t')
@@ -87,15 +85,21 @@ class SessionRBA(object):
         self.ExchangeMap = _auxiliary_functions.build_exchange_map(RBA_Session=self)
         self.ExchangeReactions=False
 
-    def build_model_structure(self):
+    def load_model_structure(self,file_name):
+        self.ModelStructure = ModelStructureRBA()
+        with open(str(self.xml_dir+file_name), 'r') as myfile:
+            data = myfile.read()
+        self.ModelStructure.from_json(inputString=data)
+
+    def build_model_structure(self,file_name,print_warnings):
         """
         Builds model structure object from model xml-files, adds it as
         ModelStructure attribute and stores as json file.
         """
         self.ModelStructure = ModelStructureRBA()
-        self.ModelStructure.from_files(xml_dir=self.xml_dir)
-        self.ModelStructure.export_json(path=self.xml_dir)
-        with open(str(self.xml_dir+'/ModelStructure.json'), 'r') as myfile:
+        self.ModelStructure.from_files(xml_dir=self.xml_dir,rba_model=self.model,verbose=print_warnings)
+        self.ModelStructure.export_json(path=str(self.xml_dir+file_name))
+        with open(str(self.xml_dir+file_name), 'r') as myfile:
             data = myfile.read()
         self.ModelStructure.from_json(inputString=data)
 
@@ -157,6 +161,7 @@ class SessionRBA(object):
         Reloads model from xml-files and then rebuild computational model-representation.
         """
         self.model = rba.RbaModel.from_xml(input_dir=self.xml_dir)
+        self.load_model_structure(file_name='/ModelStructure.json')
         self.rebuild_from_model()
 
     def record_results(self, run_name: str):
