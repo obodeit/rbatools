@@ -26,7 +26,8 @@ def calibration(input_dict):
                                          feasible_stati=["optimal","feasible"],
                                          min_kapp=None,
                                          print_outputs=True,
-                                         use_mean_enzyme_composition_for_calibration=True)
+                                         use_mean_enzyme_composition_for_calibration=True,
+                                         global_protein_scaling_coeff=1000/6.022e23)
     return({input_dict["condition"]:calib_results})
 
 def generate_input_proteome(fold_changes,
@@ -67,7 +68,6 @@ def main(conditions,n_parallel_processes=None):
     Uniprot = pandas.read_csv('../Yeast_iMM904_RBA_model/uniprot.csv', sep='\t')
     Compartment_Annotations_external = pandas.read_csv('../DataSetsYeastRBACalibration/Manually_curated_Protein_Locations_for_Calibration.csv', index_col=None, sep=';')
     Ribosomal_Proteins_Uniprot = pandas.read_csv('../DataSetsYeastRBACalibration/uniprot_ribosomal_proteins.csv', index_col=None, sep=';')
-    #Hackett_Clim_FCs = pandas.read_csv('../DataSetsYeastRBACalibration/Hacket_Clim_ProteinFCs.csv',sep=";")
     Hackett_Clim_FCs = pandas.read_csv('../DataSetsYeastRBACalibration/Hacket_ProteinFCs.csv',sep=";")
     Nielsen_01 = pandas.read_csv('../DataSetsYeastRBACalibration/Nielsen01_ProteomicsData.csv',sep=";",index_col=0)
     Simulation = SessionRBA('../Yeast_iMM904_RBA_model')
@@ -96,7 +96,6 @@ def main(conditions,n_parallel_processes=None):
                                                 full_annotations=full_annotations)
 
     restored_Hackett_Data.to_csv("../origRestoredProteome.csv")
-
     initial_time=time.time()
 
     input_dicts=[]
@@ -122,8 +121,8 @@ def main(conditions,n_parallel_processes=None):
                 calibration_results_1.append(i[condition])
     compartment_sizes_from_calibration_1=extract_compartment_sizes_from_calibration_outputs(calibration_outputs=calibration_results_1)
     pg_fractions_from_calibration_1=extract_pg_fractions_from_calibration_outputs(calibration_outputs=calibration_results_1)
-    regressed_compartment_sizes_1=regression_on_compartment_sizes(Comp_sizes=compartment_sizes_from_calibration_1,conditions=conditions,growth_rates=growth_rates,monotonous_quadratic=True)
-    regressed_pg_fractions_1=regression_on_pg_fractions(PG_sizes=pg_fractions_from_calibration_1,conditions=conditions,growth_rates=growth_rates,monotonous_quadratic=True)
+    regressed_compartment_sizes_1=regression_on_compartment_sizes(Comp_sizes=compartment_sizes_from_calibration_1,conditions=conditions,growth_rates=growth_rates,monotonous_quadratic=False)
+    regressed_pg_fractions_1=regression_on_pg_fractions(PG_sizes=pg_fractions_from_calibration_1,conditions=conditions,growth_rates=growth_rates,monotonous_quadratic=False)
 
     for i in input_dicts:
         i.update({"Compartment_sizes":regressed_compartment_sizes_1,"PG_fractions":regressed_pg_fractions_1,"preliminary_run":False})
@@ -185,10 +184,10 @@ if __name__ == "__main__":
     warnings.simplefilter('ignore', FutureWarning)
     warnings.simplefilter('ignore', RuntimeWarning)
     #warnings.simplefilter('ignore', SettingWithCopyWarning)
-    main(n_parallel_processes=1,
-        conditions = ['Hackett_C016']
-        #conditions = ['Hackett_C03','Hackett_C005', 'Hackett_C022', 'Hackett_C016', 'Hackett_C01']
+    main(n_parallel_processes=3,
+        #conditions = ['Hackett_C016']
+        conditions = ['Hackett_C03','Hackett_C005', 'Hackett_C022', 'Hackett_C016', 'Hackett_C01']
         #conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03']
         #conditions = ['Hackett_N005', 'Hackett_N01', 'Hackett_N016', 'Hackett_N03']
-        #conditions = ['Hackett_P005', 'Hackett_P01', 'Hackett_P016', 'Hackett_P022', 'Hackett_P03']
+        #conditions = ['Hackett_P005', 'Hackett_P01', 'Hackett_P016', 'Hackett_P022']
         )
