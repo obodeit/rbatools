@@ -3,7 +3,6 @@ import copy
 import pandas
 import time
 import numpy
-import seaborn
 import json
 import math
 import matplotlib.pyplot as plt
@@ -2782,6 +2781,56 @@ def extract_feasible_bounds(inputs=[],feasible_range_object='FeasibleRange_prok'
     return(out)
 
 
+def generate_mean_enzyme_composition_model(rba_session,condition):
+    enzymes_already_handled=[]
+    for i in rba_session.get_enzymes():
+        if i in enzymes_already_handled:
+            continue
+        all_iso_enzymes=list([i]+rba_session.get_enzyme_information(i)['Isozymes'])
+        reactant_dict={}
+        product_dict={}
+        for j in all_iso_enzymes:
+            try:
+                for reactant in rba_session.model.enzymes.enzymes.get_by_id(j).machinery_composition.reactants._elements:
+                    species = reactant.species
+                    if species in reactant_dict.keys():
+                        reactant_dict[species]+=reactant.stoichiometry
+                    else:
+                        reactant_dict[species]=reactant.stoichiometry
+                for product in rba_session.model.enzymes.enzymes.get_by_id(j).machinery_composition.products._elements:
+                    species = product.species
+                    if species in product_dict.keys():
+                        product_dict[species]+=product.stoichiometry
+                    else:
+                        product_dict[species]=product.stoichiometry
+            except:
+                print(j)
+                continue
+        mean_reactants={species:reactant_dict[species]/len(all_iso_enzymes) for species in reactant_dict.keys()}
+        mean_products={species:product_dict[species]/len(all_iso_enzymes) for species in product_dict.keys()}
+        proto_enzyme=all_iso_enzymes[[len(i) for i in all_iso_enzymes].index(min([len(i) for i in all_iso_enzymes]))]
+
+        if len(list(mean_reactants.keys()))!=0:
+            rba_session.model.enzymes.enzymes.get_by_id(proto_enzyme).machinery_composition.reactants=rba.xml.ListOfReactants()
+            for reactant in mean_reactants.keys():
+                species_reference=rba.xml.SpeciesReference(species=reactant, stoichiometry=mean_reactants[reactant])
+                rba_session.model.enzymes.enzymes.get_by_id(proto_enzyme).machinery_composition.reactants.append(species_reference)
+        if len(list(mean_products.keys()))!=0:
+            rba_session.model.enzymes.enzymes.get_by_id(proto_enzyme).machinery_composition.products=rba.xml.ListOfProducts()
+            for product in mean_products.keys():
+                species_reference=rba.xml.SpeciesReference(species=product, stoichiometry=mean_products[product])
+                rba_session.model.enzymes.enzymes.get_by_id(proto_enzyme).machinery_composition.products.append(species_reference)
+        for iso_enzyme in all_iso_enzymes:
+            if iso_enzyme != proto_enzyme:
+                reaction_id=rba_session.model.enzymes.enzymes.get_by_id(iso_enzyme).reaction
+                rba_session.model.enzymes.enzymes.remove(rba_session.model.enzymes.enzymes.get_by_id(iso_enzyme))
+                rba_session.model.metabolism.reactions.remove(rba_session.model.metabolism.reactions.get_by_id(reaction_id))
+            #delete other isoenzymes and isorxns
+        enzymes_already_handled+=all_iso_enzymes    
+        rba_session.build_model_structure(file_name='/ModelStructure_meancompo_{}.json'.format(condition),print_warnings=False)
+    
+
+
 def calibration_workflow(proteome,
                          condition,
                          reference_condition,
@@ -2799,7 +2848,8 @@ def calibration_workflow(proteome,
                          feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
                          min_kapp=None,
                          print_outputs=True,
-                         global_protein_scaling_coeff=1):
+                         global_protein_scaling_coeff=1,
+                         use_mean_enzyme_composition_for_calibration=False):
     
     correction_settings=machinery_efficiency_correction_settings_from_input(input=definition_file, condition=condition)
     enzyme_efficiency_estimation_settings=enzyme_efficiency_estimation_settings_from_input(input=definition_file, condition=condition)
@@ -2855,6 +2905,10 @@ def calibration_workflow(proteome,
     ###
 
     process_efficiencies.to_csv("ProcEffsOrig_{}.csv".format(condition))
+
+    if use_mean_enzyme_composition_for_calibration:
+        generate_mean_enzyme_composition_model(rba_session,condition)
+
     if spec_kapps is None:
         flux_bounds_fba=flux_bounds_from_input(input=definition_file,rba_session=rba_session, condition=condition, specific_exchanges=None, specific_directions=None,also_consider_iso_enzmes=False)
         Specific_Kapps_Results = estimate_specific_enzyme_efficiencies(rba_session=rba_session, 
@@ -3076,6 +3130,13 @@ def calibration_workflow(proteome,
         Default_Kapps_to_return=results_global_scaling["default_kapps"]
         process_efficiencies_to_return=results_global_scaling["process_efficiencies"]
         rss_trajectory=None
+
+    #if use_mean_enzyme_composition_for_calibration:
+        #rba_session.reload_model()
+        #if enzyme_efficiency_estimation_settings['impose_on_all_isoreactions']:
+        #elif enzyme_efficiency_estimation_settings['zero_on_all_isoreactions']:
+        #os.remove('{}/ModelStructure_meancompo_{}.json'.format(rba_session.xml_dir,condition))
+
     if print_outputs:
         print("")
         print("Runtime - {} : {}".format(condition,time.time() - t0))
