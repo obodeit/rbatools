@@ -177,7 +177,7 @@ plot_predicted_fluxes(simulation_outputs=simulation_results_Js_not_imposed,types
 plot_protein_protein_comparison(predicted_proteomes=pred_prot,measured_proteomes=measured_proteomes,conditions=conditions)
 plot_predicted_fluxes(simulation_outputs=simulation_results_Js_not_imposed,types=["DefaultKapp","Prokaryotic","Eukaryotic"],input_definition=Input_Data)
 plot_predicted_fluxes(simulation_outputs=simulation_results_Js_imposed,types=["DefaultKapp","Prokaryotic","Eukaryotic"],input_definition=Input_Data)
-plot_protein_protein_comparison(predicted_proteomes=pred_prot,measured_proteomes=measured_proteomes,conditions=conditions)
+plot_protein_protein_comparison(predicted_proteomes=pred_prot_fixed,measured_proteomes=measured_proteomes,conditions=conditions)
 
 #FD=get_flux_distribution(simulation_outputs=simulation_results_Js_not_imposed,result_object='Simulation_Results_Euk', run='Eukaryotic')
 FD=get_flux_distribution(simulation_outputs=simulation_results_Js_not_imposed,result_object='Simulation_Results', run='Prokaryotic')
