@@ -3303,6 +3303,7 @@ def enzyme_efficiency_estimation_settings_from_input(input, condition):
 
     return(out)
 
+#def global_metabolism_efficienc_scaling():
 
 def global_efficiency_scaling(condition,
                               definition_file,
@@ -3353,14 +3354,16 @@ def global_efficiency_scaling(condition,
                                              max_mu_in_dichotomy=2*mu_measured)
 
     mumax_predicted=simulation_results[growth_rate_to_look_up]
-    print("Global start - {}:{}".format(condition,mumax_predicted))
+    if print_outputs:
+        print("Global start - {}:{}".format(condition,mumax_predicted))
     predicted_growth_rates=[mumax_predicted]
 
     if mumax_predicted == 0:
         mu_misprediction_factor=10
     else:
         mu_misprediction_factor=mu_measured/mumax_predicted
-    print("Global start - {}:{}".format(condition,mu_misprediction_factor))
+    if print_outputs:
+        print("Global start - {}:{}".format(condition,mu_misprediction_factor))
     mu_iteration_count=0
     runs_of_sign=0
     last_misprediction_direction=0
@@ -3607,7 +3610,7 @@ def extract_proteomes_from_simulation_results(simulation_outputs,type="Prokaryot
 
 
 def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,conditions):
-    from sklearn.linear_model import LinearRegression
+    #from sklearn.linear_model import LinearRegression
     plot_dimensions={1:(1,1),2:(1,2),3:(1,3),4:(2,3),5:(2,3),6:(2,3),7:(3,3),8:(3,3),9:(3,3)}
     plot_indices={1:(1,1),2:(1,2),3:(1,3),4:(2,1),5:(2,2),6:(2,3),7:(3,1),8:(3,2),9:(3,3)}
     number_conditions=len(conditions)
@@ -3617,22 +3620,29 @@ def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,condi
         condition_count+=1
         fig_row=plot_indices[condition_count][0]-1
         fig_col=plot_indices[condition_count][1]-1
-        protein_comparison=pandas.DataFrame()
+        #protein_comparison=pandas.DataFrame()
         if condition in list(predicted_proteomes.columns):
             if condition in list(measured_proteomes.columns):
-                for protein in predicted_proteomes.index:
-                    protein_comparison.loc[protein,"Predicted"]=6.023e20 *predicted_proteomes.loc[protein,condition]
-                for protein in measured_proteomes.index:
-                    protein_comparison.loc[protein,"Measured"]=6.023e20 *measured_proteomes.loc[protein,condition]
-                protein_comparison["Ratio"]=protein_comparison["Predicted"]/protein_comparison["Measured"]
-                protein_comparison_to_proceed=protein_comparison.loc[(numpy.isfinite(protein_comparison["Ratio"]))&(protein_comparison["Ratio"]!=0)]
-                #y_reg = numpy.reshape(numpy.array([numpy.log10(i) for i in list(protein_comparison_to_proceed["Predicted"])]), (len(list(protein_comparison_to_proceed["Predicted"])), 1))
-                #x_reg = numpy.reshape(numpy.array([numpy.log10(i) for i in list(protein_comparison_to_proceed["Measured"])]), (len(list(protein_comparison_to_proceed["Measured"])), 1))
-                x_reg = numpy.reshape(numpy.array([i for i in list(protein_comparison_to_proceed["Predicted"])]), (len(list(protein_comparison_to_proceed["Predicted"])), 1))
-                y_reg = numpy.reshape(numpy.array([i for i in list(protein_comparison_to_proceed["Measured"])]), (len(list(protein_comparison_to_proceed["Measured"])), 1))
-                regressor = LinearRegression(fit_intercept=False)
-                regressor.fit(x_reg, y_reg)
-                predictions = regressor.predict(x_reg)
+        #        for protein in predicted_proteomes.index:
+        #            protein_comparison.loc[protein,"Predicted"]=6.023e20 *predicted_proteomes.loc[protein,condition]
+        #        for protein in measured_proteomes.index:
+        #            protein_comparison.loc[protein,"Measured"]=6.023e20 *measured_proteomes.loc[protein,condition]
+        #        protein_comparison["Ratio"]=protein_comparison["Predicted"]/protein_comparison["Measured"]
+         #       protein_comparison_to_proceed=protein_comparison.loc[(numpy.isfinite(protein_comparison["Ratio"]))&(protein_comparison["Ratio"]!=0)]
+                #x_reg = numpy.reshape(numpy.array([i for i in list(protein_comparison_to_proceed["Predicted"])]), (len(list(protein_comparison_to_proceed["Predicted"])), 1))
+                #y_reg = numpy.reshape(numpy.array([i for i in list(protein_comparison_to_proceed["Measured"])]), (len(list(protein_comparison_to_proceed["Measured"])), 1))
+                #regressor = LinearRegression(fit_intercept=False)
+                #regressor.fit(x_reg, y_reg)
+                #predictions = regressor.predict(x_reg)
+                regression_results=do_linear_regression_on_proteome_prediction(predicted_proteomes=predicted_proteomes,
+                                                                               measured_proteomes=measured_proteomes,
+                                                                               condition=condition)
+                x_reg=regression_results['X_regression']
+                #y_reg=regression_results['Y_regression']
+                regressor=regression_results['Regressor']
+                protein_comparison_to_proceed=regression_results['Protein_comparison']
+                predictions=regression_results['Prediction']
+
                 total_max=max([max(list(protein_comparison_to_proceed["Predicted"])),max(list(protein_comparison_to_proceed["Measured"]))])
                 total_min=min([min(list(protein_comparison_to_proceed["Predicted"])),min(list(protein_comparison_to_proceed["Measured"]))])
                 #[numpy.log10(i) for i in list(protein_comparison_to_prodeed["Predicted"])]
@@ -3651,6 +3661,25 @@ def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,condi
 
     plt.show()
 
+def do_linear_regression_on_proteome_prediction(predicted_proteomes,measured_proteomes,condition):
+    from sklearn.linear_model import LinearRegression
+    protein_comparison=pandas.DataFrame()
+    for protein in predicted_proteomes.index:
+        protein_comparison.loc[protein,"Predicted"]=6.023e20 *predicted_proteomes.loc[protein,condition]
+    for protein in measured_proteomes.index:
+        protein_comparison.loc[protein,"Measured"]=6.023e20 *measured_proteomes.loc[protein,condition]
+    protein_comparison["Ratio"]=protein_comparison["Predicted"]/protein_comparison["Measured"]
+    protein_comparison_to_proceed=protein_comparison.loc[(numpy.isfinite(protein_comparison["Ratio"]))&(protein_comparison["Ratio"]!=0)]
+    x_reg = numpy.reshape(numpy.array([i for i in list(protein_comparison_to_proceed["Predicted"])]), (len(list(protein_comparison_to_proceed["Predicted"])), 1))
+    y_reg = numpy.reshape(numpy.array([i for i in list(protein_comparison_to_proceed["Measured"])]), (len(list(protein_comparison_to_proceed["Measured"])), 1))
+    regressor = LinearRegression(fit_intercept=False)
+    regressor.fit(x_reg, y_reg)
+    predictions = regressor.predict(x_reg)
+    return({'Protein_comparison':protein_comparison_to_proceed,
+            'Regressor':regressor,
+            'Prediction':predictions,
+            'X_regression':x_reg,
+            'Y_regression':y_reg})
 
 def sample_copy_numbers_from_proteome_replicates(Input_data,cols_to_draw_from,target_size=1):
     sample_set=set()
