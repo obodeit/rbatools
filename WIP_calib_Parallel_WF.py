@@ -22,11 +22,11 @@ def calibration(input_dict):
                                          PG_fractions=input_dict["PG_fractions"],
                                          transporter_multiplier=1,
                                          prelim_run=input_dict["preliminary_run"],
-                                         Mu_approx_precision=0.00001,
+                                         Mu_approx_precision=0.000000001,
                                          feasible_stati=["optimal","feasible"],
                                          min_kapp=None,
                                          print_outputs=True,
-                                         use_mean_enzyme_composition_for_calibration=True,
+                                         use_mean_enzyme_composition_for_calibration=False,
                                          global_protein_scaling_coeff=1000/6.022e23)
     return({input_dict["condition"]:calib_results})
 
