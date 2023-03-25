@@ -11,6 +11,8 @@ import scipy.signal
 from scipy.optimize import curve_fit
 from matplotlib.backends.backend_pdf import PdfPages
 from scipy.stats.mstats import gmean
+from sklearn.linear_model import LinearRegression
+
 # import matplotlib.pyplot as plt
 
 
@@ -3610,7 +3612,6 @@ def extract_proteomes_from_simulation_results(simulation_outputs,type="Prokaryot
 
 
 def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,conditions):
-    #from sklearn.linear_model import LinearRegression
     plot_dimensions={1:(1,1),2:(1,2),3:(1,3),4:(2,3),5:(2,3),6:(2,3),7:(3,3),8:(3,3),9:(3,3)}
     plot_indices={1:(1,1),2:(1,2),3:(1,3),4:(2,1),5:(2,2),6:(2,3),7:(3,1),8:(3,2),9:(3,3)}
     number_conditions=len(conditions)
@@ -3623,31 +3624,21 @@ def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,condi
         #protein_comparison=pandas.DataFrame()
         if condition in list(predicted_proteomes.columns):
             if condition in list(measured_proteomes.columns):
-        #        for protein in predicted_proteomes.index:
-        #            protein_comparison.loc[protein,"Predicted"]=6.023e20 *predicted_proteomes.loc[protein,condition]
-        #        for protein in measured_proteomes.index:
-        #            protein_comparison.loc[protein,"Measured"]=6.023e20 *measured_proteomes.loc[protein,condition]
-        #        protein_comparison["Ratio"]=protein_comparison["Predicted"]/protein_comparison["Measured"]
-         #       protein_comparison_to_proceed=protein_comparison.loc[(numpy.isfinite(protein_comparison["Ratio"]))&(protein_comparison["Ratio"]!=0)]
-                #x_reg = numpy.reshape(numpy.array([i for i in list(protein_comparison_to_proceed["Predicted"])]), (len(list(protein_comparison_to_proceed["Predicted"])), 1))
-                #y_reg = numpy.reshape(numpy.array([i for i in list(protein_comparison_to_proceed["Measured"])]), (len(list(protein_comparison_to_proceed["Measured"])), 1))
-                #regressor = LinearRegression(fit_intercept=False)
-                #regressor.fit(x_reg, y_reg)
-                #predictions = regressor.predict(x_reg)
-                regression_results=do_linear_regression_on_proteome_prediction(predicted_proteomes=predicted_proteomes,
-                                                                               measured_proteomes=measured_proteomes,
-                                                                               condition=condition)
+                x=[6.023e20*predicted_proteomes.loc[i,condition] for i in predicted_proteomes.index if i in measured_proteomes.index]
+                y=[6.023e20*measured_proteomes.loc[i,condition] for i in predicted_proteomes.index if i in measured_proteomes.index]
+                regression_results=do_linear_regression_on_proteome_prediction(x=x,
+                                                                               y=y,
+                                                                               fit_intercept=False)
                 x_reg=regression_results['X_regression']
                 #y_reg=regression_results['Y_regression']
                 regressor=regression_results['Regressor']
-                protein_comparison_to_proceed=regression_results['Protein_comparison']
                 predictions=regression_results['Prediction']
 
-                total_max=max([max(list(protein_comparison_to_proceed["Predicted"])),max(list(protein_comparison_to_proceed["Measured"]))])
-                total_min=min([min(list(protein_comparison_to_proceed["Predicted"])),min(list(protein_comparison_to_proceed["Measured"]))])
+                total_max=max([max(x),max(y)])
+                total_min=min([min(x),min(y)])
                 #[numpy.log10(i) for i in list(protein_comparison_to_prodeed["Predicted"])]
                 axs[fig_row, fig_col].plot([numpy.log10(total_min), numpy.log10(total_max)], [numpy.log10(total_min), numpy.log10(total_max)], color='green', linewidth=3,alpha=0.6)
-                axs[fig_row, fig_col].scatter([numpy.log10(i) for i in list(protein_comparison_to_proceed["Predicted"])],[numpy.log10(i) for i in list(protein_comparison_to_proceed["Measured"])],alpha=0.4)
+                axs[fig_row, fig_col].scatter([numpy.log10(i) for i in x],[numpy.log10(i) for i in y],alpha=0.4)
                 axs[fig_row, fig_col].plot(numpy.log10(x_reg), numpy.log10(predictions), color='red')
                 #axs[fig_row, fig_col].plot(x_reg, predictions, color='red')
                 axs[fig_row, fig_col].legend(['Identity', "Correlation: {}".format(str(round(regressor.coef_[0][0],2))), 'Data'])
@@ -3657,26 +3648,26 @@ def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,condi
                 axs[fig_row, fig_col].set_title(condition)
                 axs[fig_row, fig_col].set_xlabel('Predicted copies per $g_{DW}$ ($Log_{10}$)')
                 axs[fig_row, fig_col].set_ylabel('Measured copies per $g_{DW}$ ($Log_{10}$)')
-                axs[fig_row, fig_col].set_ylim(math.floor(numpy.log10(min(list(protein_comparison_to_proceed["Measured"])))),math.ceil(numpy.log10(max(list(protein_comparison_to_proceed["Measured"])))))
+                axs[fig_row, fig_col].set_ylim(math.floor(numpy.log10(min(y))),math.ceil(numpy.log10(max(y))))
 
     plt.show()
 
-def do_linear_regression_on_proteome_prediction(predicted_proteomes,measured_proteomes,condition):
-    from sklearn.linear_model import LinearRegression
-    protein_comparison=pandas.DataFrame()
-    for protein in predicted_proteomes.index:
-        protein_comparison.loc[protein,"Predicted"]=6.023e20 *predicted_proteomes.loc[protein,condition]
-    for protein in measured_proteomes.index:
-        protein_comparison.loc[protein,"Measured"]=6.023e20 *measured_proteomes.loc[protein,condition]
-    protein_comparison["Ratio"]=protein_comparison["Predicted"]/protein_comparison["Measured"]
-    protein_comparison_to_proceed=protein_comparison.loc[(numpy.isfinite(protein_comparison["Ratio"]))&(protein_comparison["Ratio"]!=0)]
-    x_reg = numpy.reshape(numpy.array([i for i in list(protein_comparison_to_proceed["Predicted"])]), (len(list(protein_comparison_to_proceed["Predicted"])), 1))
-    y_reg = numpy.reshape(numpy.array([i for i in list(protein_comparison_to_proceed["Measured"])]), (len(list(protein_comparison_to_proceed["Measured"])), 1))
-    regressor = LinearRegression(fit_intercept=False)
+def do_linear_regression_on_proteome_prediction(x,y,fit_intercept):
+    #protein_comparison=pandas.DataFrame()
+    #for protein in predicted_proteomes.index:
+    #    protein_comparison.loc[protein,"Predicted"]=6.023e20 *predicted_proteomes.loc[protein,condition]
+    #for protein in measured_proteomes.index:
+    #    protein_comparison.loc[protein,"Measured"]=6.023e20 *measured_proteomes.loc[protein,condition]
+    #protein_comparison["Ratio"]=protein_comparison["Predicted"]/protein_comparison["Measured"]
+    #protein_comparison_to_proceed=protein_comparison.loc[(numpy.isfinite(protein_comparison["Ratio"]))&(protein_comparison["Ratio"]!=0)]
+    x_reg = numpy.reshape(numpy.array(x), (len(x), 1))
+    y_reg = numpy.reshape(numpy.array(y), (len(y), 1))
+#    x_reg = numpy.reshape(numpy.array([i for i in list(protein_comparison_to_proceed["Predicted"])]), (len(list(protein_comparison_to_proceed["Predicted"])), 1))
+#    y_reg = numpy.reshape(numpy.array([i for i in list(protein_comparison_to_proceed["Measured"])]), (len(list(protein_comparison_to_proceed["Measured"])), 1))
+    regressor = LinearRegression(fit_intercept=fit_intercept)
     regressor.fit(x_reg, y_reg)
     predictions = regressor.predict(x_reg)
-    return({'Protein_comparison':protein_comparison_to_proceed,
-            'Regressor':regressor,
+    return({'Regressor':regressor,
             'Prediction':predictions,
             'X_regression':x_reg,
             'Y_regression':y_reg})
