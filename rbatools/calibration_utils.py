@@ -2645,11 +2645,14 @@ def efficiency_correction_2(enzyme_efficiencies,
                             su_concentrations['Subunits'].append(proto_ID)
                             su_concentrations['Measured'].append(measured_concentration)
                             su_concentrations['Predicted'].append(predicted_concentration)
-        if len(su_concentrations['Subunits'])>1:
+        if len(su_concentrations['Subunits'])>2:
             regression_results=do_linear_regression_on_proteome_prediction(x=su_concentrations['Measured'],
                                                                            y=su_concentrations['Predicted'],
                                                                            fit_intercept=False)
             su_concentrations['Regression_coefficient']=regression_results['Regressor'].coef_[0][0]
+            enzyme_regression_results[enzyme]=su_concentrations
+        elif len(su_concentrations['Subunits'])==2:
+            su_concentrations['Regression_coefficient']=numpy.mean([su_concentrations['Predicted'][0]/su_concentrations['Measured'][0],su_concentrations['Predicted'][1]/su_concentrations['Measured'][1]])
             enzyme_regression_results[enzyme]=su_concentrations
         elif len(su_concentrations['Subunits'])==1:
             su_concentrations['Regression_coefficient']=su_concentrations['Predicted'][0]/su_concentrations['Measured'][0]
@@ -2669,11 +2672,14 @@ def efficiency_correction_2(enzyme_efficiencies,
                         su_concentrations['Subunits'].append(proto_ID)
                         su_concentrations['Measured'].append(measured_concentration)
                         su_concentrations['Predicted'].append(predicted_concentration)
-        if len(su_concentrations['Subunits'])>1:
+        if len(su_concentrations['Subunits'])>2:
             regression_results=do_linear_regression_on_proteome_prediction(x=su_concentrations['Measured'],
                                                                            y=su_concentrations['Predicted'],
                                                                            fit_intercept=False)
             su_concentrations['Regression_coefficient']=regression_results['Regressor'].coef_[0][0]
+            process_machinery_regression_results[process]=su_concentrations
+        elif len(su_concentrations['Subunits'])==2:
+            su_concentrations['Regression_coefficient']=numpy.mean([su_concentrations['Predicted'][0]/su_concentrations['Measured'][0],su_concentrations['Predicted'][1]/su_concentrations['Measured'][1]])
             process_machinery_regression_results[process]=su_concentrations
         elif len(su_concentrations['Subunits'])==1:
             su_concentrations['Regression_coefficient']=su_concentrations['Predicted'][0]/su_concentrations['Measured'][0]
