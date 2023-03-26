@@ -24,7 +24,8 @@ def calibration(input_dict):
                                          prelim_run=input_dict["preliminary_run"],
                                          Mu_approx_precision=0.000000001,
                                          #Mu_approx_precision= 0.000001,
-                                         feasible_stati=["optimal","feasible"],
+                                         #feasible_stati=["optimal","feasible"]
+                                         feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
                                          min_kapp=None,
                                          print_outputs=True,
                                          use_mean_enzyme_composition_for_calibration=False,
