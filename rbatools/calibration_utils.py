@@ -2619,7 +2619,7 @@ def efficiency_correction_2(enzyme_efficiencies,
             measured_concentration=protein_data.loc[proto_protein,"copy_number"]
             predicted_concentration=proto_protein_predicted[proto_protein]
             if (numpy.isfinite(measured_concentration)) and (numpy.isfinite(predicted_concentration)) and (measured_concentration!=0) and (predicted_concentration!=0):
-                squared_residuals.append((numpy.log(predicted_protein)-numpy.log(measured_protein))**2)
+                squared_residuals.append((numpy.log(predicted_concentration)-numpy.log(measured_concentration))**2)
 
     # 3. Prediction-measurement regression coefficient for all enzymes
     enzyme_regression_results={}
@@ -2636,6 +2636,8 @@ def efficiency_correction_2(enzyme_efficiencies,
                 elif simulation_results["Enzymes"].loc[iso_enzyme,condition_to_look_up]==0:
                     continue 
             for subunit in rba_session.get_enzyme_information(enzyme=iso_enzyme)["Subunits"].keys():
+                if subunit not in rba_session.get_proteins():
+                    continue
                 proto_ID=rba_session.get_protein_information(protein=subunit)["ProtoID"]
                 if (subunit in simulation_results["Proteins"].index) and (proto_ID in protein_data.index):
                     measured_concentration=protein_data.loc[proto_ID,"copy_number"]
@@ -2663,6 +2665,8 @@ def efficiency_correction_2(enzyme_efficiencies,
     for process in rba_session.get_processes():
         su_concentrations={'Subunits':[],'Measured':[],'Predicted':[],'Regression_coefficient':None}
         for subunit in rba_session.get_process_information(process)['Composition'].keys():
+            if subunit not in rba_session.get_proteins():
+                continue
             proto_ID=rba_session.get_protein_information(protein=subunit)["ProtoID"]
             if (subunit in simulation_results["Proteins"].index) and (proto_ID in protein_data.index):
                 measured_concentration=protein_data.loc[proto_ID,"copy_number"]
@@ -2689,7 +2693,7 @@ def efficiency_correction_2(enzyme_efficiencies,
     enzyme_efficiencies_out=enzyme_efficiencies.copy() 
     for enzyme in enzyme_regression_results.keys():
         correction_coeff=numpy.power(enzyme_regression_results[enzyme]['Regression_coefficient'],1/n_th_root_mispred)
-        if enzyme in enzyme_efficiencies_out["Enzyme_ID"]:
+        if enzyme in enzyme_efficiencies["Enzyme_ID"]:
             old_kapp=enzyme_efficiencies.loc[enzyme_efficiencies["Enzyme_ID"]==enzyme,"Kapp"].values[0]
             new_kapp=old_kapp*correction_coeff
             if numpy.isfinite(new_kapp):
@@ -2715,34 +2719,35 @@ def efficiency_correction_2(enzyme_efficiencies,
                             continue
                     except:
                         continue
-                old_kapp=default_enzyme_efficiencies[efficiency_parameter]
-                new_kapp=old_kapp*correction_coeff
-                if numpy.isfinite(new_kapp):
-                    if tolerance is None:
-                        enzyme_efficiencies_out.loc[associated_reaction,"Kapp"]=new_kapp
-                        enzyme_efficiencies_out.loc[associated_reaction,"Enzyme_ID"]=enzyme
-                        enzyme_efficiencies_out.loc[associated_reaction,"Flux"]=flux_direction
-                        enzyme_efficiencies_out.loc[associated_reaction,"Comment"]="Corrected Default"
-
-                    else:
-                        if abs(numpy.log(tolerance)) <= abs(numpy.log(correction_coeff)):
+                if efficiency_parameter in default_enzyme_efficiencies.keys():
+                    old_kapp=default_enzyme_efficiencies[efficiency_parameter]
+                    new_kapp=old_kapp*correction_coeff
+                    if numpy.isfinite(new_kapp):
+                        if tolerance is None:
                             enzyme_efficiencies_out.loc[associated_reaction,"Kapp"]=new_kapp
                             enzyme_efficiencies_out.loc[associated_reaction,"Enzyme_ID"]=enzyme
                             enzyme_efficiencies_out.loc[associated_reaction,"Flux"]=flux_direction
                             enzyme_efficiencies_out.loc[associated_reaction,"Comment"]="Corrected Default"
 
+                        else:
+                            if abs(numpy.log(tolerance)) <= abs(numpy.log(correction_coeff)):
+                                enzyme_efficiencies_out.loc[associated_reaction,"Kapp"]=new_kapp
+                                enzyme_efficiencies_out.loc[associated_reaction,"Enzyme_ID"]=enzyme
+                                enzyme_efficiencies_out.loc[associated_reaction,"Flux"]=flux_direction
+                                enzyme_efficiencies_out.loc[associated_reaction,"Comment"]="Corrected Default"
+
     # 6. Apply coefficient_correction to all process_machineries
     process_efficiencies_out=process_efficiencies.copy()
     for process in process_machinery_regression_results.keys():
-        correction_coeff=numpy.power(process_machinery_regression_results[process]['Regression_coefficient'],1/n_th_root_mispred)
-        process_name=rba_session.get_process_information(process)['Name']
-        old_efficiency=process_efficiencies.loc[process_name,"Value"]
-        new_efficiency=old_efficiency*correction_coeff
-        if tolerance is None:
-            process_efficiencies_out.loc[process_name,"Value"]=new_efficiency
-        else:
-            if abs(numpy.log(tolerance)) <= abs(numpy.log(correction_coeff)):
-                process_efficiencies_out.loc[process_name,"Value"]=new_efficiency
+        if process in process_efficiencies.index:
+            correction_coeff=numpy.power(process_machinery_regression_results[process]['Regression_coefficient'],1/n_th_root_mispred)
+            old_efficiency=process_efficiencies.loc[process,"Value"]
+            new_efficiency=old_efficiency*correction_coeff
+            if tolerance is None:
+                process_efficiencies_out.loc[process,"Value"]=new_efficiency
+            else:
+                if abs(numpy.log(tolerance)) <= abs(numpy.log(correction_coeff)):
+                    process_efficiencies_out.loc[process,"Value"]=new_efficiency
 
     return({"Sum_of_squared_residuals":sum(squared_residuals),
             "Kapps":enzyme_efficiencies_out,
