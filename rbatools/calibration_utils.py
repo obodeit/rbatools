@@ -3096,6 +3096,7 @@ def calibration_workflow(proteome,
                                                                                chose_most_likely_isoreactions=enzyme_efficiency_estimation_settings['chose_most_likely_isoreactions'],
                                                                                impose_on_all_isoreactions=enzyme_efficiency_estimation_settings['impose_on_all_isoreactions'], 
                                                                                zero_on_all_isoreactions=enzyme_efficiency_estimation_settings['zero_on_all_isoreactions'],
+                                                                               #node_degree_identical_enzyme_network=0,
                                                                                node_degree_identical_enzyme_network=enzyme_efficiency_estimation_settings['node_degree_identical_enzyme_network'],
                                                                                impose_on_identical_enzymes=enzyme_efficiency_estimation_settings['impose_on_identical_enzymes'],
                                                                                condition=condition, 
@@ -3181,7 +3182,7 @@ def calibration_workflow(proteome,
                                                              results_to_look_up="Simulation_Results",
                                                              fixed_mu_when_above_target_mu_in_correction=correction_settings['fixed_growth_rate_global_scaling'],
                                                              n_th_root_mispred=1,
-                                                             print_outputs=False,
+                                                             print_outputs=True,
                                                              adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'])
 
             
@@ -3200,6 +3201,7 @@ def calibration_workflow(proteome,
                                                             condition_to_look_up="Prokaryotic",
                                                             default_enzyme_efficiencies=Default_Kapps,
                                                             tolerance=None,
+                                                            #tolerance=0.05,
                                                             n_th_root_mispred=1,
                                                             process_efficiencies=process_efficiencies,
                                                             correct_default_kapp_enzymes=True,
@@ -4058,7 +4060,7 @@ def determine_calibration_flux_distribution(rba_session,
         #original_density_constraint_signs=rba_session.Problem.get_constraint_types(constraints=[i for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names])
         original_medium = copy.deepcopy(rba_session.Medium)
         rba_session.set_medium({i:100.0 for i in original_medium.keys()})
-        #rba_session.Problem.set_constraint_types({i:"E" for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names})
+        rba_session.Problem.set_constraint_types({i:"E" for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names})
         derive_bm_from_rbasolution=False
         solved=rba_session.solve()
         if solved:
