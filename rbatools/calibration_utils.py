@@ -3081,14 +3081,32 @@ def calibration_workflow(proteome,
 
     process_efficiencies.to_csv("ProcEffsOrig_{}.csv".format(condition))
 
+
+    compartment_densities_and_PGs = extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=correction_results_compartement_sizes,
+                                                                                              rows_to_exclude=["Ribosomes","Total"]+[i for i in correction_results_compartement_sizes.index if i.startswith("pg_")])
     if use_mean_enzyme_composition_for_calibration:
         generate_mean_enzyme_composition_model(rba_session,condition)
 
     if spec_kapps is None:
-        flux_bounds_fba=flux_bounds_from_input(input=definition_file,rba_session=rba_session, condition=condition, specific_exchanges=None, specific_directions=None,also_consider_iso_enzmes=False)
+        ## new ##
+        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+            rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+            rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+
+        inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, 
+                                                 default_kapps=None, 
+                                                 process_efficiencies=process_efficiencies)
+        
+        flux_bounds_fba=flux_bounds_from_input(input=definition_file,
+                                               rba_session=rba_session, 
+                                               condition=condition, 
+                                               specific_exchanges=None, 
+                                               specific_directions=None,
+                                               also_consider_iso_enzmes=False)
+
         Specific_Kapps_Results = estimate_specific_enzyme_efficiencies(rba_session=rba_session, 
-                                                                               proteomicsData=build_input_proteome_for_specific_kapp_estimation(proteome, condition), 
-                                                                               flux_bounds=flux_bounds_fba, 
+                                                                       proteomicsData=build_input_proteome_for_specific_kapp_estimation(proteome, condition), 
+                                                                       flux_bounds=flux_bounds_fba, 
                                                                                mu=growth_rate_from_input(input=definition_file, condition=condition), 
                                                                                biomass_function=enzyme_efficiency_estimation_settings['biomass_function_in_model'], 
                                                                                target_biomass_function=enzyme_efficiency_estimation_settings['use_target_biomass_function'], 
@@ -3141,8 +3159,6 @@ def calibration_workflow(proteome,
             if rxn not in Exchanges_to_impose.keys():
                 Exchanges_to_impose.update({rxn:fba_flux_directions[rxn]})
         Exchanges_to_impose.update(fba_flux_directions)
-    compartment_densities_and_PGs = extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=correction_results_compartement_sizes,rows_to_exclude=["Ribosomes","Total"]+[i for i in correction_results_compartement_sizes.index if i.startswith("pg_")])
-
 
     Specific_Kapps_original=Specific_Kapps.copy()
     Default_Kapps_original=Default_Kapps.copy()
@@ -3182,7 +3198,7 @@ def calibration_workflow(proteome,
                                                              results_to_look_up="Simulation_Results",
                                                              fixed_mu_when_above_target_mu_in_correction=correction_settings['fixed_growth_rate_global_scaling'],
                                                              n_th_root_mispred=1,
-                                                             print_outputs=True,
+                                                             print_outputs=False,
                                                              adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'])
 
             
@@ -4057,16 +4073,18 @@ def determine_calibration_flux_distribution(rba_session,
     rba_session.add_exchange_reactions()
     rba_session.set_growth_rate(mu)
     if target_biomass_function:
-        #original_density_constraint_signs=rba_session.Problem.get_constraint_types(constraints=[i for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names])
+        derive_bm_from_rbasolution=False
         original_medium = copy.deepcopy(rba_session.Medium)
         rba_session.set_medium({i:100.0 for i in original_medium.keys()})
+        original_density_constraint_signs=rba_session.Problem.get_constraint_types(constraints=[i for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names])
         rba_session.Problem.set_constraint_types({i:"E" for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names})
-        derive_bm_from_rbasolution=False
         solved=rba_session.solve()
         if solved:
+            print("Solution with equality density successfully obtained")
             derive_bm_from_rbasolution=True
         else:
-            #rba_session.Problem.set_constraint_types(original_density_constraint_signs)
+            print("Solution with equality density not obtained")
+            rba_session.Problem.set_constraint_types(original_density_constraint_signs)
             solved2=rba_session.solve()
             if solved2:
                 derive_bm_from_rbasolution=True
