@@ -4075,7 +4075,7 @@ def determine_calibration_flux_distribution(rba_session,
     if target_biomass_function:
         derive_bm_from_rbasolution=False
         original_medium = copy.deepcopy(rba_session.Medium)
-        rba_session.set_medium({i:100.0 for i in original_medium.keys()})
+        #rba_session.set_medium({i:100.0 for i in original_medium.keys()})
         original_density_constraint_signs=rba_session.Problem.get_constraint_types(constraints=[i for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names])
         rba_session.Problem.set_constraint_types({i:"E" for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names})
         solved=rba_session.solve()
@@ -4089,7 +4089,8 @@ def determine_calibration_flux_distribution(rba_session,
             if solved2:
                 derive_bm_from_rbasolution=True
         rba_session.set_medium(original_medium)
-        rba_session.build_fba_model(rba_derived_biomass_function=True,from_rba_solution=derive_bm_from_rbasolution)
+        rba_session.build_fba_model(rba_derived_biomass_function=True,
+                                    from_rba_solution=derive_bm_from_rbasolution)
         BMfunction = 'R_BIOMASS_targetsRBA'
     else:
         rba_session.build_fba_model(rba_derived_biomass_function=False)
