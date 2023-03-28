@@ -3028,6 +3028,7 @@ def calibration_workflow(proteome,
     
     correction_settings=machinery_efficiency_correction_settings_from_input(input=definition_file, condition=condition)
     enzyme_efficiency_estimation_settings=enzyme_efficiency_estimation_settings_from_input(input=definition_file, condition=condition)
+    #rRNA_mRNA_weight_ratio
     t0 = time.time()
     correction_results_compartement_sizes = correction_pipeline(input=proteome,
                                              condition=condition,
@@ -3101,7 +3102,8 @@ def calibration_workflow(proteome,
                                                                        flux_bounds=flux_bounds_fba, 
                                                                                mu=growth_rate_from_input(input=definition_file, condition=condition), 
                                                                                biomass_function=enzyme_efficiency_estimation_settings['biomass_function_in_model'], 
-                                                                               target_biomass_function=enzyme_efficiency_estimation_settings['use_target_biomass_function'], 
+                                                                               target_biomass_function=enzyme_efficiency_estimation_settings['use_target_biomass_function'],
+                                                                               #rRNA_mRNA_weight_ratio=enzyme_efficiency_estimation_settings['rRNA_mRNA_weight_ratio'],
                                                                                parsimonious_fba=enzyme_efficiency_estimation_settings['parsimonious_fba'], 
                                                                                chose_most_likely_isoreactions=enzyme_efficiency_estimation_settings['chose_most_likely_isoreactions'],
                                                                                impose_on_all_isoreactions=enzyme_efficiency_estimation_settings['impose_on_all_isoreactions'], 
@@ -3447,6 +3449,12 @@ def machinery_efficiency_correction_settings_from_input(input, condition):
 
 def enzyme_efficiency_estimation_settings_from_input(input, condition):
     out={}
+    out['rRNA_mRNA_weight_ratio']=16.6
+    if 'rRNA_mRNA_weight_ratio' in list(input['Type']):
+        value=input.loc[input['Type'] == 'rRNA_mRNA_weight_ratio', condition].values[0]
+        if numpy.isfinite(value):
+            out['rRNA_mRNA_weight_ratio']=float(value)
+
     out['use_target_biomass_function']=True
     if 'RBA_derived_biomass_function' in list(input['Type']):
         value=input.loc[input['Type'] == 'RBA_derived_biomass_function', condition].values[0]
@@ -4051,6 +4059,78 @@ def sample_copy_numbers_from_residuals_quantiles(Input_data,replicate_cols,mean_
     out["Mean_of_log_samples"]=out.loc[:,[col for col in out.columns if col.startswith("MeanSampleLog__run_")]].mean(axis=1)
     return(out2)
 
+"""
+def determine_calibration_flux_distribution_2(rba_session,
+                                            mu,
+                                            flux_bounds,
+                                            biomass_function,
+                                            target_biomass_function,
+                                            rRNA_mRNA_weight_ratio,
+                                            parsimonious_fba,
+                                            rxns_to_ignore_when_parsimonious
+                                            ):
+    rba_session.rebuild_from_model()
+    rba_session.set_medium(rba_session.Medium)
+    rba_session.add_exchange_reactions()
+    rba_session.set_growth_rate(mu)
+    if target_biomass_function:
+        rba_session.build_fba_model(rba_derived_biomass_function=True,from_rba_solution=False,from_targets=True)
+        BMfunction = 'R_BIOMASS_targetsRBA'
+    else:
+        rba_session.build_fba_model(rba_derived_biomass_function=False)
+        BMfunction = biomass_function
+
+    for j in [i for i in rba_session.Medium.keys() if rba_session.Medium[i] == 0]:
+        Exrxn = 'R_EX_'+j.split('M_')[-1]+'_e'
+        if Exrxn in list(rba_session.FBA.LP.col_names):
+            rba_session.FBA.set_ub({Exrxn: 0})
+
+    rxn_LBs = {}
+    rxn_UBs = {}
+    for rx in flux_bounds['Reaction_ID']:
+        lb = flux_bounds.loc[flux_bounds['Reaction_ID'] == rx, 'LB'].values[0]
+        ub = flux_bounds.loc[flux_bounds['Reaction_ID'] == rx, 'UB'].values[0]
+        if not pandas.isna(lb):
+            rxn_LBs.update({rx: lb})
+            #rba_session.FBA.set_lb({rx: lb})
+        if not pandas.isna(ub):
+            rxn_UBs.update({rx: ub})
+            #rba_session.FBA.set_ub({rx: ub})
+    rba_session.FBA.set_ub(rxn_UBs)
+    rba_session.FBA.set_lb(rxn_LBs)
+
+    rba_session.FBA.clear_objective()
+
+    rba_session.FBA.set_objective({BMfunction: -1})
+
+    rba_session.FBA.solve_lp()
+    if rba_session.FBA.Solved:
+        BMfluxOld = rba_session.FBA.SolutionValues[BMfunction]
+    else:
+        rba_session.FBA.clear_objective()
+        rba_session.FBA.set_objective({BMfunction: -1.0})
+        rba_session.FBA.set_lb({BMfunction:0.0})
+        rba_session.FBA.solve_lp()
+        BMfluxOld = rba_session.FBA.SolutionValues[BMfunction]
+
+    if parsimonious_fba:
+        rba_session.FBA.parsimonise(rxns_to_ignore_in_objective=rxns_to_ignore_when_parsimonious)
+        rba_session.FBA.set_lb(rxn_LBs)
+        rba_session.FBA.set_ub(rxn_UBs)
+        rba_session.FBA.set_lb({BMfunction: BMfluxOld})
+        rba_session.FBA.set_ub({BMfunction: BMfluxOld})
+        rba_session.FBA.solve_lp()
+
+    fba_solution=rba_session.FBA.SolutionValues
+    FluxDistribution = pandas.DataFrame()
+    for rxn in fba_solution.keys():
+        if rxn.startswith("Backward_"):
+            FluxDistribution.loc[rxn.split("Backward_")[1],'FluxValues']=-rba_session.FBA.SolutionValues[rxn]
+        else:
+            FluxDistribution.loc[rxn,'FluxValues']=rba_session.FBA.SolutionValues[rxn]
+    return(FluxDistribution)
+
+"""
 
 def determine_calibration_flux_distribution(rba_session,
                                             mu,
@@ -4249,6 +4329,7 @@ def estimate_specific_enzyme_efficiencies(rba_session,
                                           mu, 
                                           biomass_function=None, 
                                           target_biomass_function=True, 
+                                          #rRNA_mRNA_weight_ratio=None,
                                           parsimonious_fba=True, 
                                           chose_most_likely_isoreactions=False,
                                           impose_on_all_isoreactions=True, 
