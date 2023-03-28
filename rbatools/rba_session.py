@@ -1981,6 +1981,27 @@ class SessionRBA(object):
                 if rhs[metabolite]!=0:
                     out.loc[metabolite,"Metabolite"] = metabolite
                     out.loc[metabolite,"Coefficient"] = -rhs[metabolite]
+            for target in self.get_targets():
+                target_info=self.get_target_information(target=target)
+                if (target_info["Group"]=="maintenance_atp_target") and (target_info["Type"]=="reaction_fluxes"):
+                    reaction=target_info["TargetEntity"]
+                    bound_type=target_info["TargetConstraint"]
+                    if bound_type=="UpperBound":
+                        flux_value=self.Problem.get_ub(variables = reaction)[reaction]
+                    else:
+                        flux_value=self.Problem.get_lb(variables = reaction)[reaction]
+                    reaction_reactants=self.get_reaction_information(reaction=reaction)["Reactants"]
+                    reaction_products=self.get_reaction_information(reaction=reaction)["Products"]
+                    for reactant in reaction_reactants.keys():
+                        if reactant in out["Metabolite"]:
+                            out.loc[reactant,"Coefficient"] -= reaction_reactants[reactant]*flux_value
+                        else:
+                            out.loc[reactant,"Coefficient"] = reaction_reactants[reactant]*flux_value
+                    for product in reaction_products.keys():
+                        if product in out["Metabolite"]:
+                            out.loc[product,"Coefficient"] += reaction_products[product]*flux_value
+                        else:
+                            out.loc[product,"Coefficient"] += reaction_products[product]*flux_value
         else:
             metabolite_constraints=[self.get_metabolite_constraint_information(metabolite_constraint=i)['AssociatedMetabolite'] for i in self.get_metabolite_constraints()]
             metabolite_rhs=self.Problem.get_right_hand_side(constraints = metabolite_constraints)
