@@ -1933,7 +1933,7 @@ class SessionRBA(object):
         if rebuild_model:
             self.rebuild_from_model()
 
-    def derive_current_biomass_function(self,from_rba_solution=False) -> pandas.core.frame.DataFrame:
+    def derive_current_biomass_function(self,from_rba_solution=False,from_targets=True) -> pandas.core.frame.DataFrame:
         """
         Returns a biomass-function, corresponding to the currently imposed biomass composition in the RBA-model.
         (Since biomass composition is growth-rate dependent, it changes when other growth-rates are set.)
@@ -1973,6 +1973,14 @@ class SessionRBA(object):
                         out.loc[metabolite,"Coefficient"] = -Metabolite_net_productions[metabolite]
             else:
                 raise Exception('No solution to obtain biomass composition for')
+        elif from_targets:
+            metabolite_constraints=[self.get_metabolite_constraint_information(metabolite_constraint=i)['AssociatedMetabolite'] for i in self.get_metabolite_constraints()]
+            rhs=self.Problem.get_right_hand_side(constraints = metabolite_constraints)
+            out=pandas.DataFrame()
+            for metabolite in rhs.keys():
+                if rhs[row]!=0:
+                    out.loc[metabolite,"Metabolite"] = metabolite
+                    out.loc[metabolite,"Coefficient"] = -rhs[metabolite]
         else:
             metabolite_constraints=[self.get_metabolite_constraint_information(metabolite_constraint=i)['AssociatedMetabolite'] for i in self.get_metabolite_constraints()]
             metabolite_rhs=self.Problem.get_right_hand_side(constraints = metabolite_constraints)
@@ -2073,10 +2081,11 @@ class SessionRBA(object):
                                                     out.loc[product,"Coefficient"] += component_products[product]*demanded_concentration_of_nonprotein_component
                                                 else:
                                                     out.loc[product,"Coefficient"] += component_products[product]*demanded_concentration_of_nonprotein_component
-        out["Coefficient"]/=self.Mu
+            out["Coefficient"]/=self.Mu
+        
         return(out)
 
-    def build_fba_model(self,rba_derived_biomass_function=True,from_rba_solution=True):
+    def build_fba_model(self,rba_derived_biomass_function=True,from_rba_solution=True,from_targets=False):
         """
         Derives and constructs FBA-problem from the RBA-problem and stores the 
         rbatools.fba_problem.ProblemFBA object as attribute 'FBA'. 
@@ -2113,7 +2122,7 @@ class SessionRBA(object):
         row_namesNew = list(numpy.delete(RBAproblem.row_names, Rows2remove))
         row_signsNew = list(numpy.delete(RBAproblem.row_signs, Rows2remove))
         if rba_derived_biomass_function:
-            BMfunction=self.derive_current_biomass_function(from_rba_solution=from_rba_solution)
+            BMfunction=self.derive_current_biomass_function(from_rba_solution=from_rba_solution,from_targets=from_targets)
             col_namesNew.append('R_BIOMASS_targetsRBA')
             LBnew = numpy.append(LBnew, 0.0)
             UBnew = numpy.append(UBnew, 10000.0)
