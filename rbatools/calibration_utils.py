@@ -4161,7 +4161,8 @@ def determine_calibration_flux_distribution(rba_session,
             if solved2:
                 derive_bm_from_rbasolution=True
         rba_session.set_medium(original_medium)
-        rba_session.build_fba_model(rba_derived_biomass_function=True,from_rba_solution=derive_bm_from_rbasolution)
+        rba_session.build_fba_model(rba_derived_biomass_function=True,
+                                    from_rba_solution=derive_bm_from_rbasolution)
         BMfunction = 'R_BIOMASS_targetsRBA'
     else:
         rba_session.build_fba_model(rba_derived_biomass_function=False)
