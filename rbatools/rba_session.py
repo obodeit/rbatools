@@ -1978,7 +1978,7 @@ class SessionRBA(object):
             rhs=self.Problem.get_right_hand_side(constraints = metabolite_constraints)
             out=pandas.DataFrame()
             for metabolite in rhs.keys():
-                if rhs[row]!=0:
+                if rhs[metabolite]!=0:
                     out.loc[metabolite,"Metabolite"] = metabolite
                     out.loc[metabolite,"Coefficient"] = -rhs[metabolite]
         else:
