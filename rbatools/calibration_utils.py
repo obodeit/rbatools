@@ -3088,14 +3088,6 @@ def calibration_workflow(proteome,
         generate_mean_enzyme_composition_model(rba_session,condition)
 
     if spec_kapps is None:
-        ## new ##
-        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
-            rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
-            rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
-
-        inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, 
-                                                 default_kapps=None, 
-                                                 process_efficiencies=process_efficiencies)
         
         flux_bounds_fba=flux_bounds_from_input(input=definition_file,
                                                rba_session=rba_session, 
@@ -4075,7 +4067,7 @@ def determine_calibration_flux_distribution(rba_session,
     if target_biomass_function:
         derive_bm_from_rbasolution=False
         original_medium = copy.deepcopy(rba_session.Medium)
-        rba_session.set_medium({i:100.0 for i in original_medium.keys()})
+        #rba_session.set_medium({i:100.0 for i in original_medium.keys()})
         original_density_constraint_signs=rba_session.Problem.get_constraint_types(constraints=[i for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names])
         rba_session.Problem.set_constraint_types({i:"E" for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names})
         solved=rba_session.solve()
