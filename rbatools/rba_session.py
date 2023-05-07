@@ -2168,3 +2168,82 @@ class SessionRBA(object):
         LP1.load_matrix(Matrix1)
         self.FBA = ProblemFBA(LP1)
 
+#    def make_euk(self):
+
+        ### with adapted xml ###
+#        Requirements:
+#            - total density parameter in parameters.xml
+#            - PG-fraction parameter in parameters.xml
+#            - zero parameter in parameters.xml
+#            - PG-protein process for each translation target protein with capacity zero-param in processes.xml
+
+#       1: update matrix for each compartment (density_constraint,added_pg_machinery):0
+
+#       4: make fundamental euk-constraints
+#           for compartment:
+
+#               update matrix (density_constraint,added_pg_machinery):0
+#                    col_names=['added_pg_machinery...'],
+#                    row_names['..._density'],
+#                    coeff:{'..._density':{'added_pg_machinery...':0}},
+#                    RHS:None
+
+#               update density constraint, according to constraint_type C^1     
+#                    col_names=['non_pg_density_...'],
+#                    row_names['..._density'],
+#                    coeff:{'..._density':{'non_pg_density_...':-1}},
+#                    RHS:=0
+
+#               add pg_density constraint, according to constraint_type C^2
+#                    col_names=['added_pg_machinery_...','pg_density_...'],
+#                    row_names['..._density_pg'],
+#                    coeff:{'..._density_pg':{'added_pg_machinery_...':length_pg_protein,'pg_density_...':-1}},
+#                    RHS:=0
+
+#               add total_density constraint, according to constraint_type C^3
+#                    col_names=['non_pg_density_...','pg_density_...','total_density_...'],
+#                    row_names['..._density_total'],
+#                    coeff:{'..._density_total':{'non_pg_density_...':1,'pg_density_...':1,'total_density_...':-1}},
+#                    RHS:=0
+
+#               impose pg-ratio, according to constraint_type C^4
+#                    col_names=['pg_density_...','total_density_...'],
+#                    row_names['..._pg_fraction'],
+#                    coeff:{'..._pg_fraction':{'pg_density_...':1,'total_density_...':-PG_FRACTION_PARAM(mu)}},
+#                    RHS:=0
+
+#           add total protein constraint, according to constraint_type C^5
+#                    col_names=[total_density_... for ... in compartments],
+#                    row_names['global_density'],
+#                    coeff:{'global_density':{...:1 for ... in in compartments}},
+#                    RHS: = / <= GLOBAL_DENSITY_PARAM(mu) 
+
+
+
+        ### from xml ###
+#       1: determine global density parameter:
+#          total density = sum of all density parameter functions
+            
+#       2: for compartment:
+#            record pg_target param -ok
+#            record pg_target species -ok
+#            record length of pg_target species protein -ok
+#            add enzyme or process machinery with composition pg_target species:1
+#            remove pg_target
+#            calculate and record pg-fraction:
+#               (pg_target param function/density parameter function) * length of pg_target species protein
+#            add pg-fraction parameter
+
+#       reload from model
+
+#       3: update matrix for each compartment (density_constraint,added_pg_machinery):0
+
+#       4: make fundamental euk-constraints
+#           for compartment:
+#               update density constraint, according to constraint_type C^1     
+#               add pg_density constraint, according to constraint_type C^2
+#               add total_density constraint, according to constraint_type C^3
+#               impose pg-ratio, according to constraint_type C^4
+#           add total protein constraint, according to constraint_type C^5
+        
+#       5: optinally add comp-ratio constraints
