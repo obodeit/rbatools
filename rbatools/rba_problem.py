@@ -302,16 +302,16 @@ class ProblemRBA(object):
         if ModifiedProblem:
             for i in list(self.MuDependencies['FromParameters']['b'].keys()):
                 newPar = self.evaluate_parameter(self.MuDependencies['FromParameters']['b'][i])
-                self.set_right_hand_side({i: newPar})
+                self.set_right_hand_side({self.MuDependencies['FromParameters']['b'][i]['Coefficient']: newPar})
             for i in list(self.MuDependencies['FromParameters']['A'].keys()):
                 newPar = self.evaluate_parameter(self.MuDependencies['FromParameters']['A'][i])
-                self.set_problem_coefficients({i: newPar})
+                self.set_problem_coefficients({self.MuDependencies['FromParameters']['A'][i]['Coefficient']: newPar})
             for i in list(self.MuDependencies['FromParameters']['LB'].keys()):
                 newPar = self.evaluate_parameter(self.MuDependencies['FromParameters']['LB'][i])
-                self.set_lb({i: newPar})
+                self.set_lb({self.MuDependencies['FromParameters']['LB'][i]['Coefficient']: newPar})
             for i in list(self.MuDependencies['FromParameters']['UB'].keys()):
                 newPar = self.evaluate_parameter(self.MuDependencies['FromParameters']['UB'][i])
-                self.set_ub({i: newPar})
+                self.set_ub({self.MuDependencies['FromParameters']['UB'][i]['Coefficient']: newPar})
 
     def set_growth_rate(self, Mu: float, ModelStructure, keepParameters: dict = {}):
         """
@@ -634,6 +634,6 @@ class ProblemRBA(object):
         if type(definition) == str:
             return(self.ClassicRBAmatrix._blocks.parameters.__getitem__(definition).value)
         elif type(definition) == dict:
-            variables = {i: self.ClassicRBAmatrix._blocks.parameters.__getitem__(
-                i).value for i in definition['Variables']}
-            return(eval(str(definition['Equation']), variables))
+            variables_to_evaluate = {i: self.ClassicRBAmatrix._blocks.parameters.__getitem__(i).value for i in [j for j in definition['Variables'] if j not in ['growth_rate']]}
+            variables_to_evaluate.update({'growth_rate':self.Mu})
+            return(eval(str(definition['Equation']), variables_to_evaluate))
