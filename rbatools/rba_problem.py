@@ -336,12 +336,12 @@ class ProblemRBA(object):
             Default: keepParameters=None
         """
 
-        self.Mu = float(Mu)
+        self.Mu = numpy.float64(Mu)
         NumberParDeps=len(ModelStructure.MuDependencies)
         if self.LP.row_names == self.ClassicRBAmatrix.row_names and self.LP.col_names == self.ClassicRBAmatrix.col_names and self.classicRBA and NumberParDeps == 0:
-            self.update_growth_rate(Mu=float(Mu), keepParameters=keepParameters, ModifiedProblem=False)
+            self.update_growth_rate(Mu=numpy.float64(Mu), keepParameters=keepParameters, ModifiedProblem=False)
         else:
-            self.update_growth_rate(Mu=float(Mu), keepParameters=keepParameters, ModifiedProblem=True)
+            self.update_growth_rate(Mu=numpy.float64(Mu), keepParameters=keepParameters, ModifiedProblem=True)
 
     def get_constraint_types(self, constraints: Union[list,str] = []) -> dict:
         """
@@ -423,13 +423,13 @@ class ProblemRBA(object):
             ({'col1':42,'col2':9000, ...}).
         """
         ##Update in cplex.Cplex LP##
-        self.LP.set_objective(inputDict={i:inputDict[i] for i in inputDict.keys() if numpy.isfinite(inputDict[i])})
+        self.LP.set_objective(inputDict={i:numpy.float64(inputDict[i]) for i in inputDict.keys() if numpy.isfinite(inputDict[i])})
 
     def clear_objective(self):
         """
         Sets all coefficients of the objective function to zero.
         """
-        self.LP.set_objective(inputDict=dict(zip(self.LP.col_names,[0.0]*len(self.LP.col_names))))
+        self.LP.set_objective(inputDict=dict(zip(self.LP.col_names,[numpy.float64(0.0)]*len(self.LP.col_names))))
 
     def invert_objective(self):
         """
@@ -476,7 +476,7 @@ class ProblemRBA(object):
             Dictionary with constraint-IDs as keys and new numeric values as values.
             ({'row1':42,'row2':9000, ...}).
         """
-        self.LP.set_right_hand_side(inputDict={i:inputDict[i] for i in inputDict.keys() if numpy.isfinite(inputDict[i])})
+        self.LP.set_right_hand_side(inputDict={i:numpy.float64(inputDict[i]) for i in inputDict.keys() if numpy.isfinite(inputDict[i])})
 
     def calculate_left_hand_side(self, constraints:Union[list,str] = []) -> dict:
         """
@@ -546,7 +546,7 @@ class ProblemRBA(object):
             and new numeric values as values.
             ({('row1','col1'):42,('row2','col2'):9000, ...}).
         """
-        self.LP.set_problem_coefficients(input={(self.LP.row_indices_map[i[0]],self.LP.col_indices_map[i[1]]):inputDict[i] for i in inputDict.keys()})
+        self.LP.set_problem_coefficients(input={(self.LP.row_indices_map[i[0]],self.LP.col_indices_map[i[1]]):numpy.float64(inputDict[i]) for i in inputDict.keys()})
 
     def get_ub(self, variables: Union[list,str] = []) -> dict:
         """
@@ -615,7 +615,7 @@ class ProblemRBA(object):
             ({'col1':42,'col2':9000, ...}).
         """
 
-        self.LP.set_lb(inputDict={i:inputDict[i] for i in inputDict.keys() if numpy.isfinite(inputDict[i])})
+        self.LP.set_lb(inputDict={i:numpy.float64(inputDict[i]) for i in inputDict.keys() if numpy.isfinite(inputDict[i])})
 
     def set_ub(self, inputDict: dict):
         """
@@ -628,12 +628,12 @@ class ProblemRBA(object):
             ({'col1':42,'col2':9000, ...}).
         """
         ##Update in cplex.Cplex LP##
-        self.LP.set_ub(inputDict={i:inputDict[i] for i in inputDict.keys() if numpy.isfinite(inputDict[i])})
+        self.LP.set_ub(inputDict={i:numpy.float64(inputDict[i]) for i in inputDict.keys() if numpy.isfinite(inputDict[i])})
 
     def evaluate_parameter(self, definition):
         if type(definition) == str:
             return(self.ClassicRBAmatrix._blocks.parameters.__getitem__(definition).value)
         elif type(definition) == dict:
-            variables_to_evaluate = {i: self.ClassicRBAmatrix._blocks.parameters.__getitem__(i).value for i in [j for j in definition['Variables'] if j not in ['growth_rate']]}
-            variables_to_evaluate.update({'growth_rate':self.Mu})
-            return(eval(str(definition['Equation']), variables_to_evaluate))
+            variables_to_evaluate = {i: numpy.float64(self.ClassicRBAmatrix._blocks.parameters.__getitem__(i).value) for i in [j for j in definition['Variables'] if j not in ['growth_rate']] }
+            variables_to_evaluate.update({'growth_rate':numpy.float64(self.Mu)})
+            return(round(numpy.float64(eval(str(definition['Equation']), variables_to_evaluate)),15))
