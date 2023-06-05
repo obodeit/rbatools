@@ -2220,7 +2220,7 @@ class SessionRBA(object):
         matrix_to_add.row_names=list(list(density_constraints)+['global_density'])
         matrix_to_add.col_names=['f_{}'.format(i) for i in compartments]
         matrix_to_add.b=numpy.array(list(list([0.0]*(len(compartments)))+[1.0])).astype('float64')
-        matrix_to_add.row_signs=list(['E']*len(density_constraints)+['E'])
+        matrix_to_add.row_signs=list(['L']*len(density_constraints)+['E'])
         matrix_to_add.LB=numpy.array(list([0.0]*len(compartments))).astype('float64')
         matrix_to_add.UB=numpy.array(list([1.0]*len(compartments))).astype('float64')
         matrix_to_add.f=numpy.array(list([0.0]*len(compartments))).astype('float64')
@@ -2332,7 +2332,7 @@ class SessionRBA(object):
         matrix_to_add.row_names=list(list(density_constraints)+['global_density'])
         matrix_to_add.col_names=['f_{}'.format(i) for i in compartments]
         matrix_to_add.b=numpy.array(list(list([0.0]*(len(compartments)))+[1.0])).astype('float64')
-        matrix_to_add.row_signs=list(['E']*len(density_constraints)+['E'])
+        matrix_to_add.row_signs=list(['L']*len(density_constraints)+['E'])
         matrix_to_add.LB=numpy.array(list([0.0]*len(compartments))).astype('float64')
         matrix_to_add.UB=numpy.array(list([1.0]*len(compartments))).astype('float64')
         matrix_to_add.f=numpy.array(list([0.0]*len(compartments))).astype('float64')
@@ -2349,12 +2349,12 @@ class SessionRBA(object):
         self.Problem.LP.add_matrix(matrix=matrix_to_add)
 
         # add parameter definitions
-        self.Problem.MuDependencies['FromParameters']['A'].update({'Non_PG_Cytoplasm':
+        self.Problem.MuDependencies['FromParameters']['A'].update({'Non_PG_Cytoplasm_M':
                                                                     {'Coefficient':('M_precursor_c' , 'f_Cytoplasm'),
                                                                      'Equation':'-2.0*growth_rate',
                                                                      'Variables': ['growth_rate']},
                                                                   })
-        self.Problem.MuDependencies['FromParameters']['A'].update({'Non_PG_Cytoplasm':
+        self.Problem.MuDependencies['FromParameters']['A'].update({'Non_PG_Cytoplasm_TA':
                                                                     {'Coefficient':('P_TA_capacity' , 'f_Cytoplasm'),
                                                                      'Equation':'2.0*growth_rate',
                                                                      'Variables': ['growth_rate']},
