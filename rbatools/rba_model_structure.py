@@ -103,9 +103,6 @@ class ModelStructureRBA(object):
             model = RbaModel.from_xml(xml_dir)
         else:
             model=rba_model
-        Zero_matrix = ConstraintMatrix(model)
-        Zero_matrix.build_matrices(0)
-        constraints = _sort_constraints(Zero_matrix, model)
 
         MetaboliteInfo = MetaboliteBlock()
         ModuleInfo = ModuleBlock()
@@ -127,35 +124,44 @@ class ModelStructureRBA(object):
         MacromoleculeInfo.from_files(model)
         CompartmentInfo.from_files(model, Info)
 
+        self.GeneralInfo = DescriptionBlock()
+        self.GeneralInfo.from_files(Info)
+
         self.MetaboliteConstraintsInfo = MetaboliteConstraintBlock()
         self.DensityConstraintsInfo = DensityConstraintBlock()
         self.ProcessConstraintsInfo = ProcessConstraintBlock()
         self.EnzymeConstraintsInfo = EnzymeConstraintBlock()
+        try:
+            Zero_matrix = ConstraintMatrix(model)
+            Zero_matrix.build_matrices(0)
+            constraints = _sort_constraints(Zero_matrix, model)
 
-        self.MetaboliteConstraintsInfo.from_files(constraints, Zero_matrix)
-        self.DensityConstraintsInfo.from_files(model, constraints, Zero_matrix)
-        self.ProcessConstraintsInfo.from_files(model, constraints, Zero_matrix)
-        self.EnzymeConstraintsInfo.from_files(model, constraints, Zero_matrix)
+            self.MetaboliteConstraintsInfo.from_files(constraints, Zero_matrix)
+            self.DensityConstraintsInfo.from_files(model, constraints, Zero_matrix)
+            self.ProcessConstraintsInfo.from_files(model, constraints, Zero_matrix)
+            self.EnzymeConstraintsInfo.from_files(model, constraints, Zero_matrix)
 
-        self.GeneralInfo = DescriptionBlock()
-        self.GeneralInfo.from_files(Info)
-
-        for constraint in self.MetaboliteConstraintsInfo.Elements.keys():
-            MetaboliteInfo.Elements[self.MetaboliteConstraintsInfo.Elements[constraint]['AssociatedMetabolite']]['MassBalance_Constraint']=self.MetaboliteConstraintsInfo.Elements[constraint]['ID']
-        for constraint in self.DensityConstraintsInfo.Elements.keys():
-            CompartmentInfo.Elements[self.DensityConstraintsInfo.Elements[constraint]['AssociatedCompartment']]['Capacity_Constraint']=constraint
-        for constraint in self.ProcessConstraintsInfo.Elements.keys():
-            for i in list(ProcessInfo.Elements.keys()):
-                if ProcessInfo.Elements[i]['ID']==self.ProcessConstraintsInfo.Elements[constraint]['AssociatedProcessID']:
-                    ProcessInfo.Elements[i]['Capacity_Constraint']=constraint
-                    self.ProcessConstraintsInfo.Elements[constraint]['AssociatedProcess']=i
-        for constraint in self.EnzymeConstraintsInfo.Elements.keys():
-            dir=self.EnzymeConstraintsInfo.Elements[constraint]['Direction']
-            enz=self.EnzymeConstraintsInfo.Elements[constraint]['AssociatedEnzyme']
-            if dir == 'forward':
-                EnzymeInfo.Elements[enz]['ForwardCapacity_Constraint']=constraint
-            elif dir == 'backward':
-                EnzymeInfo.Elements[enz]['BackwardCapacity_Constraint']=constraint
+            for constraint in self.MetaboliteConstraintsInfo.Elements.keys():
+                MetaboliteInfo.Elements[self.MetaboliteConstraintsInfo.Elements[constraint]['AssociatedMetabolite']]['MassBalance_Constraint']=self.MetaboliteConstraintsInfo.Elements[constraint]['ID']
+            for constraint in self.DensityConstraintsInfo.Elements.keys():
+                CompartmentInfo.Elements[self.DensityConstraintsInfo.Elements[constraint]['AssociatedCompartment']]['Capacity_Constraint']=constraint
+            for constraint in self.ProcessConstraintsInfo.Elements.keys():
+                for i in list(ProcessInfo.Elements.keys()):
+                    if ProcessInfo.Elements[i]['ID']==self.ProcessConstraintsInfo.Elements[constraint]['AssociatedProcessID']:
+                        ProcessInfo.Elements[i]['Capacity_Constraint']=constraint
+                        self.ProcessConstraintsInfo.Elements[constraint]['AssociatedProcess']=i
+            for constraint in self.EnzymeConstraintsInfo.Elements.keys():
+                dir=self.EnzymeConstraintsInfo.Elements[constraint]['Direction']
+                enz=self.EnzymeConstraintsInfo.Elements[constraint]['AssociatedEnzyme']
+                if dir == 'forward':
+                    EnzymeInfo.Elements[enz]['ForwardCapacity_Constraint']=constraint
+                elif dir == 'backward':
+                    EnzymeInfo.Elements[enz]['BackwardCapacity_Constraint']=constraint
+        except:
+            self.MetaboliteConstraintsInfo.Elements={}
+            self.DensityConstraintsInfo.Elements={}
+            self.ProcessConstraintsInfo.Elements={}
+            self.EnzymeConstraintsInfo.Elements={}
 
         for target in TargetInfo.Elements.keys():
             target_species=TargetInfo.Elements[target]["TargetEntity"]
@@ -173,10 +179,14 @@ class ModelStructureRBA(object):
             ProteinInfo.Elements[protein]['associatedEnzymes'] = AssociatedEnzyme['Enz']
             ProteinInfo.Elements[protein]['associatedReactions'] = AssociatedEnzyme['Rx']
 
-        CB = ConstraintBlocks(model)
-        for enzyme in EnzymeInfo.Elements.keys():
-            EnzymeInfo.Elements[enzyme]['Isozymes'] = _find_iso_enzymes(
-                enzyme, CB, ReactionInfo.Elements, EnzymeInfo.Elements[enzyme]['Reaction'])
+        try:
+            CB = ConstraintBlocks(model)
+            for enzyme in EnzymeInfo.Elements.keys():
+                EnzymeInfo.Elements[enzyme]['Isozymes'] = _find_iso_enzymes(
+                    enzyme, CB, ReactionInfo.Elements, EnzymeInfo.Elements[enzyme]['Reaction'])
+        except:
+            for enzyme in EnzymeInfo.Elements.keys():
+                EnzymeInfo.Elements[enzyme]['Isozymes'] = []
 
         for rx in ReactionInfo.Elements.keys():
             if ReactionInfo.Elements[rx]['Enzyme'] is not '':
