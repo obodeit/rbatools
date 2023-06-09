@@ -903,27 +903,29 @@ def _generate_protein_gene_matrix(ModelStructure):
 
 def _generate_protein_matrix(ModelStructure):
     Proteins = list(ModelStructure.ProteinInfo.Elements.keys())
-    Processes = [ModelStructure.ProcessInfo.Elements[i]['ID'] +
-                 '_machinery' for i in list(ModelStructure.ProcessInfo.Elements.keys())]
+    Processes = [ModelStructure.ProcessInfo.Elements[i]['ID'] +'_machinery' for i in list(ModelStructure.ProcessInfo.Elements.keys())]
     Enzymes = list(ModelStructure.EnzymeInfo.Elements.keys())
     Consumers = list(set(list(Enzymes+Processes)))
     ProteinMatrix = numpy.zeros((len(Proteins), len(Consumers)))
     for p in Proteins:
         if len(ModelStructure.ProteinInfo.Elements[p]['SupportsProcess']) > 0:
             for pc in list(ModelStructure.ProteinInfo.Elements[p]['SupportsProcess']):
-                coeff = 0
-                row_ind = Proteins.index(p)
-                col_ind = Consumers.index(
-                    ModelStructure.ProcessInfo.Elements[pc]['ID']+'_machinery')
-                coeff = ModelStructure.ProcessInfo.Elements[pc]['Composition'][p]
-                ProteinMatrix[row_ind, col_ind] += coeff
+                try:
+                    row_ind = Proteins.index(p)
+                    col_ind = Consumers.index(ModelStructure.ProcessInfo.Elements[pc]['ID']+'_machinery')
+                    coeff = ModelStructure.ProcessInfo.Elements[pc]['Composition'][p]
+                    ProteinMatrix[row_ind, col_ind] += coeff
+                except:
+                    coeff = 0
         if len(ModelStructure.ProteinInfo.Elements[p]['associatedEnzymes']) > 0:
             for ez in list(ModelStructure.ProteinInfo.Elements[p]['associatedEnzymes']):
-                coeff = 0
-                row_ind = Proteins.index(p)
-                col_ind = Consumers.index(ez)
-                coeff = ModelStructure.EnzymeInfo.Elements[ez]['Subunits'][p]
-                ProteinMatrix[row_ind, col_ind] += coeff
+                try:
+                    row_ind = Proteins.index(p)
+                    col_ind = Consumers.index(ez)
+                    coeff = ModelStructure.EnzymeInfo.Elements[ez]['Subunits'][p]
+                    ProteinMatrix[row_ind, col_ind] += coeff
+                except:
+                    coeff = 0
     return({'Matrix': numpy.array(ProteinMatrix), 'Consumers': Consumers, 'Proteins': Proteins})
 
 
@@ -1035,7 +1037,7 @@ def _import_model_info(xml_dir,verbose=True):
         if list(out):
             if verbose:
                 print('WARNING: File "ModelInformation.csv" seems to be empty or has the wrong delimiter (comma required).')
-            return(pandas.DataFrame([['Name', 'ModelName'], ['Author', 'John Doe'], ['Organism', 'Life'], ['Reconstruction', 'GSMM'], ['SBML-file', 'Not Provided']], index=['Name', 'Author', 'Organism', 'Reconstruction', 'SBML-file'], columns=['Key', 'Value']))
+            return(pandas.DataFrame([['Name', 'ModelName'], ['Author', 'J. Doe'], ['Organism', 'Life'], ['Reconstruction', 'GSMM'], ['SBML-file', 'Not Provided']], index=['Name', 'Author', 'Organism', 'Reconstruction', 'SBML-file'], columns=['Key', 'Value']))
         return(out)
     elif os.path.isfile(str(xml_dir+'/data/ModelInformation.csv')):
         out = pandas.read_csv(str(xml_dir+'/data/ModelInformation.csv'),sep=',', header=0)
@@ -1043,12 +1045,12 @@ def _import_model_info(xml_dir,verbose=True):
         if list(out):
             if verbose:
                 print('WARNING: File "ModelInformation.csv" seems to be empty or has the wrong delimiter (comma required).')
-            return(pandas.DataFrame([['Name', 'ModelName'], ['Author', 'John Doe'], ['Organism', 'Life'], ['Reconstruction', 'GSMM'], ['SBML-file', 'Not Provided']], index=['Name', 'Author', 'Organism', 'Reconstruction', 'SBML-file'], columns=['Key', 'Value']))
+            return(pandas.DataFrame([['Name', 'ModelName'], ['Author', 'J. Doe'], ['Organism', 'Life'], ['Reconstruction', 'GSMM'], ['SBML-file', 'Not Provided']], index=['Name', 'Author', 'Organism', 'Reconstruction', 'SBML-file'], columns=['Key', 'Value']))
         return(out)
     else:
         if verbose:
             print('WARNING: No model-info file "ModelInformation.csv" provided.\n' + ' Using dummy-information\n')
-        return(pandas.DataFrame([['Name', 'ModelName'], ['Author', 'John Doe'], ['Organism', 'Life'], ['Reconstruction', 'GSMM'], ['SBML-file', 'Not Provided']], index=['Name', 'Author', 'Organism', 'Reconstruction', 'SBML-file'], columns=['Key', 'Value']))
+        return(pandas.DataFrame([['Name', 'ModelName'], ['Author', 'J. Doe'], ['Organism', 'Life'], ['Reconstruction', 'GSMM'], ['SBML-file', 'Not Provided']], index=['Name', 'Author', 'Organism', 'Reconstruction', 'SBML-file'], columns=['Key', 'Value']))
 
 
 def _generate_overview(StatsReactions, StatsMetabolites, StatsModules, StatsEnzymes, StatsProteins, StatsMacromolecules, StatsProcesses, StatsCompartments, StatsTargets, StatsConstraintsBiological, StatsConstraintsMathematical):
