@@ -681,8 +681,7 @@ class ModelStructureRBA(object):
         if add_links:
             for k in list(ProcessConstraintsBlock_forChanges.Elements.keys()):
                 oldComp = ProcessConstraintsBlock_forChanges.Elements[k]['AssociatedProcess']
-                ProcessConstraintsBlock_forChanges.Elements[k]['AssociatedProcess'] = '(!' + \
-                    'Process'+'/'+oldComp+'!)'
+                ProcessConstraintsBlock_forChanges.Elements[k]['AssociatedProcess'] = '(!' + 'Process'+'/'+oldComp+'!)'
 
         ProcessConstraintTable = ProcessConstraintsBlock_forChanges.to_sbtab(table_id='MachineryCapacityConstraint', table_type='Quantity', table_name='Machinery Capacity Constraints', Col_list=[
             'ID', 'AssociatedProcess', 'Type','CapacityParameterID', 'Generic parameter definition','Specific parameter definition'], NameList=['ID', 'Process', 'Type', 'CapacityParameter', 'Formula', 'Formula (parameterized)'])
