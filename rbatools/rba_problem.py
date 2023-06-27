@@ -300,18 +300,10 @@ class ProblemRBA(object):
                                  UBinds=UB_idxs,
                                  ModifiedProblem=True)
         if ModifiedProblem:
-            for i in list(self.MuDependencies['FromParameters']['b'].keys()):
-                newPar = self.evaluate_parameter(self.MuDependencies['FromParameters']['b'][i])
-                self.set_right_hand_side({self.MuDependencies['FromParameters']['b'][i]['Coefficient']: newPar})
-            for i in list(self.MuDependencies['FromParameters']['A'].keys()):
-                newPar = self.evaluate_parameter(self.MuDependencies['FromParameters']['A'][i])
-                self.set_problem_coefficients({self.MuDependencies['FromParameters']['A'][i]['Coefficient']: newPar})
-            for i in list(self.MuDependencies['FromParameters']['LB'].keys()):
-                newPar = self.evaluate_parameter(self.MuDependencies['FromParameters']['LB'][i])
-                self.set_lb({self.MuDependencies['FromParameters']['LB'][i]['Coefficient']: newPar})
-            for i in list(self.MuDependencies['FromParameters']['UB'].keys()):
-                newPar = self.evaluate_parameter(self.MuDependencies['FromParameters']['UB'][i])
-                self.set_ub({self.MuDependencies['FromParameters']['UB'][i]['Coefficient']: newPar})
+            self.set_right_hand_side({self.MuDependencies['FromParameters']['b'][i]['Coefficient']: self.evaluate_parameter(self.MuDependencies['FromParameters']['b'][i]) for i in list(self.MuDependencies['FromParameters']['b'].keys())})
+            self.set_problem_coefficients({self.MuDependencies['FromParameters']['A'][i]['Coefficient']: self.evaluate_parameter(self.MuDependencies['FromParameters']['A'][i]) for i in list(self.MuDependencies['FromParameters']['A'].keys())})
+            self.set_lb({self.MuDependencies['FromParameters']['LB'][i]['Coefficient']: self.evaluate_parameter(self.MuDependencies['FromParameters']['LB'][i]) for i in list(self.MuDependencies['FromParameters']['LB'].keys())})
+            self.set_ub({self.MuDependencies['FromParameters']['UB'][i]['Coefficient']: self.evaluate_parameter(self.MuDependencies['FromParameters']['UB'][i]) for i in list(self.MuDependencies['FromParameters']['UB'].keys())})
 
     def set_growth_rate(self, Mu: float, ModelStructure, keepParameters: dict = {}):
         """
@@ -636,4 +628,4 @@ class ProblemRBA(object):
         elif type(definition) == dict:
             variables_to_evaluate = {i: numpy.float64(self.ClassicRBAmatrix._blocks.parameters.__getitem__(i).value) for i in [j for j in definition['Variables'] if j not in ['growth_rate']] }
             variables_to_evaluate.update({'growth_rate':numpy.float64(self.Mu)})
-            return(round(numpy.float64(eval(str(definition['Equation']), variables_to_evaluate)),15))
+            return(numpy.float64(eval(str(definition['Equation']), variables_to_evaluate)))
