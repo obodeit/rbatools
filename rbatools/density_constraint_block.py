@@ -28,28 +28,26 @@ class DensityConstraintBlock(InformationBlock):
         self.Elements = {}
         for i in Cs['DensityConsts'].keys():
             index += 1
-            if matrix.row_signs[Cs['DensityConsts'][i]] == 'L':
-                cSign = '<='
-            if matrix.row_signs[Cs['DensityConsts'][i]] == 'E':
-                cSign = '='
             compartment = i.split('_density')[0]
             sizePar = _get_size_parameter(model, compartment)
-            ParsedParam=_auxiliary_functions.return_parameter_definition(model=model,parameter=sizePar)
-            Generic_Latex=""
-            Generic_Latex=""
+            ParsedParam=_auxiliary_functions.return_parameter_definition(model=model,parameter=sizePar[0])
             self.Elements[i] = {'ID': i,
                                 'AssociatedCompartment': compartment,
-#                                'index': index,
-                                'CapacityParameterID':sizePar,
-                                'CapacityParameter': ParsedParam[sizePar],
-                                'Generic parameter definition':ParsedParam[sizePar]["Generic_latex"],
-                                'Specific parameter definition':ParsedParam[sizePar]["Specific_latex"],
-                                'Type': cSign}
+                                'CapacityParameterID':sizePar[0],
+                                'CapacityParameter': ParsedParam[sizePar[0]],
+                                'Generic parameter definition':ParsedParam[sizePar[0]]["Generic_latex"],
+                                'Specific parameter definition':ParsedParam[sizePar[0]]["Specific_latex"],
+                                'Type': sizePar[1]}
 
 
 def _get_size_parameter(model, compartment):
     s = ''
     for c in model.density.target_densities._elements:
         if c.compartment==compartment:
-            s=c.upper_bound
-    return(s)
+            if c.upper_bound is not None:
+                s=c.upper_bound
+                sign='L'
+            elif c.value is not None:
+                s=c.value
+                sign='E'
+    return((s , sign))
