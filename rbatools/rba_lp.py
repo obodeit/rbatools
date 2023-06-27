@@ -476,6 +476,7 @@ class LinearProblem(ProblemMatrix):
             Constraint IDs as keys and constraint type as values
         """
         self._lp_solver.set_constraint_types(inputDict=inputDict)
+        self.row_signs=self._lp_solver.row_signs
 
     def get_objective(self, variables: list = []) -> dict:
         """
@@ -503,6 +504,7 @@ class LinearProblem(ProblemMatrix):
             Variable IDs as keys and objective coefficient as values
         """
         self._lp_solver.set_objective(inputDict=inputDict)
+        self.f=self._lp_solver.f
 
     def get_right_hand_side(self, constraints:list = []) -> dict:
         """
@@ -530,6 +532,7 @@ class LinearProblem(ProblemMatrix):
             Constraint IDs as keys and rhs-values as values.
         """
         self._lp_solver.set_right_hand_side(inputDict=inputDict)
+        self.b=self._lp_solver.b
 
     def get_problem_coefficients(self, inputTuples:list = []) -> dict:
         """
@@ -605,6 +608,7 @@ class LinearProblem(ProblemMatrix):
             Variable IDs as keys and lower bounds as values
         """
         self._lp_solver.set_lb(inputDict=inputDict)
+        self.LB=self._lp_solver.LB
 
     def set_ub(self, inputDict: dict):
         """
@@ -616,6 +620,7 @@ class LinearProblem(ProblemMatrix):
             Variable IDs as keys and upper bounds as values
         """
         self._lp_solver.set_ub(inputDict=inputDict)
+        self.UB=self._lp_solver.UB
 
 class _Solver(abc.ABC):
 
@@ -1183,9 +1188,11 @@ class _SolverCPLEX(_Solver):
         """
         if list(inputDict.keys()):
             ##Update in cplex.Cplex LP##
-            self.cplexLP.linear_constraints.set_rhs(list(zip(list(inputDict.keys()), [float(i) for i in list(inputDict.values())])))
+            self.cplexLP.linear_constraints.set_rhs([(i,numpy.float64(inputDict[i])) for i in list(inputDict.keys())])
+            #for i in inputDict.keys():
+            #    self.cplexLP.linear_constraints.set_rhs(i,numpy.float64(inputDict[i]))
             ##Transfer changes to rbatools.LP object##
-            self.b = self.cplexLP.linear_constraints.get_rhs()
+            self.b = numpy.array(self.cplexLP.linear_constraints.get_rhs())
 
     def set_problem_coefficients(self):
         """
