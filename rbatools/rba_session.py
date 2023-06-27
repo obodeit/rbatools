@@ -315,7 +315,7 @@ class SessionRBA(object):
         Mu : float
             Growth rate
         """
-        self.Problem.set_growth_rate(Mu=float(Mu), ModelStructure=self.ModelStructure)
+        self.Problem.set_growth_rate(Mu=float(Mu))
         self.Mu = float(Mu)
 
     def solve(self, run_name: str = 'DontSave', feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool = True) -> bool:
