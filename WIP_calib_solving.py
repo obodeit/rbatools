@@ -87,7 +87,7 @@ for condition in conditions:
 simulation_results_Js_imposed=[]
 for condition in conditions:
     flux_bounds_data=flux_bounds_from_input(input=Input_Data,rba_session=Simulation, condition=condition, specific_exchanges=None,specific_directions=[],also_consider_iso_enzmes=False)
-    list_of_rxns_to_impose=["R_EX_glc__D_e","R_EX_etoh_e","R_EX_ac_e","R_EX_glyc_e","R_EX_acald_e","R_EX_succ_e"]
+    list_of_rxns_to_impose=["R_EX_glc__D_e","R_EX_etoh_e","R_EX_ac_e","R_EX_glyc_e","R_EX_acald_e","R_EX_succ_e","R_EX_lac__D_e"]
     if len(list_of_rxns_to_impose)>0:
         Exchanges_to_impose={i:{"LB":flux_bounds_data.loc[i,"LB"],"UB":flux_bounds_data.loc[i,"UB"]} for i in list_of_rxns_to_impose if i in list(flux_bounds_data["Reaction_ID"])}
     else:

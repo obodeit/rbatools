@@ -22,13 +22,10 @@ def calibration(input_dict):
                                          PG_fractions=input_dict["PG_fractions"],
                                          transporter_multiplier=1,
                                          prelim_run=input_dict["preliminary_run"],
-                                         #Mu_approx_precision=  0.000000001,
-                                         Mu_approx_precision= 0.000001,
+                                         Mu_approx_precision=0.00001,
                                          feasible_stati=["optimal","feasible"],
-                                         #feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
                                          min_kapp=None,
                                          print_outputs=True,
-                                         use_mean_enzyme_composition_for_calibration=False,
                                          global_protein_scaling_coeff=1000/6.022e23)
     return({input_dict["condition"]:calib_results})
 
@@ -39,13 +36,17 @@ def generate_input_proteome(fold_changes,
                             conditions_in_fold_change_data_to_restore,
                             ID_column_in_restored_data,
                             full_annotations):
-    restored_relative_Data = infer_copy_numbers_from_reference_copy_numbers(fold_changes=fold_changes,
-                                                                        absolute_data=absolute_data,
-                                                                        matching_column_in_fold_change_data=matching_column_in_fold_change_data,
-                                                                        matching_column_in_absolute_data=matching_column_in_absolute_data,
-                                                                        conditions_in_fold_change_data_to_restore=conditions_in_fold_change_data_to_restore)
-    restored_relative_Data_with_annotations= add_annotations_to_proteome(input=restored_relative_Data, ID_column=ID_column_in_restored_data, annotations=full_annotations)
-    return(restored_relative_Data_with_annotations)
+    if fold_changes is not None:
+        restored_relative_Data = infer_copy_numbers_from_reference_copy_numbers(fold_changes=fold_changes,
+                                                                            absolute_data=absolute_data,
+                                                                            matching_column_in_fold_change_data=matching_column_in_fold_change_data,
+                                                                            matching_column_in_absolute_data=matching_column_in_absolute_data,
+                                                                            conditions_in_fold_change_data_to_restore=conditions_in_fold_change_data_to_restore)
+        restored_relative_Data_with_annotations= add_annotations_to_proteome(input=restored_relative_Data, ID_column=ID_column_in_restored_data, annotations=full_annotations)
+        return(restored_relative_Data_with_annotations)
+    else:
+        restored_relative_Data_with_annotations= add_annotations_to_proteome(input=absolute_data, ID_column=ID_column_in_restored_data, annotations=full_annotations)
+        return(restored_relative_Data_with_annotations)
 
 def build_full_annotations(rba_session,
                            model_ribosomal_processes,
@@ -60,53 +61,59 @@ def build_full_annotations(rba_session,
     model_protein_compartment_map = build_model_compartment_map(rba_session=rba_session)
     Compartment_Annotations = build_compartment_annotations(Compartment_Annotations_external=Compartment_Annotations_external, model_protein_compartment_map=model_protein_compartment_map)
     annotations_Absolute = build_dataset_annotations(input=Absolute_Proteome, ID_column=protein_ID_column, Uniprot=Uniprot, Compartment_Annotations=Compartment_Annotations, model_protein_compartment_map=model_protein_compartment_map,ribosomal_proteins=ribosomal_proteins)
-    annotations_Relative = build_dataset_annotations(input=Relative_Proteome, ID_column=protein_ID_column, Uniprot=Uniprot,Compartment_Annotations=Compartment_Annotations, model_protein_compartment_map=model_protein_compartment_map,ribosomal_proteins=ribosomal_proteins)
-    full_annotations = build_full_annotations_from_dataset_annotations(annotations_list=[annotations_Absolute, annotations_Relative])
+    if Relative_Proteome is not None:
+        annotations_Relative = build_dataset_annotations(input=Relative_Proteome, ID_column=protein_ID_column, Uniprot=Uniprot,Compartment_Annotations=Compartment_Annotations, model_protein_compartment_map=model_protein_compartment_map,ribosomal_proteins=ribosomal_proteins)
+        full_annotations = build_full_annotations_from_dataset_annotations(annotations_list=[annotations_Absolute, annotations_Relative])
+    else:
+        full_annotations = build_dataset_annotations(input=Absolute_Proteome, ID_column=protein_ID_column, Uniprot=Uniprot,Compartment_Annotations=Compartment_Annotations, model_protein_compartment_map=model_protein_compartment_map,ribosomal_proteins=ribosomal_proteins)
     return(full_annotations)
 
 def main(conditions,n_parallel_processes=None):
-    Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim.csv', sep=';', decimal=',', index_col=0)
+    Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nielsen.csv', sep=';', decimal=',', index_col=0)
     Process_Efficiency_Estimation_Input = pandas.read_csv('../DataSetsYeastRBACalibration/Process_Efficiency_Estimation_Input.csv', sep=';', decimal=',')
     Uniprot = pandas.read_csv('../Yeast_iMM904_RBA_model/uniprot.csv', sep='\t')
     Compartment_Annotations_external = pandas.read_csv('../DataSetsYeastRBACalibration/Manually_curated_Protein_Locations_for_Calibration.csv', index_col=None, sep=';')
     Ribosomal_Proteins_Uniprot = pandas.read_csv('../DataSetsYeastRBACalibration/uniprot_ribosomal_proteins.csv', index_col=None, sep=';')
-    Hackett_Clim_FCs = pandas.read_csv('../DataSetsYeastRBACalibration/Hacket_ProteinFCs.csv',sep=";")
-    Nielsen_01 = pandas.read_csv('../DataSetsYeastRBACalibration/Nielsen01_ProteomicsData.csv',sep=";",index_col=0)
-    Simulation = SessionRBA('../Yeast_iMM904_RBA_model')
+    Nielsen_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Nielsen_Protein_Means.csv', sep=';',index_col=0)
 
     picogram_togram_coefficient = 1e12
-    Reference_Condition='Mean_01'
+    for i in conditions:
+        Nielsen_Data[i] *= picogram_togram_coefficient
 
-    growth_rates={condition:growth_rate_from_input(input=Input_Data, condition=condition) for condition in conditions}
-
+    Simulation = SessionRBA('../Yeast_iMM904_RBA_model')
+#    Simulation = SessionRBA('../Yeast_iMM904_RBA_model_no_BMcompo_targets')
     full_annotations=build_full_annotations(rba_session=Simulation,
                         model_ribosomal_processes=['TranslationC', 'TranslationM'],
                         external_ribosome_annotations=Ribosomal_Proteins_Uniprot,
                         Compartment_Annotations_external=Compartment_Annotations_external,
-                        Absolute_Proteome=Nielsen_01,
+                        Absolute_Proteome=Nielsen_Data,
                         protein_ID_column='Gene',
                         Uniprot=Uniprot,
-                        Relative_Proteome=Hackett_Clim_FCs)
-
-    Nielsen_01[Reference_Condition] *= picogram_togram_coefficient
-    restored_Hackett_Data=generate_input_proteome(fold_changes=Hackett_Clim_FCs,
-                                                absolute_data=Nielsen_01.loc[pandas.isna(Nielsen_01[Reference_Condition]) == False],
-                                                matching_column_in_absolute_data=Reference_Condition,
-                                                matching_column_in_fold_change_data='Hackett_C01',
-                                                conditions_in_fold_change_data_to_restore=conditions,
-                                                ID_column_in_restored_data='ID',
+                        Relative_Proteome=None)
+    Nielsen_Data_with_annotations=generate_input_proteome(fold_changes=None,
+                                                absolute_data=add_annotations_to_proteome(input=Nielsen_Data, ID_column="Gene", annotations=full_annotations),
+                                                matching_column_in_absolute_data=None,
+                                                matching_column_in_fold_change_data=None,
+                                                conditions_in_fold_change_data_to_restore=None,
+                                                ID_column_in_restored_data='Gene',
                                                 full_annotations=full_annotations)
+    Nielsen_Data_with_annotations.rename(columns={"Gene": "ID"},inplace=True)
+    Nielsen_Data_input=pandas.DataFrame(columns=Nielsen_Data_with_annotations.columns)
+    for i in Nielsen_Data_with_annotations.index:
+        if type(Nielsen_Data_with_annotations.loc[i,"Location"]) == str:
+            Nielsen_Data_input.loc[i,:]=Nielsen_Data_with_annotations.loc[i,:]
+    growth_rates={condition:growth_rate_from_input(input=Input_Data, condition=condition) for condition in conditions}
 
-    restored_Hackett_Data.to_csv("../origRestoredProteome.csv")
     initial_time=time.time()
 
     input_dicts=[]
     for condition in conditions:
         dict_to_add={}
         dict_to_add["xml_dir"]='../Yeast_iMM904_RBA_model'
+        #dict_to_add["xml_dir"]='../Yeast_iMM904_RBA_model_no_BMcompo_targets'
         dict_to_add["condition"]=condition
-        dict_to_add["proteome"]=restored_Hackett_Data
-        dict_to_add["reference_condition"]=Reference_Condition
+        dict_to_add["proteome"]=Nielsen_Data_input
+        dict_to_add["reference_condition"]=None
         dict_to_add["definition_file"]=Input_Data
         dict_to_add["process_efficiency_estimation_input"]=Process_Efficiency_Estimation_Input
         dict_to_add["Compartment_sizes"]=None
@@ -123,8 +130,8 @@ def main(conditions,n_parallel_processes=None):
                 calibration_results_1.append(i[condition])
     compartment_sizes_from_calibration_1=extract_compartment_sizes_from_calibration_outputs(calibration_outputs=calibration_results_1)
     pg_fractions_from_calibration_1=extract_pg_fractions_from_calibration_outputs(calibration_outputs=calibration_results_1)
-    regressed_compartment_sizes_1=regression_on_compartment_sizes(Comp_sizes=compartment_sizes_from_calibration_1,conditions=conditions,growth_rates=growth_rates,monotonous_quadratic=False)
-    regressed_pg_fractions_1=regression_on_pg_fractions(PG_sizes=pg_fractions_from_calibration_1,conditions=conditions,growth_rates=growth_rates,monotonous_quadratic=False)
+    regressed_compartment_sizes_1=regression_on_compartment_sizes(Comp_sizes=compartment_sizes_from_calibration_1,conditions=conditions,growth_rates=growth_rates,monotonous_quadratic=True)
+    regressed_pg_fractions_1=regression_on_pg_fractions(PG_sizes=pg_fractions_from_calibration_1,conditions=conditions,growth_rates=growth_rates,monotonous_quadratic=True)
 
     for i in input_dicts:
         i.update({"Compartment_sizes":regressed_compartment_sizes_1,"PG_fractions":regressed_pg_fractions_1,"preliminary_run":False})
@@ -146,7 +153,6 @@ def main(conditions,n_parallel_processes=None):
         #calib_dicts_2=Parallel(n_jobs=n_parallel_processes)(delayed(calibration)(input_dict) for input_dict in input_dicts)
         pool=Pool(n_parallel_processes)
         calib_dicts_2=pool.map(calibration,input_dicts)
-
 
     calibration_results_2=[]
     corrected_proteomes_DF=pandas.DataFrame()
@@ -180,16 +186,13 @@ def main(conditions,n_parallel_processes=None):
                                 filename="../Compartment_sizes_and_PG.pdf")
 
     plot_rss_trajectory(calibration_results_2)
-
 if __name__ == "__main__":
     warnings.simplefilter('ignore', UserWarning)
     warnings.simplefilter('ignore', FutureWarning)
     warnings.simplefilter('ignore', RuntimeWarning)
     #warnings.simplefilter('ignore', SettingWithCopyWarning)
     main(n_parallel_processes=3,
-        #conditions = ['Hackett_C022']
-        conditions = ['Hackett_C03','Hackett_C005', 'Hackett_C022', 'Hackett_C016', 'Hackett_C01']
-        #conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03']
-        #conditions = ['Hackett_N005', 'Hackett_N01', 'Hackett_N016', 'Hackett_N03']
-        #conditions = ['Hackett_P005', 'Hackett_P01', 'Hackett_P016', 'Hackett_P022']
+         #conditions = ['0284_mean', '0334_mean', '0379_mean']           
+         conditions = ['0102_mean', '0152_mean', '0214_mean', '0254_mean', '0284_mean', '0334_mean', '0379_mean']
+         #conditions = ['0027_mean', '0044_mean', '0102_mean', '0152_mean', '0214_mean', '0254_mean', '0284_mean', '0334_mean', '0379_mean']           
         )
