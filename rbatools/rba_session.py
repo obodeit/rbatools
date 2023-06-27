@@ -2168,3 +2168,300 @@ class SessionRBA(object):
         LP1.load_matrix(Matrix1)
         self.FBA = ProblemFBA(LP1)
 
+    def make_eukaryotic(self,amino_acid_concentration_total,pg_fractions={},imposed_compartment_fractions={}):
+        # add zero parameter
+        if not 'zero_dummy_param' in self.model.parameters.functions._elements_by_id.keys():
+            zero_param=rba.xml.parameters.Function(id_='zero_dummy_param', 
+                                                type_='constant', 
+                                                parameters={'CONSTANT':0.0}, 
+                                                variable=None)
+        self.model.parameters.functions.append(zero_param)
+        # add dummy processes
+        pg_targets=self.model.targets.target_groups._elements_by_id['translation_targets'].concentrations._elements
+        dummy_processes_for_pg={}
+        for target in pg_targets:
+            print('PG:{}'.format(target.__dict__))
+            target_protein=target.species
+            dummy_process=rba.xml.processes.Process(id_='P_dummy_{}'.format(target_protein),
+                                                    name='Dummy_process_{}'.format(target_protein),
+                                                )
+            dummy_process.machinery.machinery_composition.reactants.append(rba.xml.common.SpeciesReference(species=target_protein, 
+                                                                                                        stoichiometry=1))
+            dummy_process.machinery.capacity.value = 'zero_dummy_param'
+            self.model.processes.processes.append(dummy_process)
+            dummy_processes_for_pg[target_protein]='P_dummy_{}'.format(target_protein)
+
+        self.rebuild_from_model()
+        self.set_growth_rate(1.0)
+        compartment_pg_specifications={}
+        for j in dummy_processes_for_pg.keys():
+            matrix_1_coeffs=list(self.Problem.LP.A.toarray()[:,self.Problem.LP.col_names.index('{}_machinery'.format(dummy_processes_for_pg[j]))])
+            requirements={self.Problem.LP.row_names[i]:matrix_1_coeffs[i] for i in range(len(matrix_1_coeffs)) if matrix_1_coeffs[i]!=0}
+            compartment_pg_specifications[self.get_protein_information(j)['Compartment']]={'pg_protein_id':j,
+                                                                                           'requirements':requirements,
+                                                                                           'aa_number':self.get_protein_information(j)['AAnumber']
+                                                                                          }
+        # remove: 'zero_dummy_param' , Dummy_process_... , PG_targets...
+        self.model.parameters.functions.remove(self.model.parameters.functions._elements_by_id['zero_dummy_param'])
+        for i in dummy_processes_for_pg.values():
+            self.model.processes.processes.remove(self.model.processes.processes._elements_by_id[i])
+        
+        for i in [t for t in pg_targets]:
+            self.model.targets.target_groups._elements_by_id['translation_targets'].concentrations.remove(i)
+        self.rebuild_from_model()
+
+        # build euk matrix
+        density_dict={}
+        for d in self.get_density_constraints():
+            density_dict[self.get_density_constraint_information(d)['AssociatedCompartment']]=self.get_density_constraint_information(d)['ID']
+
+        compartments,density_constraints=zip(*density_dict.items())
+        matrix_to_add=ProblemMatrix()
+        matrix_to_add.row_names=list(list(density_constraints)+['global_density'])
+        matrix_to_add.col_names=['f_{}'.format(i) for i in compartments]
+        matrix_to_add.b=numpy.array(list(list([0.0]*(len(compartments)))+[1.0])).astype('float64')
+        matrix_to_add.row_signs=list(['E']*len(density_constraints)+['E'])
+        matrix_to_add.LB=numpy.array(list([0.0]*len(compartments))).astype('float64')
+        matrix_to_add.UB=numpy.array(list([1.0]*len(compartments))).astype('float64')
+        matrix_to_add.f=numpy.array(list([0.0]*len(compartments))).astype('float64')
+        matrix_to_add.A=scipy.sparse.coo_matrix(numpy.vstack([numpy.eye(len(list(density_dict.keys()))), list([1]*len(list(density_dict.keys())))])).astype('float64')
+
+        self.Problem.LP.add_matrix(matrix=matrix_to_add)
+
+        # add parameter definitions
+        for i in density_dict.keys():
+            compartment_fraction='f_{}'.format(i)
+            density_constraint=density_dict[i]
+            if i in pg_fractions.keys():
+                self.Problem.MuDependencies['FromParameters']['A'].update({'Non_PG_{}'.format(compartment_fraction):
+                                                                                {'Coefficient':(density_constraint , compartment_fraction),
+                                                                                'Equation':'-{}*(1-{})'.format(amino_acid_concentration_total,pg_fractions[i]),
+                                                                                'Variables': [amino_acid_concentration_total,pg_fractions[i]]},
+                                                                                })
+                for m in compartment_pg_specifications[i]['requirements'].keys():
+                    if m not in [density_constraint]:
+                        coeff=compartment_pg_specifications[i]['requirements'][m]
+                        self.Problem.MuDependencies['FromParameters']['A'].update({'PG_component_{}_{}'.format(m,i):
+                                                                                        {'Coefficient':(m , compartment_fraction),
+                                                                                        'Equation':'{}*{}*{}*growth_rate'.format(numpy.float64(coeff/compartment_pg_specifications[i]['aa_number']),
+                                                                                                                                 amino_acid_concentration_total,
+                                                                                                                                 pg_fractions[i]),
+                                                                                        'Variables': [amino_acid_concentration_total,pg_fractions[i],'growth_rate']},
+                                                                                        })
+                        
+            else:
+                self.Problem.MuDependencies['FromParameters']['A'].update({'Non_PG_{}'.format(compartment_fraction):
+                                                                                {'Coefficient':(density_constraint , compartment_fraction),
+                                                                                'Equation':'-{}'.format(amino_acid_concentration_total),
+                                                                                'Variables': [amino_acid_concentration_total]},
+                                                                                })
+
+            if density_constraint in self.Problem.MuDependencies['FromMatrix']['b']:
+                self.Problem.MuDependencies['FromMatrix']['b'].remove(density_constraint)
+        if len(imposed_compartment_fractions.keys())>0:
+            imposed_compartments=list(imposed_compartment_fractions.keys())
+            matrix_to_add=ProblemMatrix()
+            matrix_to_add.row_names=['f_size_{}'.format(i) for i in imposed_compartments]
+            matrix_to_add.col_names=['f_{}'.format(i) for i in imposed_compartments]
+            matrix_to_add.b=numpy.array(list([1.0]*len(imposed_compartments))).astype('float64')
+            matrix_to_add.row_signs=['L']*len(imposed_compartments)
+            matrix_to_add.LB=numpy.array(list([0.0]*len(imposed_compartments))).astype('float64')
+            matrix_to_add.UB=numpy.array(list([1.0]*len(imposed_compartments))).astype('float64')
+            matrix_to_add.f=numpy.array(list([0.0]*len(imposed_compartments))).astype('float64')
+            matrix_to_add.A=scipy.sparse.coo_matrix(numpy.eye(len(imposed_compartments))).astype('float64')
+            self.Problem.LP.add_matrix(matrix=matrix_to_add)
+
+            for i in imposed_compartments:
+                self.Problem.MuDependencies['FromParameters']['b'].update({'Imposed_size{}'.format(i):
+                                                                            {'Coefficient':'f_size_{}'.format(i),
+                                                                             'Equation':'{}'.format(imposed_compartment_fractions[i]),
+                                                                             'Variables': [imposed_compartment_fractions[i]]},
+                                                                          })
+
+        self.set_growth_rate(self.Mu) 
+
+    def make_eukaryotic_louis_foreuk(self,imposed_compartment_fractions={}):
+        # add zero parameter
+        if not 'zero_dummy_param' in self.model.parameters.functions._elements_by_id.keys():
+            zero_param=rba.xml.parameters.Function(id_='zero_dummy_param', 
+                                                type_='constant', 
+                                                parameters={'CONSTANT':0.0}, 
+                                                variable=None)
+        self.model.parameters.functions.append(zero_param)
+        # add dummy processes
+        pg_targets=self.model.targets.target_groups._elements_by_id['translation_targets'].concentrations._elements
+        dummy_processes_for_pg={}
+        for target in pg_targets:
+            print('PG:{}'.format(target.__dict__))
+            target_protein=target.species
+            dummy_process=rba.xml.processes.Process(id_='P_dummy_{}'.format(target_protein),
+                                                    name='Dummy_process_{}'.format(target_protein),
+                                                )
+            dummy_process.machinery.machinery_composition.reactants.append(rba.xml.common.SpeciesReference(species=target_protein, 
+                                                                                                        stoichiometry=1))
+            dummy_process.machinery.capacity.value = 'zero_dummy_param'
+            self.model.processes.processes.append(dummy_process)
+            dummy_processes_for_pg[target_protein]='P_dummy_{}'.format(target_protein)
+
+        self.rebuild_from_model()
+        self.set_growth_rate(1.0)
+        compartment_pg_specifications={}
+        for j in dummy_processes_for_pg.keys():
+            matrix_1_coeffs=list(self.Problem.LP.A.toarray()[:,self.Problem.LP.col_names.index('{}_machinery'.format(dummy_processes_for_pg[j]))])
+            requirements={self.Problem.LP.row_names[i]:matrix_1_coeffs[i] for i in range(len(matrix_1_coeffs)) if matrix_1_coeffs[i]!=0}
+            compartment_pg_specifications[self.get_protein_information(j)['Compartment']]={'pg_protein_id':j,
+                                                                                           'requirements':requirements,
+                                                                                           'aa_number':self.get_protein_information(j)['AAnumber']
+                                                                                          }
+        # remove: 'zero_dummy_param' , Dummy_process_... , PG_targets...
+        self.model.parameters.functions.remove(self.model.parameters.functions._elements_by_id['zero_dummy_param'])
+        for i in dummy_processes_for_pg.values():
+            self.model.processes.processes.remove(self.model.processes.processes._elements_by_id[i])
+        
+        for i in [t for t in pg_targets]:
+            self.model.targets.target_groups._elements_by_id['translation_targets'].concentrations.remove(i)
+        self.rebuild_from_model()
+
+        # build euk matrix
+        density_dict={}
+        for d in self.get_density_constraints():
+            density_dict[self.get_density_constraint_information(d)['AssociatedCompartment']]=self.get_density_constraint_information(d)['ID']
+
+        compartments,density_constraints=zip(*density_dict.items())
+        matrix_to_add=ProblemMatrix()
+        matrix_to_add.row_names=list(list(density_constraints)+['global_density'])
+        matrix_to_add.col_names=['f_{}'.format(i) for i in compartments]
+        matrix_to_add.b=numpy.array(list(list([0.0]*(len(compartments)))+[1.0])).astype('float64')
+        matrix_to_add.row_signs=list(['E']*len(density_constraints)+['E'])
+        matrix_to_add.LB=numpy.array(list([0.0]*len(compartments))).astype('float64')
+        matrix_to_add.UB=numpy.array(list([1.0]*len(compartments))).astype('float64')
+        matrix_to_add.f=numpy.array(list([0.0]*len(compartments))).astype('float64')
+        A_mat=numpy.vstack([numpy.eye(len(list(density_dict.keys()))), list([1]*len(list(density_dict.keys())))])
+        count=0
+        for c in compartments:
+            if 'embrane' in c:
+                coeff=-20
+            elif 'ytoplas' in c:
+                coeff=-18
+            A_mat[count,count]=coeff
+            count+=1
+        matrix_to_add.A=scipy.sparse.coo_matrix(A_mat).astype('float64')
+        self.Problem.LP.add_matrix(matrix=matrix_to_add)
+
+        # add parameter definitions
+        self.Problem.MuDependencies['FromParameters']['A'].update({'Non_PG_Cytoplasm':
+                                                                    {'Coefficient':('M_precursor_c' , 'f_Cytoplasm'),
+                                                                     'Equation':'-2.0*growth_rate',
+                                                                     'Variables': ['growth_rate']},
+                                                                  })
+        self.Problem.MuDependencies['FromParameters']['A'].update({'Non_PG_Cytoplasm':
+                                                                    {'Coefficient':('P_TA_capacity' , 'f_Cytoplasm'),
+                                                                     'Equation':'2.0*growth_rate',
+                                                                     'Variables': ['growth_rate']},
+                                                                  })
+        for i in density_dict.keys():
+            density_constraint=density_dict[i]
+            if density_constraint in self.Problem.MuDependencies['FromMatrix']['b']:
+                self.Problem.MuDependencies['FromMatrix']['b'].remove(density_constraint)
+
+        if len(imposed_compartment_fractions.keys())>0:
+            imposed_compartments=list(imposed_compartment_fractions.keys())
+            matrix_to_add=ProblemMatrix()
+            matrix_to_add.row_names=['f_size_{}'.format(i) for i in imposed_compartments]
+            matrix_to_add.col_names=['f_{}'.format(i) for i in imposed_compartments]
+            matrix_to_add.b=numpy.array(list([1.0]*len(imposed_compartments))).astype('float64')
+            matrix_to_add.row_signs=['L']*len(imposed_compartments)
+            matrix_to_add.LB=numpy.array(list([0.0]*len(imposed_compartments))).astype('float64')
+            matrix_to_add.UB=numpy.array(list([1.0]*len(imposed_compartments))).astype('float64')
+            matrix_to_add.f=numpy.array(list([0.0]*len(imposed_compartments))).astype('float64')
+            matrix_to_add.A=scipy.sparse.coo_matrix(numpy.eye(len(imposed_compartments))).astype('float64')
+            self.Problem.LP.add_matrix(matrix=matrix_to_add)
+
+            for i in imposed_compartments:
+                self.Problem.MuDependencies['FromParameters']['b'].update({'Imposed_size{}'.format(i):
+                                                                            {'Coefficient':'f_size_{}'.format(i),
+                                                                             'Equation':'{}'.format(imposed_compartment_fractions[i]),
+                                                                             'Variables': [imposed_compartment_fractions[i]]},
+                                                                          })
+
+        self.set_growth_rate(self.Mu) 
+
+ 
+
+        ### with adapted xml ###
+#        Requirements:
+#            - total density parameter in parameters.xml
+#            - PG-fraction parameter in parameters.xml
+#            - zero parameter in parameters.xml
+#            - PG-protein process for each translation target protein with capacity zero-param in processes.xml
+
+#       1: update matrix for each compartment (density_constraint,added_pg_machinery):0
+
+#       4: make fundamental euk-constraints
+#           for compartment:
+
+#               update matrix (density_constraint,added_pg_machinery):0
+#                    col_names=['added_pg_machinery...'],
+#                    row_names['..._density'],
+#                    coeff:{'..._density':{'added_pg_machinery...':0}},
+#                    RHS:None
+
+#               update density constraint, according to constraint_type C^1     
+#                    col_names=['non_pg_density_...'],
+#                    row_names['..._density'],
+#                    coeff:{'..._density':{'non_pg_density_...':-1}},
+#                    RHS:=0
+
+#               add pg_density constraint, according to constraint_type C^2
+#                    col_names=['added_pg_machinery_...','pg_density_...'],
+#                    row_names['..._density_pg'],
+#                    coeff:{'..._density_pg':{'added_pg_machinery_...':length_pg_protein,'pg_density_...':-1}},
+#                    RHS:=0
+
+#               add total_density constraint, according to constraint_type C^3
+#                    col_names=['non_pg_density_...','pg_density_...','total_density_...'],
+#                    row_names['..._density_total'],
+#                    coeff:{'..._density_total':{'non_pg_density_...':1,'pg_density_...':1,'total_density_...':-1}},
+#                    RHS:=0
+
+#               impose pg-ratio, according to constraint_type C^4
+#                    col_names=['pg_density_...','total_density_...'],
+#                    row_names['..._pg_fraction'],
+#                    coeff:{'..._pg_fraction':{'pg_density_...':1,'total_density_...':-PG_FRACTION_PARAM(mu)}},
+#                    RHS:=0
+
+#           add total protein constraint, according to constraint_type C^5
+#                    col_names=[total_density_... for ... in compartments],
+#                    row_names['global_density'],
+#                    coeff:{'global_density':{...:1 for ... in in compartments}},
+#                    RHS: = / <= GLOBAL_DENSITY_PARAM(mu) 
+
+
+
+        ### from xml ###
+#       1: determine global density parameter:
+#          total density = sum of all density parameter functions
+            
+#       2: for compartment:
+#            record pg_target param -ok
+#            record pg_target species -ok
+#            record length of pg_target species protein -ok
+#            add enzyme or process machinery with composition pg_target species:1
+#            remove pg_target
+#            calculate and record pg-fraction:
+#               (pg_target param function/density parameter function) * length of pg_target species protein
+#            add pg-fraction parameter
+
+#       reload from model
+
+#       3: update matrix for each compartment (density_constraint,added_pg_machinery):0
+
+#       4: make fundamental euk-constraints
+#           for compartment:
+#               update density constraint, according to constraint_type C^1     
+#               add pg_density constraint, according to constraint_type C^2
+#               add total_density constraint, according to constraint_type C^3
+#               impose pg-ratio, according to constraint_type C^4
+#           add total protein constraint, according to constraint_type C^5
+        
+#       5: optinally add comp-ratio constraints

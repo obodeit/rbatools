@@ -168,11 +168,10 @@ def _get_protein_composition(model, protein):
     numberAA = 0
     MacroMolecules = model.proteins.macromolecules._elements
     for a in range(len(MacroMolecules[protein].composition._elements)):
-        out[MacroMolecules[protein].composition._elements[a].component] = int(
-            round(MacroMolecules[protein].composition._elements[a].stoichiometry, 3))  # round(...,3) added#
+        out[MacroMolecules[protein].composition._elements[a].component] = MacroMolecules[protein].composition._elements[a].stoichiometry  # round(...,3) added#
         numberAA += MacroMolecules[protein].composition._elements[a].stoichiometry
     out = {'AAcomp': out,
-           'AAnum': int(numberAA)}
+           'AAnum': numberAA}
     return(out)
 
 
