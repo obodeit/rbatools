@@ -22,7 +22,7 @@ def calibration(input_dict):
                                          PG_fractions=input_dict["PG_fractions"],
                                          transporter_multiplier=1,
                                          prelim_run=input_dict["preliminary_run"],
-                                         #Mu_approx_precision=0.000000001,
+                                         #Mu_approx_precision=  0.000000001,
                                          Mu_approx_precision= 0.000001,
                                          feasible_stati=["optimal","feasible"],
                                          #feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
