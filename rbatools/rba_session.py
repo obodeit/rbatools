@@ -367,7 +367,10 @@ class SessionRBA(object):
         solver.solve()
         return(solver.mu_opt)
 
-    def find_max_growth_rate(self, precision: float = 0.001, max_value: float = 4.0, start_value: float = numpy.nan, recording: bool = False, omit_objective: bool = False, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool = True,verbose: bool = False) -> float:
+    def find_max_growth_rate(self, 
+                             precision: float = 0.001, 
+                             max_value: float = 4.0, 
+                             start_value: float = numpy.nan, recording: bool = False, omit_objective: bool = False, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool = True,verbose: bool = False) -> float:
         """
         Applies dichotomy-search to find the maximal feasible growth-rate.
 
@@ -414,6 +417,8 @@ class SessionRBA(object):
             self.Problem.clear_objective()
         optMu=testMu
         while (maxMu - minMu) > precision:
+            if verbose:
+                print('Mu: set to {}'.format(testMu))
             self.set_growth_rate(Mu=testMu)
             self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
             if verbose:
@@ -2415,28 +2420,27 @@ class SessionRBA(object):
                 if compartment_bound_tolerance != 0:
                     lb_tol=1-compartment_bound_tolerance
                     ub_tol=1+compartment_bound_tolerance
-                    self.Problem.MuDependencies['FromParameters']['LB'].update({'Imposed_size{}'.format(i):
+                    self.Problem.MuDependencies['FromParameters']['LB'].update({'Imposed_size_{}'.format(i):
                                                                                 {'Coefficient':'f_{}'.format(i),
                                                                                 'Equation':'{} * {}'.format(lb_tol,compartment_fractions[i]),
                                                                                 'Variables': [compartment_fractions[i]]},
                                                                             })
-                    self.Problem.MuDependencies['FromParameters']['UB'].update({'Imposed_size{}'.format(i):
+                    self.Problem.MuDependencies['FromParameters']['UB'].update({'Imposed_size_{}'.format(i):
                                                                                 {'Coefficient':'f_{}'.format(i),
                                                                                 'Equation':'{} * {}'.format(ub_tol,compartment_fractions[i]),
                                                                                 'Variables': [compartment_fractions[i]]},
                                                                             })
                 else:
-                    self.Problem.MuDependencies['FromParameters']['LB'].update({'Imposed_size{}'.format(i):
+                    self.Problem.MuDependencies['FromParameters']['LB'].update({'Imposed_size_{}'.format(i):
                                                                                 {'Coefficient':'f_{}'.format(i),
                                                                                 'Equation':'{}'.format(compartment_fractions[i]),
                                                                                 'Variables': [compartment_fractions[i]]},
                                                                             })
-                    self.Problem.MuDependencies['FromParameters']['UB'].update({'Imposed_size{}'.format(i):
+                    self.Problem.MuDependencies['FromParameters']['UB'].update({'Imposed_size_{}'.format(i):
                                                                                 {'Coefficient':'f_{}'.format(i),
                                                                                 'Equation':'{}'.format(compartment_fractions[i]),
                                                                                 'Variables': [compartment_fractions[i]]},
                                                                             })
-            
         self.set_growth_rate(self.Mu) 
 
     def make_eukaryotic_fixed_pg_content(self,
