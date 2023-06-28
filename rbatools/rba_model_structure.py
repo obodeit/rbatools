@@ -103,9 +103,6 @@ class ModelStructureRBA(object):
             model = RbaModel.from_xml(xml_dir)
         else:
             model=rba_model
-        Zero_matrix = ConstraintMatrix(model)
-        Zero_matrix.build_matrices(0)
-        constraints = _sort_constraints(Zero_matrix, model)
 
         MetaboliteInfo = MetaboliteBlock()
         ModuleInfo = ModuleBlock()
@@ -127,35 +124,44 @@ class ModelStructureRBA(object):
         MacromoleculeInfo.from_files(model)
         CompartmentInfo.from_files(model, Info)
 
+        self.GeneralInfo = DescriptionBlock()
+        self.GeneralInfo.from_files(Info)
+
         self.MetaboliteConstraintsInfo = MetaboliteConstraintBlock()
         self.DensityConstraintsInfo = DensityConstraintBlock()
         self.ProcessConstraintsInfo = ProcessConstraintBlock()
         self.EnzymeConstraintsInfo = EnzymeConstraintBlock()
+        try:
+            Zero_matrix = ConstraintMatrix(model)
+            Zero_matrix.build_matrices(0)
+            constraints = _sort_constraints(Zero_matrix, model)
 
-        self.MetaboliteConstraintsInfo.from_files(constraints, Zero_matrix)
-        self.DensityConstraintsInfo.from_files(model, constraints, Zero_matrix)
-        self.ProcessConstraintsInfo.from_files(model, constraints, Zero_matrix)
-        self.EnzymeConstraintsInfo.from_files(model, constraints, Zero_matrix)
+            self.MetaboliteConstraintsInfo.from_files(constraints, Zero_matrix)
+            self.DensityConstraintsInfo.from_files(model, constraints, Zero_matrix)
+            self.ProcessConstraintsInfo.from_files(model, constraints, Zero_matrix)
+            self.EnzymeConstraintsInfo.from_files(model, constraints, Zero_matrix)
 
-        self.GeneralInfo = DescriptionBlock()
-        self.GeneralInfo.from_files(Info)
-
-        for constraint in self.MetaboliteConstraintsInfo.Elements.keys():
-            MetaboliteInfo.Elements[self.MetaboliteConstraintsInfo.Elements[constraint]['AssociatedMetabolite']]['MassBalance_Constraint']=self.MetaboliteConstraintsInfo.Elements[constraint]['ID']
-        for constraint in self.DensityConstraintsInfo.Elements.keys():
-            CompartmentInfo.Elements[self.DensityConstraintsInfo.Elements[constraint]['AssociatedCompartment']]['Capacity_Constraint']=constraint
-        for constraint in self.ProcessConstraintsInfo.Elements.keys():
-            for i in list(ProcessInfo.Elements.keys()):
-                if ProcessInfo.Elements[i]['ID']==self.ProcessConstraintsInfo.Elements[constraint]['AssociatedProcessID']:
-                    ProcessInfo.Elements[i]['Capacity_Constraint']=constraint
-                    self.ProcessConstraintsInfo.Elements[constraint]['AssociatedProcess']=i
-        for constraint in self.EnzymeConstraintsInfo.Elements.keys():
-            dir=self.EnzymeConstraintsInfo.Elements[constraint]['Direction']
-            enz=self.EnzymeConstraintsInfo.Elements[constraint]['AssociatedEnzyme']
-            if dir == 'forward':
-                EnzymeInfo.Elements[enz]['ForwardCapacity_Constraint']=constraint
-            elif dir == 'backward':
-                EnzymeInfo.Elements[enz]['BackwardCapacity_Constraint']=constraint
+            for constraint in self.MetaboliteConstraintsInfo.Elements.keys():
+                MetaboliteInfo.Elements[self.MetaboliteConstraintsInfo.Elements[constraint]['AssociatedMetabolite']]['MassBalance_Constraint']=self.MetaboliteConstraintsInfo.Elements[constraint]['ID']
+            for constraint in self.DensityConstraintsInfo.Elements.keys():
+                CompartmentInfo.Elements[self.DensityConstraintsInfo.Elements[constraint]['AssociatedCompartment']]['Capacity_Constraint']=constraint
+            for constraint in self.ProcessConstraintsInfo.Elements.keys():
+                for i in list(ProcessInfo.Elements.keys()):
+                    if ProcessInfo.Elements[i]['ID']==self.ProcessConstraintsInfo.Elements[constraint]['AssociatedProcessID']:
+                        ProcessInfo.Elements[i]['Capacity_Constraint']=constraint
+                        self.ProcessConstraintsInfo.Elements[constraint]['AssociatedProcess']=i
+            for constraint in self.EnzymeConstraintsInfo.Elements.keys():
+                dir=self.EnzymeConstraintsInfo.Elements[constraint]['Direction']
+                enz=self.EnzymeConstraintsInfo.Elements[constraint]['AssociatedEnzyme']
+                if dir == 'forward':
+                    EnzymeInfo.Elements[enz]['ForwardCapacity_Constraint']=constraint
+                elif dir == 'backward':
+                    EnzymeInfo.Elements[enz]['BackwardCapacity_Constraint']=constraint
+        except:
+            self.MetaboliteConstraintsInfo.Elements={}
+            self.DensityConstraintsInfo.Elements={}
+            self.ProcessConstraintsInfo.Elements={}
+            self.EnzymeConstraintsInfo.Elements={}
 
         for target in TargetInfo.Elements.keys():
             target_species=TargetInfo.Elements[target]["TargetEntity"]
@@ -173,10 +179,14 @@ class ModelStructureRBA(object):
             ProteinInfo.Elements[protein]['associatedEnzymes'] = AssociatedEnzyme['Enz']
             ProteinInfo.Elements[protein]['associatedReactions'] = AssociatedEnzyme['Rx']
 
-        CB = ConstraintBlocks(model)
-        for enzyme in EnzymeInfo.Elements.keys():
-            EnzymeInfo.Elements[enzyme]['Isozymes'] = _find_iso_enzymes(
-                enzyme, CB, ReactionInfo.Elements, EnzymeInfo.Elements[enzyme]['Reaction'])
+        try:
+            CB = ConstraintBlocks(model)
+            for enzyme in EnzymeInfo.Elements.keys():
+                EnzymeInfo.Elements[enzyme]['Isozymes'] = _find_iso_enzymes(
+                    enzyme, CB, ReactionInfo.Elements, EnzymeInfo.Elements[enzyme]['Reaction'])
+        except:
+            for enzyme in EnzymeInfo.Elements.keys():
+                EnzymeInfo.Elements[enzyme]['Isozymes'] = []
 
         for rx in ReactionInfo.Elements.keys():
             if ReactionInfo.Elements[rx]['Enzyme'] is not '':
@@ -671,8 +681,7 @@ class ModelStructureRBA(object):
         if add_links:
             for k in list(ProcessConstraintsBlock_forChanges.Elements.keys()):
                 oldComp = ProcessConstraintsBlock_forChanges.Elements[k]['AssociatedProcess']
-                ProcessConstraintsBlock_forChanges.Elements[k]['AssociatedProcess'] = '(!' + \
-                    'Process'+'/'+oldComp+'!)'
+                ProcessConstraintsBlock_forChanges.Elements[k]['AssociatedProcess'] = '(!' + 'Process'+'/'+oldComp+'!)'
 
         ProcessConstraintTable = ProcessConstraintsBlock_forChanges.to_sbtab(table_id='MachineryCapacityConstraint', table_type='Quantity', table_name='Machinery Capacity Constraints', Col_list=[
             'ID', 'AssociatedProcess', 'Type','CapacityParameterID', 'Generic parameter definition','Specific parameter definition'], NameList=['ID', 'Process', 'Type', 'CapacityParameter', 'Formula', 'Formula (parameterized)'])
@@ -893,27 +902,29 @@ def _generate_protein_gene_matrix(ModelStructure):
 
 def _generate_protein_matrix(ModelStructure):
     Proteins = list(ModelStructure.ProteinInfo.Elements.keys())
-    Processes = [ModelStructure.ProcessInfo.Elements[i]['ID'] +
-                 '_machinery' for i in list(ModelStructure.ProcessInfo.Elements.keys())]
+    Processes = [ModelStructure.ProcessInfo.Elements[i]['ID'] +'_machinery' for i in list(ModelStructure.ProcessInfo.Elements.keys())]
     Enzymes = list(ModelStructure.EnzymeInfo.Elements.keys())
     Consumers = list(set(list(Enzymes+Processes)))
     ProteinMatrix = numpy.zeros((len(Proteins), len(Consumers)))
     for p in Proteins:
         if len(ModelStructure.ProteinInfo.Elements[p]['SupportsProcess']) > 0:
             for pc in list(ModelStructure.ProteinInfo.Elements[p]['SupportsProcess']):
-                coeff = 0
-                row_ind = Proteins.index(p)
-                col_ind = Consumers.index(
-                    ModelStructure.ProcessInfo.Elements[pc]['ID']+'_machinery')
-                coeff = ModelStructure.ProcessInfo.Elements[pc]['Composition'][p]
-                ProteinMatrix[row_ind, col_ind] += coeff
+                try:
+                    row_ind = Proteins.index(p)
+                    col_ind = Consumers.index(ModelStructure.ProcessInfo.Elements[pc]['ID']+'_machinery')
+                    coeff = ModelStructure.ProcessInfo.Elements[pc]['Composition'][p]
+                    ProteinMatrix[row_ind, col_ind] += coeff
+                except:
+                    coeff = 0
         if len(ModelStructure.ProteinInfo.Elements[p]['associatedEnzymes']) > 0:
             for ez in list(ModelStructure.ProteinInfo.Elements[p]['associatedEnzymes']):
-                coeff = 0
-                row_ind = Proteins.index(p)
-                col_ind = Consumers.index(ez)
-                coeff = ModelStructure.EnzymeInfo.Elements[ez]['Subunits'][p]
-                ProteinMatrix[row_ind, col_ind] += coeff
+                try:
+                    row_ind = Proteins.index(p)
+                    col_ind = Consumers.index(ez)
+                    coeff = ModelStructure.EnzymeInfo.Elements[ez]['Subunits'][p]
+                    ProteinMatrix[row_ind, col_ind] += coeff
+                except:
+                    coeff = 0
     return({'Matrix': numpy.array(ProteinMatrix), 'Consumers': Consumers, 'Proteins': Proteins})
 
 
@@ -1025,7 +1036,7 @@ def _import_model_info(xml_dir,verbose=True):
         if list(out):
             if verbose:
                 print('WARNING: File "ModelInformation.csv" seems to be empty or has the wrong delimiter (comma required).')
-            return(pandas.DataFrame([['Name', 'ModelName'], ['Author', 'John Doe'], ['Organism', 'Life'], ['Reconstruction', 'GSMM'], ['SBML-file', 'Not Provided']], index=['Name', 'Author', 'Organism', 'Reconstruction', 'SBML-file'], columns=['Key', 'Value']))
+            return(pandas.DataFrame([['Name', 'ModelName'], ['Author', 'J. Doe'], ['Organism', 'Life'], ['Reconstruction', 'GSMM'], ['SBML-file', 'Not Provided']], index=['Name', 'Author', 'Organism', 'Reconstruction', 'SBML-file'], columns=['Key', 'Value']))
         return(out)
     elif os.path.isfile(str(xml_dir+'/data/ModelInformation.csv')):
         out = pandas.read_csv(str(xml_dir+'/data/ModelInformation.csv'),sep=',', header=0)
@@ -1033,12 +1044,12 @@ def _import_model_info(xml_dir,verbose=True):
         if list(out):
             if verbose:
                 print('WARNING: File "ModelInformation.csv" seems to be empty or has the wrong delimiter (comma required).')
-            return(pandas.DataFrame([['Name', 'ModelName'], ['Author', 'John Doe'], ['Organism', 'Life'], ['Reconstruction', 'GSMM'], ['SBML-file', 'Not Provided']], index=['Name', 'Author', 'Organism', 'Reconstruction', 'SBML-file'], columns=['Key', 'Value']))
+            return(pandas.DataFrame([['Name', 'ModelName'], ['Author', 'J. Doe'], ['Organism', 'Life'], ['Reconstruction', 'GSMM'], ['SBML-file', 'Not Provided']], index=['Name', 'Author', 'Organism', 'Reconstruction', 'SBML-file'], columns=['Key', 'Value']))
         return(out)
     else:
         if verbose:
             print('WARNING: No model-info file "ModelInformation.csv" provided.\n' + ' Using dummy-information\n')
-        return(pandas.DataFrame([['Name', 'ModelName'], ['Author', 'John Doe'], ['Organism', 'Life'], ['Reconstruction', 'GSMM'], ['SBML-file', 'Not Provided']], index=['Name', 'Author', 'Organism', 'Reconstruction', 'SBML-file'], columns=['Key', 'Value']))
+        return(pandas.DataFrame([['Name', 'ModelName'], ['Author', 'J. Doe'], ['Organism', 'Life'], ['Reconstruction', 'GSMM'], ['SBML-file', 'Not Provided']], index=['Name', 'Author', 'Organism', 'Reconstruction', 'SBML-file'], columns=['Key', 'Value']))
 
 
 def _generate_overview(StatsReactions, StatsMetabolites, StatsModules, StatsEnzymes, StatsProteins, StatsMacromolecules, StatsProcesses, StatsCompartments, StatsTargets, StatsConstraintsBiological, StatsConstraintsMathematical):

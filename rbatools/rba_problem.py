@@ -245,7 +245,7 @@ class ProblemRBA(object):
             self.DualValues = None
         self.SolutionType = 'Normal'
 
-    def update_growth_rate(self, Mu: float, keepParameters: dict = {}, ModifiedProblem: bool = False):
+    def update_growth_rate(self, Mu: float, keepParameters: dict = {}):
         """
         Changes growth-rate of problem and sets all associated coefficients.
 
@@ -265,8 +265,6 @@ class ProblemRBA(object):
                 'LB': List of variable-IDs, indicating elements of the lower-bound vector.
                 'UB': List of variable-IDs, indicating elements of the upper-bound vector.
             Default: keepParameters=None
-        ModifiedProblem : bool
-            Default: False
         """
         ## Pass new matrix and indices of elements to update to LP.update_matrix-method ##
         self.ClassicRBAmatrix.build_matrices(self.Mu)
@@ -299,21 +297,17 @@ class ProblemRBA(object):
                                  LBinds=LB_idxs,
                                  UBinds=UB_idxs,
                                  ModifiedProblem=True)
-        if ModifiedProblem:
-            for i in list(self.MuDependencies['FromParameters']['b'].keys()):
-                newPar = self.evaluate_parameter(self.MuDependencies['FromParameters']['b'][i])
-                self.set_right_hand_side({self.MuDependencies['FromParameters']['b'][i]['Coefficient']: newPar})
-            for i in list(self.MuDependencies['FromParameters']['A'].keys()):
-                newPar = self.evaluate_parameter(self.MuDependencies['FromParameters']['A'][i])
-                self.set_problem_coefficients({self.MuDependencies['FromParameters']['A'][i]['Coefficient']: newPar})
-            for i in list(self.MuDependencies['FromParameters']['LB'].keys()):
-                newPar = self.evaluate_parameter(self.MuDependencies['FromParameters']['LB'][i])
-                self.set_lb({self.MuDependencies['FromParameters']['LB'][i]['Coefficient']: newPar})
-            for i in list(self.MuDependencies['FromParameters']['UB'].keys()):
-                newPar = self.evaluate_parameter(self.MuDependencies['FromParameters']['UB'][i])
-                self.set_ub({self.MuDependencies['FromParameters']['UB'][i]['Coefficient']: newPar})
 
-    def set_growth_rate(self, Mu: float, ModelStructure, keepParameters: dict = {}):
+        if self.MuDependencies['FromParameters']['b']:
+            self.set_right_hand_side({self.MuDependencies['FromParameters']['b'][i]['Coefficient']: self.evaluate_parameter(self.MuDependencies['FromParameters']['b'][i]) for i in list(self.MuDependencies['FromParameters']['b'].keys())})
+        if self.MuDependencies['FromParameters']['A']:
+            self.set_problem_coefficients({self.MuDependencies['FromParameters']['A'][i]['Coefficient']: self.evaluate_parameter(self.MuDependencies['FromParameters']['A'][i]) for i in list(self.MuDependencies['FromParameters']['A'].keys())})
+        if self.MuDependencies['FromParameters']['LB']:
+            self.set_lb({self.MuDependencies['FromParameters']['LB'][i]['Coefficient']: self.evaluate_parameter(self.MuDependencies['FromParameters']['LB'][i]) for i in list(self.MuDependencies['FromParameters']['LB'].keys())})
+        if self.MuDependencies['FromParameters']['UB']:
+            self.set_ub({self.MuDependencies['FromParameters']['UB'][i]['Coefficient']: self.evaluate_parameter(self.MuDependencies['FromParameters']['UB'][i]) for i in list(self.MuDependencies['FromParameters']['UB'].keys())})
+
+    def set_growth_rate(self, Mu: float, keepParameters: dict = {}):
         """
         Changes growth-rate of problem and sets all associated coefficients.
 
@@ -324,7 +318,6 @@ class ProblemRBA(object):
         ----------
         Mu : float
             Growth rate
-        ModelStructure : RBA_ModellStructure object.
         keepParameters : dict
             Dictionary indicating which elements of the linear problem should
             not be affected when setting growth-rate. Possible keys of dictionary:
@@ -337,11 +330,7 @@ class ProblemRBA(object):
         """
 
         self.Mu = numpy.float64(Mu)
-        NumberParDeps=len(ModelStructure.MuDependencies)
-        if self.LP.row_names == self.ClassicRBAmatrix.row_names and self.LP.col_names == self.ClassicRBAmatrix.col_names and self.classicRBA and NumberParDeps == 0:
-            self.update_growth_rate(Mu=numpy.float64(Mu), keepParameters=keepParameters, ModifiedProblem=False)
-        else:
-            self.update_growth_rate(Mu=numpy.float64(Mu), keepParameters=keepParameters, ModifiedProblem=True)
+        self.update_growth_rate(Mu=numpy.float64(Mu), keepParameters=keepParameters)
 
     def get_constraint_types(self, constraints: Union[list,str] = []) -> dict:
         """
@@ -636,4 +625,4 @@ class ProblemRBA(object):
         elif type(definition) == dict:
             variables_to_evaluate = {i: numpy.float64(self.ClassicRBAmatrix._blocks.parameters.__getitem__(i).value) for i in [j for j in definition['Variables'] if j not in ['growth_rate']] }
             variables_to_evaluate.update({'growth_rate':numpy.float64(self.Mu)})
-            return(round(numpy.float64(eval(str(definition['Equation']), variables_to_evaluate)),15))
+            return(numpy.float64(eval(str(definition['Equation']), variables_to_evaluate)))
