@@ -481,6 +481,7 @@ def flux_bounds_from_input(input,rba_session, condition, specific_exchanges=None
 
 def growth_rate_from_input(input, condition):
     return(input.loc[input['Type'] == 'Growth_Rate', condition].values[0])
+#    return(0.69314718056*input.loc[input['Type'] == 'Growth_Rate', condition].values[0])
 
 
 def proteome_fractions_from_input(input, condition):
@@ -3098,18 +3099,18 @@ def calibration_workflow(proteome,
                                                also_consider_iso_enzmes=False)
 
         ## NEW
-        if enzyme_efficiency_estimation_settings['use_target_biomass_function']:
+        #if enzyme_efficiency_estimation_settings['use_target_biomass_function']:
+        #
+         #   for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+          #      rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+           #     rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = 1.0
 
-            for comp in list(compartment_densities_and_PGs['Compartment_ID']):
-                rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
-                rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = 1.0
-
-            for target in rba_session.get_targets():
-                target_info=rba_session.get_target_information(target=target)
-                if (target_info["Group"]=="transcription_targets") and (target_info["Type"]=="concentrations"):
-                    rba_session.add_parameter_multiplier(model_parameter=target_info['TargetParameterID'],rebuild_model=False)
-                    target_multiplier=1+enzyme_efficiency_estimation_settings['rRNA_target_rna_weight_ratio']
-                    rba_session.set_parameter_multiplier(model_parameter=target_info['TargetParameterID'], new_value=float(target_multiplier))
+        #    for target in rba_session.get_targets():
+         #       target_info=rba_session.get_target_information(target=target)
+          #      if (target_info["Group"]=="transcription_targets") and (target_info["Type"]=="concentrations"):
+           #         rba_session.add_parameter_multiplier(model_parameter=target_info['TargetParameterID'],rebuild_model=False)
+            #        target_multiplier=1+enzyme_efficiency_estimation_settings['rRNA_target_rna_weight_ratio']
+             #       rba_session.set_parameter_multiplier(model_parameter=target_info['TargetParameterID'], new_value=float(target_multiplier))
 
         Specific_Kapps_Results = estimate_specific_enzyme_efficiencies(rba_session=rba_session, 
                                                                        proteomicsData=build_input_proteome_for_specific_kapp_estimation(proteome, condition), 
@@ -3152,9 +3153,9 @@ def calibration_workflow(proteome,
         Specific_Kapps.to_csv("Specific_Kapps_Hackett__{}.csv".format(condition), sep=";", decimal=",")
 
         ## NEW
-        if enzyme_efficiency_estimation_settings['use_target_biomass_function']:
-            rba_session.reload_model()
-            rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
+        #if enzyme_efficiency_estimation_settings['use_target_biomass_function']:
+         #   rba_session.reload_model()
+          #  rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
 
 
     else:
@@ -3675,22 +3676,23 @@ def global_efficiency_scaling(condition,
         specific_kapps_out.loc[:,"Kapp"]*=best_cumulative_correction_factor
 
         simulation_results_fixed = perform_simulations_fixed_Mu(condition=condition,
-                                                        rba_session=rba_session,
-                                                        definition_file=definition_file,
-                                                        compartment_sizes=extract_compartment_sizes_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Densities_PGs":compartment_densities_and_pg}]),
-                                                        pg_fractions=extract_pg_fractions_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Densities_PGs":compartment_densities_and_pg}]),
-                                                        process_efficiencies=extract_process_capacities_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Process_Efficiencies":process_efficiencies_out}]),
-                                                        Default_Kapps=extract_default_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Default_Kapps":default_kapps_out}]),
-                                                        Specific_Kapps=extract_specific_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Specific_Kapps":specific_kapps_out}]),
-                                                        Exchanges_to_impose=exchanges_to_impose,
-                                                        sims_to_perform=[condition_to_look_up],
-                                                        feasible_stati=feasible_stati,
-                                                        try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
-                                                        print_output=False,
-                                                        apply_model=False,
-                                                        transporter_multiplier=transporter_multiplier)
+                                                                rba_session=rba_session,
+                                                                definition_file=definition_file,
+                                                                compartment_sizes=extract_compartment_sizes_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Densities_PGs":compartment_densities_and_pg}]),
+                                                                pg_fractions=extract_pg_fractions_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Densities_PGs":compartment_densities_and_pg}]),
+                                                                process_efficiencies=extract_process_capacities_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Process_Efficiencies":process_efficiencies_out}]),
+                                                                Default_Kapps=extract_default_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Default_Kapps":default_kapps_out}]),
+                                                                Specific_Kapps=extract_specific_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Specific_Kapps":specific_kapps_out}]),
+                                                                Exchanges_to_impose=exchanges_to_impose,
+                                                                sims_to_perform=[condition_to_look_up],
+                                                                feasible_stati=feasible_stati,
+                                                                try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
+                                                                print_output=False,
+                                                                apply_model=False,
+                                                                transporter_multiplier=transporter_multiplier)
         if len(list(simulation_results_fixed[results_to_look_up].keys()))>0:
             simulation_results=simulation_results_fixed
+
     else:
         while not (mu_measured-mu_measured*mu_misprediction_tolerance) <= mumax_predicted <= (mu_measured+mu_measured*mu_misprediction_tolerance):
             mu_iteration_count+=1
@@ -3727,8 +3729,6 @@ def global_efficiency_scaling(condition,
                                                     Mu_approx_precision=mu_approx_precision,
                                                     max_mu_in_dichotomy=2*mu_measured)
             mumax_predicted=simulation_results[growth_rate_to_look_up]
-            if print_outputs:
-                print("Measured: {} - Predicted: {} - mispred coeff: {} - root: {} - runs_of_sign: {}-- status: {}".format(mu_measured,mumax_predicted,mu_misprediction_factor,n_th_root_mispred,runs_of_sign,simulation_results["SolutionStatus"]))
 
             predicted_growth_rates.append(mumax_predicted)
 
@@ -3753,6 +3753,9 @@ def global_efficiency_scaling(condition,
                     runs_of_sign=0
 
                 last_misprediction_direction=current_misprediction_direction
+
+            if print_outputs:
+                print("Measured: {} - Predicted: {} - mispred coeff: {} - root: {} - runs_of_sign: {}-- status: {}".format(mu_measured,mumax_predicted,mu_misprediction_factor,n_th_root_mispred,runs_of_sign,simulation_results["SolutionStatus"]))
 
         prediction_residulas_growth_rates=[mu_measured-mu_pred for mu_pred in predicted_growth_rates]
         minimum_prediction_residual=min([abs(i) for i in prediction_residulas_growth_rates])
@@ -4182,6 +4185,7 @@ def determine_calibration_flux_distribution(rba_session,
             print("Solution with equality density successfully obtained")
             derive_bm_from_rbasolution=True
             derive_bm_from_targets=False
+            rba_session.Problem.set_constraint_types(original_density_constraint_signs)
         else:
             print("Solution with equality density not obtained")
             rba_session.Problem.set_constraint_types(original_density_constraint_signs)
@@ -4385,24 +4389,23 @@ def estimate_specific_enzyme_efficiencies(rba_session,
     #####
     # 1: Determine Flux Distribution from parsimonious FBA#
 
-    ## NEW
-    #FluxDistribution=determine_calibration_flux_distribution(rba_session=rba_session,
-    #                                                         mu=mu,
-    #                                                         flux_bounds=flux_bounds,
-    #                                                         biomass_function=biomass_function,
-    #                                                         target_biomass_function=target_biomass_function,
-    #                                                         parsimonious_fba=parsimonious_fba,
-    #                                                         rxns_to_ignore_when_parsimonious=rxns_to_ignore_when_parsimonious
-    #                                                         )
-    FluxDistribution=determine_calibration_flux_distribution_2(rba_session=rba_session,
+    FluxDistribution=determine_calibration_flux_distribution(rba_session=rba_session,
                                                              mu=mu,
                                                              flux_bounds=flux_bounds,
                                                              biomass_function=biomass_function,
                                                              target_biomass_function=target_biomass_function,
-                                                             #rRNA_target_rna_weight_ratio=rRNA_target_rna_weight_ratio,
                                                              parsimonious_fba=parsimonious_fba,
                                                              rxns_to_ignore_when_parsimonious=rxns_to_ignore_when_parsimonious
                                                              )
+    #FluxDistribution=determine_calibration_flux_distribution_2(rba_session=rba_session,
+    #                                                         mu=mu,
+    #                                                         flux_bounds=flux_bounds,
+     #                                                        biomass_function=biomass_function,
+      #                                                       target_biomass_function=target_biomass_function,
+       #                                                      #rRNA_target_rna_weight_ratio=rRNA_target_rna_weight_ratio,
+        #                                                     parsimonious_fba=parsimonious_fba,
+         #                                                    rxns_to_ignore_when_parsimonious=rxns_to_ignore_when_parsimonious
+          #                                                   )
     FluxDistribution.to_csv('Calib_FluxDist_'+condition+'_.csv', sep=';')
 
     if chose_most_likely_isoreactions:
