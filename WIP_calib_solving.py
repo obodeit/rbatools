@@ -69,12 +69,13 @@ for condition in conditions:
                                                   Exchanges_to_impose=Exchanges_to_impose,
                                                   #sims_to_perform=["DefaultKapp","Prokaryotic","Eukaryotic"],
                                                   sims_to_perform=["Prokaryotic","Eukaryotic",'Eukaryotic_fixed_sizes'],
+                                                  #sims_to_perform=["Prokaryotic","Eukaryotic"],
                                                   #sims_to_perform=["Prokaryotic"],
                                                   feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
                                                   try_unscaling_if_sol_status_is_feasible_only_before_unscaling=False,
                                                   print_output=True,
-                                                  variability_analysis=["R_EX_glc__D_e","R_EX_etoh_e","R_EX_ac_e","R_EX_glyc_e","R_EX_acald_e","R_EX_lac__D_e","R_EX_succ_e","R_EX_o2_e"],
-                                                  #variability_analysis=None,
+                                                  #variability_analysis=["R_EX_glc__D_e","R_EX_etoh_e","R_EX_ac_e","R_EX_glyc_e","R_EX_acald_e","R_EX_lac__D_e","R_EX_succ_e","R_EX_o2_e"],
+                                                  variability_analysis=None,
                                                   mu_factor_for_variability=0.99,
                                                   apply_model=False,
                                                   functions_to_include_list=functions_to_include_list,
@@ -113,8 +114,8 @@ for condition in conditions:
                                                   feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
                                                   try_unscaling_if_sol_status_is_feasible_only_before_unscaling=False,
                                                   print_output=True,
-                                                  #variability_analysis=None,
-                                                  variability_analysis=["R_EX_glc__D_e","R_EX_etoh_e","R_EX_ac_e","R_EX_glyc_e","R_EX_acald_e","R_EX_lac__D_e","R_EX_succ_e","R_EX_o2_e"],
+                                                  variability_analysis=None,
+                                                  #variability_analysis=["R_EX_glc__D_e","R_EX_etoh_e","R_EX_ac_e","R_EX_glyc_e","R_EX_acald_e","R_EX_lac__D_e","R_EX_succ_e","R_EX_o2_e"],
                                                   mu_factor_for_variability=0.99,
                                                   apply_model=False,
                                                   functions_to_include_list=functions_to_include_list,
@@ -191,5 +192,15 @@ try:
         for comp in i['Euk_CompSizes'].keys():
             out.loc[comp,i["Condition"]]=i['Euk_CompSizes'][comp]
     out.to_csv("../CompSizesPredicted_Euk.csv")
+except:
+    print("")
+
+try:
+    out=pandas.DataFrame()
+    for i in simulation_results_Js_not_imposed:
+        out.loc["Mu",i["Condition"]]=i["Mu_euk_fixed"]
+        for comp in i['Euk_fixed_CompSizes'].keys():
+            out.loc[comp,i["Condition"]]=i['Euk_fixed_CompSizes'][comp]
+    out.to_csv("../CompSizesPredicted_Euk_fixed.csv")
 except:
     print("")
