@@ -297,7 +297,6 @@ class ProblemRBA(object):
                                  LBinds=LB_idxs,
                                  UBinds=UB_idxs,
                                  ModifiedProblem=True)
-
         if self.MuDependencies['FromParameters']['b']:
             self.set_right_hand_side({self.MuDependencies['FromParameters']['b'][i]['Coefficient']: self.evaluate_parameter(self.MuDependencies['FromParameters']['b'][i]) for i in list(self.MuDependencies['FromParameters']['b'].keys())})
         if self.MuDependencies['FromParameters']['A']:
@@ -625,4 +624,10 @@ class ProblemRBA(object):
         elif type(definition) == dict:
             variables_to_evaluate = {i: numpy.float64(self.ClassicRBAmatrix._blocks.parameters.__getitem__(i).value) for i in [j for j in definition['Variables'] if j not in ['growth_rate']] }
             variables_to_evaluate.update({'growth_rate':numpy.float64(self.Mu)})
-            return(numpy.float64(eval(str(definition['Equation']), variables_to_evaluate)))
+            out=eval(str(definition['Equation']), variables_to_evaluate)
+            if numpy.isfinite(out):
+                return(numpy.float64(out))
+            else:
+                print("ERROR not finite")
+                print(variables_to_evaluate)
+                print("....................")
