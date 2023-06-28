@@ -1046,6 +1046,12 @@ class _SolverCPLEX(_Solver):
         lhs = self.A.tolil()
         rows = [SparsePair(nz_ind, data) for nz_ind, data in zip(lhs.rows, lhs.data)]
         # define problem
+        #print("LP f")
+        #print([list(self.col_names)[i] for i in range(len(list(self.f))) if not numpy.isfinite(list(self.f)[i])])
+        #print("LP LB")
+        #print([list(self.col_names)[i] for i in range(len(list(self.LB))) if not numpy.isfinite(list(self.LB)[i])])
+        #print("LP UB")
+        #print([list(self.col_names)[i] for i in range(len(list(self.UB))) if not numpy.isfinite(list(self.UB)[i])])
         cpxLP = Cplex()
         cpxLP.variables.add(obj=list(self.f), ub=list(self.UB),
                             lb=list(self.LB), names=list(self.col_names))
