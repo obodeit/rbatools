@@ -906,7 +906,7 @@ def perform_simulations(condition,
                                 compartment_fractions=compartment_fractions_for_euk,
                                 compartments_with_imposed_sizes=[],
                                 normalise_global_fraction=True,
-                                compartment_bound_tolerance=0.0)
+                                compartment_bound_tolerance=0.05)
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
@@ -1041,7 +1041,7 @@ def perform_simulations(condition,
                                 compartment_fractions=compartment_fractions_for_euk,
                                 compartments_with_imposed_sizes=list(compartment_fractions_for_euk.keys()),
                                 normalise_global_fraction=True,
-                                compartment_bound_tolerance=0.0)
+                                compartment_bound_tolerance=0.05)
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
