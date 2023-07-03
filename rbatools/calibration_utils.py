@@ -784,7 +784,8 @@ def perform_simulations(condition,
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
             rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]["UB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["UB"])})
-        mumax_prok = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
+        mumax_prok = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=start_val, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+#        mumax_prok = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
         sol_status=rba_session.Problem.SolutionStatus
         try:
             rba_session.record_results('Prokaryotic')
@@ -906,14 +907,14 @@ def perform_simulations(condition,
                                 compartment_fractions=compartment_fractions_for_euk,
                                 compartments_with_imposed_sizes=[],
                                 normalise_global_fraction=True,
-                                compartment_bound_tolerance=0.05)
+                                compartment_bound_tolerance=0.0)
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
             rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]["UB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["UB"])})
 
-        #mumax_euk = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=start_val, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
-        mumax_euk = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        mumax_euk = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        #mumax_euk = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
         sol_status=rba_session.Problem.SolutionStatus
         try:
             rba_session.record_results('Eukaryotic')
@@ -1041,14 +1042,14 @@ def perform_simulations(condition,
                                 compartment_fractions=compartment_fractions_for_euk,
                                 compartments_with_imposed_sizes=list(compartment_fractions_for_euk.keys()),
                                 normalise_global_fraction=True,
-                                compartment_bound_tolerance=0.05)
+                                compartment_bound_tolerance=0.1)
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
             rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]["UB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["UB"])})
 
-        #mumax_euk_fixed = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=start_val, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
-        mumax_euk_fixed = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        mumax_euk_fixed = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        #mumax_euk_fixed = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
         sol_status=rba_session.Problem.SolutionStatus
         try:
             rba_session.record_results('Eukaryotic_fixed_sizes')
@@ -1057,7 +1058,7 @@ def perform_simulations(condition,
             euk_fixed_results = copy.deepcopy(rba_session.Results)
 
             compartment_fractions_euk_fixed = {}
-            for comp in list(compartment_fractions.keys()):
+            for comp in list(compartment_fractions_for_euk.keys()):
                 compartment_fractions_euk_fixed[comp] = rba_session.Problem.SolutionValues[str('f_'+comp)]
             rba_session.clear_results_and_parameters()
         except:
@@ -1113,10 +1114,13 @@ def perform_simulations_fixed_Mu(condition,
     def_Feasible_Ranges={}
     prok_Feasible_Ranges={}
     euk_Feasible_Ranges={}
+    euk_fixed_Feasible_Ranges={}
     def_results={}
     prok_results={}
     euk_results={}
-    compartment_fractions={}
+    euk_fixed_results={}
+    compartment_fractions_euk={}
+    compartment_fractions_euk_fixed={}
     if "DefaultKapp" in sims_to_perform:
         rba_session.reload_model()
 
@@ -1447,8 +1451,14 @@ def perform_simulations_fixed_Mu(condition,
         # Medium
         rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
 
-        rba_session.eukaryotic_densities_calibration(CompartmentRelationships=False)
-        #rba_session.eukaryotic_densities_pg_fraction(amino_acid_concentration_total='amino_acid_concentration_total',PG_fraction_prefix="fraction_non_enzymatic_protein_")
+        pg_fractions_for_euk={comp: str('fraction_non_enzymatic_protein_'+comp) for comp in list(compartment_densities_and_PGs['Compartment_ID'])}
+        compartment_fractions_for_euk={comp:str('fraction_protein_'+comp) for comp in list(compartment_densities_and_PGs['Compartment_ID'])}
+        rba_session.make_eukaryotic(amino_acid_concentration_total='amino_acid_concentration',
+                                pg_fractions=pg_fractions_for_euk,
+                                compartment_fractions=compartment_fractions_for_euk,
+                                compartments_with_imposed_sizes=[],
+                                normalise_global_fraction=True,
+                                compartment_bound_tolerance=0.0)
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
@@ -1464,22 +1474,174 @@ def perform_simulations_fixed_Mu(condition,
             rba_session.set_medium({metabolite_to_minimize:met_conc})
             rba_session.Problem.solve_lp(feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
         if rba_session.Problem.Solved:
-            rba_session.record_results('Eukaryotic')
-            if print_output:
-                print('Mu Euk: {}'.format(growth_rate_from_input(input=definition_file, condition=condition)))
-            euk_results = copy.deepcopy(rba_session.Results)
+            try:
+                rba_session.record_results('Eukaryotic')
+                if print_output:
+                    print('Mu Euk: {}'.format(growth_rate_from_input(input=definition_file, condition=condition)))
+                euk_results = copy.deepcopy(rba_session.Results)
 
-            compartment_fractions = {}
-            totAA = rba_session.Problem.get_right_hand_side('O_total')['O_total']
-            for occ in ['n', 'mIM', 'vM', 'mIMS', 'm', 'erM', 'mOM', 'x', 'c', 'cM', 'gM']:
-                compartment_fractions[occ] = rba_session.Problem.SolutionValues[str('O_'+occ)]/totAA
-            rba_session.clear_results_and_parameters()
+                compartment_fractions_euk = {}
+                for comp in list(compartment_fractions_for_euk.keys()):
+                    compartment_fractions_euk[comp] = rba_session.Problem.SolutionValues[str('f_'+comp)]
+                rba_session.clear_results_and_parameters()
+            except:
+                compartment_fractions_euk={}
+                euk_results = {}
             if variability_analysis is not None:
-                if len(list(euk_results.keys())):
+                if len(list(euk_results.keys()))!=0:
                     rba_session.set_growth_rate(Mu=mu_factor_for_variability*Mu_scaling_coeff*growth_rate_from_input(input=definition_file, condition=condition))
                     euk_Feasible_Ranges=rba_session.get_feasible_range(variability_analysis)
 
-    return({"FeasibleRange_def":def_Feasible_Ranges,"FeasibleRange_prok":prok_Feasible_Ranges,"FeasibleRange_euk":euk_Feasible_Ranges,'Simulation_Results': prok_results, 'Simulation_Results_Euk': euk_results, 'Simulation_Results_DefKapp': def_results, 'Euk_CompSizes': compartment_fractions,"Condition":condition})
+    if "Eukaryotic_fixed_sizes" in sims_to_perform:
+        rba_session.reload_model()
+
+        if not apply_model:
+            #Densities & PG
+            if compartment_sizes is not None:
+                if pg_fractions is not None:
+                    compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                    for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                        rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+                        rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+            # Process efficiencies & Def/Spec Kapps
+            process_efficiencies_to_inject=None
+            Default_Kapps_to_inject=None
+            Specific_Kapps_to_inject=None
+            if process_efficiencies is not None:
+                process_efficiencies_to_inject=generate_process_efficiency_input(process_efficiencies=process_efficiencies,condition=condition,parameter_name_suffix="_apparent_efficiency")
+            if Default_Kapps is not None:
+                Default_Kapps_to_inject=generate_default_kapp_input(default_kapps=Default_Kapps,condition=condition,transporter_multiplier=transporter_multiplier)
+            # Spec Kapps
+            if Specific_Kapps is not None:
+                Specific_Kapps_to_inject=generate_specific_kapp_input(specific_kapps=Specific_Kapps,condition=condition)
+            inject_estimated_efficiencies_into_model(rba_session, specific_kapps=Specific_Kapps_to_inject, default_kapps=Default_Kapps_to_inject, process_efficiencies=process_efficiencies_to_inject)
+        else:
+            if "Specific_Kapps" in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=Specific_Kapps,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                Specific_Kapps_to_inject=generate_specific_kapp_input(specific_kapps=Specific_Kapps,condition=condition)
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=Specific_Kapps_to_inject, default_kapps=None, process_efficiencies=None)
+            if "Default_Kapps" in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=Default_Kapps,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                Default_Kapps_to_inject=generate_default_kapp_input(default_kapps=Default_Kapps,condition=condition,transporter_multiplier=transporter_multiplier)
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=Default_Kapps_to_inject, process_efficiencies=None)
+
+            if "Compartment_Sizes" in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=compartment_sizes,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                if compartment_sizes is not None:
+                    if pg_fractions is not None:
+                        compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                            rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+
+            if "PG_Fractions" in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=pg_fractions,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                if compartment_sizes is not None:
+                    if pg_fractions is not None:
+                        compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                            rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+
+            if "Process_Efficiencies" in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=process_efficiencies,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                process_efficiencies_to_inject=generate_process_efficiency_input(process_efficiencies=process_efficiencies,condition=condition,parameter_name_suffix="_apparent_efficiency")
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=None, process_efficiencies=process_efficiencies_to_inject)
+
+        rba_session.rebuild_from_model()
+        # Medium
+        rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
+
+        pg_fractions_for_euk={comp: str('fraction_non_enzymatic_protein_'+comp) for comp in list(compartment_densities_and_PGs['Compartment_ID'])}
+        compartment_fractions_for_euk={comp:str('fraction_protein_'+comp) for comp in list(compartment_densities_and_PGs['Compartment_ID'])}
+        rba_session.make_eukaryotic(amino_acid_concentration_total='amino_acid_concentration',
+                                pg_fractions=pg_fractions_for_euk,
+                                compartment_fractions=compartment_fractions_for_euk,
+                                compartments_with_imposed_sizes=list(compartment_fractions_for_euk.keys()),
+                                normalise_global_fraction=True,
+                                compartment_bound_tolerance=0.1)
+
+        if Exchanges_to_impose is not None:
+            rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
+            rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]["UB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["UB"])})
+
+        rba_session.set_growth_rate(Mu=Mu_scaling_coeff*growth_rate_from_input(input=definition_file, condition=condition))
+        if metabolite_to_minimize is None:
+            rba_session.Problem.solve_lp(feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
+        else:
+            met_conc=rba_session.find_min_substrate_concentration(metabolite=metabolite_to_minimize, precision=0.001, max=1000, recording=False)
+            if print_output:
+                print("Min {} : {}".format(metabolite_to_minimize,met_conc))
+            rba_session.set_medium({metabolite_to_minimize:met_conc})
+            rba_session.Problem.solve_lp(feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
+        if rba_session.Problem.Solved:
+            try:
+                rba_session.record_results('Eukaryotic_fixed_sizes')
+                if print_output:
+                    print('Mu Euk fixed: {}'.format(growth_rate_from_input(input=definition_file, condition=condition)))
+                euk_fixed_results = copy.deepcopy(rba_session.Results)
+
+                compartment_fractions_euk_fixed = {}
+                for comp in list(compartment_fractions_for_euk.keys()):
+                    compartment_fractions_euk_fixed[comp] = rba_session.Problem.SolutionValues[str('f_'+comp)]
+                rba_session.clear_results_and_parameters()
+            except:
+                compartment_fractions_euk_fixed={}
+                euk_fixed_results = {}
+            if variability_analysis is not None:
+                if len(list(euk_results.keys()))!=0:
+                    rba_session.set_growth_rate(Mu=mu_factor_for_variability*Mu_scaling_coeff*growth_rate_from_input(input=definition_file, condition=condition))
+                    euk_fixed_Feasible_Ranges=rba_session.get_feasible_range(variability_analysis)
+
+    return({"FeasibleRange_def":def_Feasible_Ranges,
+            "FeasibleRange_prok":prok_Feasible_Ranges,
+            "FeasibleRange_euk":euk_Feasible_Ranges,
+            "FeasibleRange_euk_fixed":euk_fixed_Feasible_Ranges,
+            'Simulation_Results': prok_results, 
+            'Simulation_Results_Euk': euk_results, 
+            'Simulation_Results_Euk_fixed': euk_fixed_results, 
+            'Simulation_Results_DefKapp': def_results, 
+            'Euk_CompSizes': compartment_fractions_euk,
+            'Euk_fixed_CompSizes': compartment_fractions_euk_fixed,
+            "Condition":condition})
 
 
 def extract_predicted_exchange_fluxes(inputs=[],result_object='Simulation_Results', run='Prokaryotic', metabolite=''):
@@ -1539,10 +1701,10 @@ def generate_compartment_size_and_pg_input(compartment_sizes,pg_fractions,condit
     out=pandas.DataFrame()
     for i in compartment_sizes.index:
         out.loc[i,"Compartment_ID"]=i
-        out.loc[i,"Density"]=compartment_sizes.loc[i,condition]
+        out.loc[i,"Density"]=round(compartment_sizes.loc[i,condition],3)
     for i in pg_fractions.index:
         out.loc[i,"Compartment_ID"]=i
-        out.loc[i,"PG_fraction"]=pg_fractions.loc[i,condition]
+        out.loc[i,"PG_fraction"]=round(pg_fractions.loc[i,condition],3)
     return(out)
 
 
@@ -2849,6 +3011,8 @@ def plot_predicted_versus_measured_proteomes(rba_session,calibration_outputs,sim
         results_object="Simulation_Results"
     elif type=="Eukaryotic":
         results_object="Simulation_Results_Euk"
+    elif type=="Eukaryotic_fixed_sizes":
+        results_object="Simulation_Results_Euk_fixed"
     elif type=="DefaultKapp":
         results_object="Simulation_Results_DefKapp"
 
@@ -3442,6 +3606,14 @@ def calibration_workflow(proteome,
     process_efficiencies_original=process_efficiencies.copy()
 
     if correction_settings['correct_efficiencies']:
+        condition_to_look_up="Prokaryotic"
+        growth_rate_to_look_up="Mu_prok"
+        results_to_look_up="Simulation_Results"
+
+        #condition_to_look_up="Eukaryotic_fixed_sizes"
+        #growth_rate_to_look_up="Mu_euk_fixed"
+        #results_to_look_up="Simulation_Results_Euk_fixed"
+
         steady_count=0
         increasing_RSS_count=0
         iteration_count=0
@@ -3470,9 +3642,9 @@ def calibration_workflow(proteome,
                                                              transporter_multiplier=transporter_multiplier,
                                                              mu_approx_precision=Mu_approx_precision,
                                                              mu_misprediction_tolerance=correction_settings['tolerance_global_scaling'],
-                                                             condition_to_look_up="Prokaryotic",
-                                                             growth_rate_to_look_up="Mu_prok",
-                                                             results_to_look_up="Simulation_Results",
+                                                             condition_to_look_up=condition_to_look_up,
+                                                             growth_rate_to_look_up=growth_rate_to_look_up,
+                                                             results_to_look_up=results_to_look_up,
                                                              fixed_mu_when_above_target_mu_in_correction=correction_settings['fixed_growth_rate_global_scaling'],
                                                              n_th_root_mispred=1,
                                                              print_outputs=False,
@@ -3484,14 +3656,14 @@ def calibration_workflow(proteome,
             Default_Kapps=results_global_scaling["default_kapps"]
             process_efficiencies=results_global_scaling["process_efficiencies"]
 
-            if len(list(Simulation_results["Simulation_Results"].keys()))!=0:
+            if len(list(Simulation_results[results_to_look_up].keys()))!=0:
                 efficiencies_over_correction_iterations.append({"Specific_Kapps":Specific_Kapps.copy(),"Default_Kapps":Default_Kapps.copy(),"Process_Efficiencies":process_efficiencies.copy()})
 
                 KappCorrectionResults=efficiency_correction(enzyme_efficiencies=Specific_Kapps,
-                                                            simulation_results=Simulation_results["Simulation_Results"],
+                                                            simulation_results=Simulation_results[results_to_look_up],
                                                             protein_data=build_input_proteome_for_specific_kapp_estimation(proteome, condition),
                                                             rba_session=rba_session,
-                                                            condition_to_look_up="Prokaryotic",
+                                                            condition_to_look_up=condition_to_look_up,
                                                             default_enzyme_efficiencies=Default_Kapps,
                                                             tolerance=None,
                                                             #tolerance=0.05,
@@ -3501,10 +3673,10 @@ def calibration_workflow(proteome,
                                                             only_consider_misprediction_for_predicted_nonzero_enzymes=True)
                 
                 #KappCorrectionResults=efficiency_correction_2(enzyme_efficiencies=Specific_Kapps,
-                #                                            simulation_results=Simulation_results["Simulation_Results"],
+                #                                            simulation_results=Simulation_results[results_to_look_up],
                 #                                            protein_data=build_input_proteome_for_specific_kapp_estimation(proteome, condition),
                 #                                            rba_session=rba_session,
-                #                                            condition_to_look_up="Prokaryotic",
+                #                                            condition_to_look_up=condition_to_look_up,
                 #                                            default_enzyme_efficiencies=Default_Kapps,
                 #                                            tolerance=None,
                 #                                            n_th_root_mispred=1,
@@ -3576,9 +3748,9 @@ def calibration_workflow(proteome,
                                                              transporter_multiplier=transporter_multiplier,
                                                              mu_approx_precision=Mu_approx_precision,
                                                              mu_misprediction_tolerance=correction_settings['tolerance_global_scaling'],
-                                                             condition_to_look_up="Prokaryotic",
-                                                             growth_rate_to_look_up="Mu_prok",
-                                                             results_to_look_up="Simulation_Results",
+                                                             condition_to_look_up=condition_to_look_up,
+                                                             growth_rate_to_look_up=growth_rate_to_look_up,
+                                                             results_to_look_up=results_to_look_up,
                                                              fixed_mu_when_above_target_mu_in_correction=False)
             
             Simulation_results=results_global_scaling["simulation_results"]
@@ -3602,9 +3774,9 @@ def calibration_workflow(proteome,
                                                          transporter_multiplier=transporter_multiplier,
                                                          mu_approx_precision=Mu_approx_precision,
                                                          mu_misprediction_tolerance=correction_settings['tolerance_global_scaling'],
-                                                         condition_to_look_up="Prokaryotic",
-                                                         growth_rate_to_look_up="Mu_prok",
-                                                         results_to_look_up="Simulation_Results",
+                                                         condition_to_look_up=condition_to_look_up,
+                                                         growth_rate_to_look_up=growth_rate_to_look_up,
+                                                         results_to_look_up=results_to_look_up,
                                                          fixed_mu_when_above_target_mu_in_correction=False)
             
         Simulation_results=results_global_scaling["simulation_results"]
@@ -4081,6 +4253,8 @@ def extract_proteomes_from_simulation_results(simulation_outputs,type="Prokaryot
         results_object="Simulation_Results"
     elif type=="Eukaryotic":
         results_object="Simulation_Results_Euk"
+    elif type=="Eukaryotic_fixed_sizes":
+        results_object="Simulation_Results_Euk_fixed"
     elif type=="DefaultKapp":
         results_object="Simulation_Results_DefKapp"
     out=pandas.DataFrame()
