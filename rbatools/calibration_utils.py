@@ -913,7 +913,7 @@ def perform_simulations(condition,
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
             rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]["UB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["UB"])})
 
-        mumax_euk = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=print_outputs)
+        mumax_euk = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
         #mumax_euk = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
         sol_status=rba_session.Problem.SolutionStatus
         try:
@@ -1036,19 +1036,19 @@ def perform_simulations(condition,
         #rba_session.eukaryotic_densities_pg_fraction(fixed_size_compartments=[],compartment_fraction_prefix="fraction_protein_")
         pg_fractions_for_euk={comp: str('fraction_non_enzymatic_protein_'+comp) for comp in list(compartment_densities_and_PGs['Compartment_ID'])}
         compartment_fractions_for_euk={comp:str('fraction_protein_'+comp) for comp in list(compartment_densities_and_PGs['Compartment_ID'])}
-
         rba_session.make_eukaryotic(amino_acid_concentration_total='amino_acid_concentration',
                                 pg_fractions=pg_fractions_for_euk,
                                 compartment_fractions=compartment_fractions_for_euk,
                                 compartments_with_imposed_sizes=list(compartment_fractions_for_euk.keys()),
                                 normalise_global_fraction=True,
-                                compartment_bound_tolerance=0.1)
+                                compartment_bound_tolerance=0.1,
+                                imposed_compartments_without_tolerance=['Secreted','n'])
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
             rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]["UB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["UB"])})
 
-        mumax_euk_fixed = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=print_outputs)
+        mumax_euk_fixed = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
         #mumax_euk_fixed = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
         sol_status=rba_session.Problem.SolutionStatus
         try:
@@ -1597,7 +1597,8 @@ def perform_simulations_fixed_Mu(condition,
                                 compartment_fractions=compartment_fractions_for_euk,
                                 compartments_with_imposed_sizes=list(compartment_fractions_for_euk.keys()),
                                 normalise_global_fraction=True,
-                                compartment_bound_tolerance=0.1)
+                                compartment_bound_tolerance=0.1,
+                                imposed_compartments_without_tolerance=['Secreted','n'])
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
@@ -3630,6 +3631,33 @@ def calibration_workflow(proteome,
         while continuation_criterion:
             iteration_count+=1
             ### GLOBAL SCALING
+            if condition_to_look_up != "Prokaryotic":
+                results_global_scaling=global_efficiency_scaling(condition=condition,
+                                                                definition_file=definition_file,
+                                                                rba_session=rba_session,
+                                                                compartment_densities_and_pg=compartment_densities_and_PGs,
+                                                                process_efficiencies=process_efficiencies,
+                                                                default_kapps=Default_Kapps,
+                                                                specific_kapps=Specific_Kapps,
+                                                                exchanges_to_impose=Exchanges_to_impose,
+                                                                feasible_stati=feasible_stati,
+                                                                transporter_multiplier=transporter_multiplier,
+                                                                mu_approx_precision=Mu_approx_precision,
+                                                                mu_misprediction_tolerance=correction_settings['tolerance_global_scaling'],
+                                                                condition_to_look_up="Prokaryotic",
+                                                                growth_rate_to_look_up="Mu_prok",
+                                                                results_to_look_up="Simulation_Results",
+                                                                fixed_mu_when_above_target_mu_in_correction=correction_settings['fixed_growth_rate_global_scaling'],
+                                                                n_th_root_mispred=1,
+                                                                print_outputs=False,
+                                                                adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'])
+
+                
+                Simulation_results=results_global_scaling["simulation_results"]
+                Specific_Kapps=results_global_scaling["specific_kapps"]
+                Default_Kapps=results_global_scaling["default_kapps"]
+                process_efficiencies=results_global_scaling["process_efficiencies"]
+
             results_global_scaling=global_efficiency_scaling(condition=condition,
                                                              definition_file=definition_file,
                                                              rba_session=rba_session,
@@ -3647,7 +3675,7 @@ def calibration_workflow(proteome,
                                                              results_to_look_up=results_to_look_up,
                                                              fixed_mu_when_above_target_mu_in_correction=correction_settings['fixed_growth_rate_global_scaling'],
                                                              n_th_root_mispred=1,
-                                                             print_outputs=True,
+                                                             print_outputs=False,
                                                              adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'])
 
             
