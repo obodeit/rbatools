@@ -2299,7 +2299,8 @@ class SessionRBA(object):
                         compartment_fractions={},
                         compartments_with_imposed_sizes=[],                        
                         normalise_global_fraction=False,
-                        compartment_bound_tolerance=0.0):
+                        compartment_bound_tolerance=0.0,
+                        imposed_compartments_without_tolerance=[]):
         # add zero parameter
         if not 'zero_dummy_param' in self.model.parameters.functions._elements_by_id.keys():
             zero_param=rba.xml.parameters.Function(id_='zero_dummy_param', 
@@ -2416,31 +2417,44 @@ class SessionRBA(object):
             #                                                                {'Coefficient':'f_size_{}'.format(i),
             #                                                                 'Equation':'{}'.format(compartment_fractions[i]),
             #                                                                 'Variables': [compartment_fractions[i]]},
-            #                                                              })
-                if compartment_bound_tolerance != 0:
-                    lb_tol=1-compartment_bound_tolerance
-                    ub_tol=1+compartment_bound_tolerance
-                    self.Problem.MuDependencies['FromParameters']['LB'].update({'Imposed_size_{}'.format(i):
-                                                                                {'Coefficient':'f_{}'.format(i),
-                                                                                'Equation':'{} * {}'.format(lb_tol,compartment_fractions[i]),
-                                                                                'Variables': [compartment_fractions[i]]},
-                                                                            })
-                    self.Problem.MuDependencies['FromParameters']['UB'].update({'Imposed_size_{}'.format(i):
-                                                                                {'Coefficient':'f_{}'.format(i),
-                                                                                'Equation':'{} * {}'.format(ub_tol,compartment_fractions[i]),
-                                                                                'Variables': [compartment_fractions[i]]},
-                                                                            })
+            #                        
+            #                                       })
+                if i not in imposed_compartments_without_tolerance:
+                    if compartment_bound_tolerance != 0:
+                        lb_tol=1-compartment_bound_tolerance
+                        ub_tol=1+compartment_bound_tolerance
+                        self.Problem.MuDependencies['FromParameters']['LB'].update({'Imposed_size_{}'.format(i):
+                                                                                    {'Coefficient':'f_{}'.format(i),
+                                                                                    'Equation':'{} * {}'.format(lb_tol,compartment_fractions[i]),
+                                                                                    'Variables': [compartment_fractions[i]]},
+                                                                                })
+                        self.Problem.MuDependencies['FromParameters']['UB'].update({'Imposed_size_{}'.format(i):
+                                                                                    {'Coefficient':'f_{}'.format(i),
+                                                                                    'Equation':'{} * {}'.format(ub_tol,compartment_fractions[i]),
+                                                                                    'Variables': [compartment_fractions[i]]},
+                                                                                })
+                    else:
+                        self.Problem.MuDependencies['FromParameters']['LB'].update({'Imposed_size_{}'.format(i):
+                                                                                    {'Coefficient':'f_{}'.format(i),
+                                                                                    'Equation':'{}'.format(compartment_fractions[i]),
+                                                                                    'Variables': [compartment_fractions[i]]},
+                                                                                })
+                        self.Problem.MuDependencies['FromParameters']['UB'].update({'Imposed_size_{}'.format(i):
+                                                                                    {'Coefficient':'f_{}'.format(i),
+                                                                                    'Equation':'{}'.format(compartment_fractions[i]),
+                                                                                    'Variables': [compartment_fractions[i]]},
+                                                                                })
                 else:
                     self.Problem.MuDependencies['FromParameters']['LB'].update({'Imposed_size_{}'.format(i):
                                                                                 {'Coefficient':'f_{}'.format(i),
                                                                                 'Equation':'{}'.format(compartment_fractions[i]),
                                                                                 'Variables': [compartment_fractions[i]]},
-                                                                            })
+                                                                               })
                     self.Problem.MuDependencies['FromParameters']['UB'].update({'Imposed_size_{}'.format(i):
                                                                                 {'Coefficient':'f_{}'.format(i),
                                                                                 'Equation':'{}'.format(compartment_fractions[i]),
                                                                                 'Variables': [compartment_fractions[i]]},
-                                                                            })
+                                                                               })
         self.set_growth_rate(self.Mu) 
 
     def make_eukaryotic_fixed_pg_content(self,
