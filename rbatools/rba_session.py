@@ -408,8 +408,8 @@ class SessionRBA(object):
         if numpy.isfinite(start_value):
             testMu = start_value
         else:
-            testMu =0
-            #testMu = max_value/2
+            #testMu =0
+            testMu = max_value/2
         iteration = 0
 
         if omit_objective:
