@@ -913,7 +913,7 @@ def perform_simulations(condition,
             rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]["UB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["UB"])})
 
         #mumax_euk = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=start_val, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
-        mumax_euk = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        mumax_euk = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=print_output)
         sol_status=rba_session.Problem.SolutionStatus
         try:
             rba_session.record_results('Eukaryotic')
@@ -1048,7 +1048,7 @@ def perform_simulations(condition,
             rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]["UB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["UB"])})
 
         #mumax_euk_fixed = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=start_val, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
-        mumax_euk_fixed = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        mumax_euk_fixed = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=print_output)
         sol_status=rba_session.Problem.SolutionStatus
         try:
             rba_session.record_results('Eukaryotic_fixed_sizes')
@@ -3475,7 +3475,7 @@ def calibration_workflow(proteome,
                                                              results_to_look_up="Simulation_Results",
                                                              fixed_mu_when_above_target_mu_in_correction=correction_settings['fixed_growth_rate_global_scaling'],
                                                              n_th_root_mispred=1,
-                                                             print_outputs=False,
+                                                             print_outputs=True,
                                                              adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'])
 
             
@@ -3831,7 +3831,7 @@ def global_efficiency_scaling(condition,
                                              sims_to_perform=[condition_to_look_up],
                                              feasible_stati=feasible_stati,
                                              try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
-                                             print_output=False,
+                                             print_output=print_outputs,
                                              apply_model=False,
                                              transporter_multiplier=transporter_multiplier,
                                              start_val=0,
@@ -3883,7 +3883,7 @@ def global_efficiency_scaling(condition,
                                                     sims_to_perform=[condition_to_look_up],
                                                     feasible_stati=feasible_stati,
                                                     try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
-                                                    print_output=False,
+                                                    print_output=print_outputs,
                                                     apply_model=False,
                                                     transporter_multiplier=transporter_multiplier,
                                                     start_val=mu_measured,
@@ -3948,7 +3948,7 @@ def global_efficiency_scaling(condition,
                                                                 sims_to_perform=[condition_to_look_up],
                                                                 feasible_stati=feasible_stati,
                                                                 try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
-                                                                print_output=False,
+                                                                print_output=print_outputs,
                                                                 apply_model=False,
                                                                 transporter_multiplier=transporter_multiplier)
         if len(list(simulation_results_fixed[results_to_look_up].keys()))>0:
@@ -3983,7 +3983,7 @@ def global_efficiency_scaling(condition,
                                                     sims_to_perform=[condition_to_look_up],
                                                     feasible_stati=feasible_stati,
                                                     try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
-                                                    print_output=False,
+                                                    print_output=print_outputs,
                                                     apply_model=False,
                                                     transporter_multiplier=transporter_multiplier,
                                                     start_val=mu_measured,
@@ -4048,7 +4048,7 @@ def global_efficiency_scaling(condition,
                                                 sims_to_perform=[condition_to_look_up],
                                                 feasible_stati=feasible_stati,
                                                 try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
-                                                print_output=False,
+                                                print_output=print_outputs,
                                                 apply_model=False,
                                                 transporter_multiplier=transporter_multiplier,
                                                 start_val=mu_measured,
