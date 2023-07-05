@@ -668,7 +668,7 @@ def perform_simulations(condition,
 
         if equality_capacity_constraints:
             rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_enzyme_cget_process_constraintsonstraints()))))
+            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
@@ -787,7 +787,7 @@ def perform_simulations(condition,
         rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
         if equality_capacity_constraints:
             rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_enzyme_cget_process_constraintsonstraints()))))
+            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
@@ -919,7 +919,7 @@ def perform_simulations(condition,
 
         if equality_capacity_constraints:
             rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_enzyme_cget_process_constraintsonstraints()))))
+            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
             rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]["UB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["UB"])})
@@ -1057,7 +1057,7 @@ def perform_simulations(condition,
 
         if equality_capacity_constraints:
             rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_enzyme_cget_process_constraintsonstraints()))))
+            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
             rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]["UB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["UB"])})
@@ -1218,7 +1218,7 @@ def perform_simulations_fixed_Mu(condition,
         rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
         if equality_capacity_constraints:
             rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_enzyme_cget_process_constraintsonstraints()))))
+            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
@@ -1346,7 +1346,7 @@ def perform_simulations_fixed_Mu(condition,
 
         if equality_capacity_constraints:
             rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_enzyme_cget_process_constraintsonstraints()))))
+            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
@@ -1483,7 +1483,7 @@ def perform_simulations_fixed_Mu(condition,
 
         if equality_capacity_constraints:
             rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_enzyme_cget_process_constraintsonstraints()))))
+            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
@@ -1627,7 +1627,7 @@ def perform_simulations_fixed_Mu(condition,
 
         if equality_capacity_constraints:
             rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_enzyme_cget_process_constraintsonstraints()))))
+            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
