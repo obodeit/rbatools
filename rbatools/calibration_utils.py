@@ -572,17 +572,25 @@ def perform_simulations(condition,
     mumax_prok=numpy.nan
     mumax_euk=numpy.nan
     mumax_euk_fixed=numpy.nan
+    mumax_fixed_pg_euk=numpy.nan
+    mumax_fixed_pg_euk_fixed=numpy.nan
     def_Feasible_Ranges={}
     prok_Feasible_Ranges={}
     euk_Feasible_Ranges={}
     euk_fixed_Feasible_Ranges={}
+    fixed_pg_euk_Feasible_Ranges={}
+    fixed_pg_euk_fixed_Feasible_Ranges={}
     def_results={}
     prok_results={}
     euk_results={}
     euk_fixed_results={}
+    fixed_pg_euk_results={}
+    fixed_pg_euk_fixed_results={}
     compartment_fractions={}
     compartment_fractions_euk={}
     compartment_fractions_euk_fixed={}
+    compartment_fractions_fixed_pg_euk={}
+    compartment_fractions_fixed_pg_euk_fixed={}
 
     if "DefaultKapp" in sims_to_perform:
         rba_session.reload_model()
@@ -1083,6 +1091,278 @@ def perform_simulations(condition,
                 rba_session.set_growth_rate(mumax_euk_fixed*mu_factor_for_variability)
                 euk_fixed_Feasible_Ranges=rba_session.get_feasible_range(variability_analysis)
 
+    if "Fixed_PG_Eukaryotic" in sims_to_perform:
+        rba_session.reload_model()
+
+        if not apply_model:
+            #Densities & PG
+            if compartment_sizes is not None:
+                if pg_fractions is not None:
+                    compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                    for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                        rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+                        rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+            # Process efficiencies & Def/Spec Kapps
+            process_efficiencies_to_inject=None
+            Default_Kapps_to_inject=None
+            Specific_Kapps_to_inject=None
+            if process_efficiencies is not None:
+                process_efficiencies_to_inject=generate_process_efficiency_input(process_efficiencies=process_efficiencies,condition=condition,parameter_name_suffix="_apparent_efficiency")
+            if Default_Kapps is not None:
+                Default_Kapps_to_inject=generate_default_kapp_input(default_kapps=Default_Kapps,condition=condition,transporter_multiplier=transporter_multiplier)
+            # Spec Kapps
+            if Specific_Kapps is not None:
+                Specific_Kapps_to_inject=generate_specific_kapp_input(specific_kapps=Specific_Kapps,condition=condition)
+            inject_estimated_efficiencies_into_model(rba_session, specific_kapps=Specific_Kapps_to_inject, default_kapps=Default_Kapps_to_inject, process_efficiencies=process_efficiencies_to_inject)
+        else:
+            if "Specific_Kapps" in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=Specific_Kapps,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                Specific_Kapps_to_inject=generate_specific_kapp_input(specific_kapps=Specific_Kapps,condition=condition)
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=Specific_Kapps_to_inject, default_kapps=None, process_efficiencies=None)
+            if "Default_Kapps" in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=Default_Kapps,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                Default_Kapps_to_inject=generate_default_kapp_input(default_kapps=Default_Kapps,condition=condition,transporter_multiplier=transporter_multiplier)
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=Default_Kapps_to_inject, process_efficiencies=None)
+
+            if "Compartment_Sizes" in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=compartment_sizes,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                if compartment_sizes is not None:
+                    if pg_fractions is not None:
+                        compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                            rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+
+            if "PG_Fractions" in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=pg_fractions,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                if compartment_sizes is not None:
+                    if pg_fractions is not None:
+                        compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                            rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+
+            if "Process_Efficiencies" in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=process_efficiencies,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                process_efficiencies_to_inject=generate_process_efficiency_input(process_efficiencies=process_efficiencies,condition=condition,parameter_name_suffix="_apparent_efficiency")
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=None, process_efficiencies=process_efficiencies_to_inject)
+
+        rba_session.rebuild_from_model()
+        # Medium
+        rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
+
+        #rba_session.eukaryotic_densities_calibration(CompartmentRelationships=False)
+        #rba_session.eukaryotic_densities_pg_fraction(fixed_size_compartments=[],compartment_fraction_prefix="fraction_protein_")
+        pg_fractions_for_euk={comp: str('fraction_non_enzymatic_protein_'+comp) for comp in list(compartment_densities_and_PGs['Compartment_ID'])}
+        compartment_fractions_for_euk={comp:str('fraction_protein_'+comp) for comp in list(compartment_densities_and_PGs['Compartment_ID'])}
+        rba_session.make_eukaryotic_fixed_pg_content(amino_acid_concentration_total='amino_acid_concentration',
+                                                    external_compartment_fractions=[],                                         
+                                                    pg_fractions=pg_fractions_for_euk,
+                                                    compartment_fractions=compartment_fractions_for_euk,
+                                                    compartments_with_imposed_sizes=[])
+
+        if equality_capacity_constraints:
+            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
+            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
+        if Exchanges_to_impose is not None:
+            rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
+            rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]["UB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["UB"])})
+
+        mumax_fixed_pg_euk = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        #mumax_fixed_pg_euk = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        sol_status=rba_session.Problem.SolutionStatus
+        try:
+            rba_session.record_results('Fixed_PG_Eukaryotic')
+            if print_output:
+                print('Mu fixed PG Euk: {}'.format(mumax_fixed_pg_euk))
+            fixed_pg_euk_results = copy.deepcopy(rba_session.Results)
+
+            compartment_fractions_fixed_pg_euk = {}
+            for comp in list(compartment_fractions_for_euk.keys()):
+                compartment_fractions_fixed_pg_euk[comp] = rba_session.Problem.SolutionValues[str('f_'+comp)]
+            rba_session.clear_results_and_parameters()
+        except:
+            compartment_fractions_fixed_pg_euk={}
+            fixed_pg_euk_results = {}
+        if variability_analysis is not None:
+            if len(list(euk_results.keys()))!=0:
+                rba_session.set_growth_rate(mumax_euk*mu_factor_for_variability)
+                fixed_pg_euk_Feasible_Ranges=rba_session.get_feasible_range(variability_analysis)
+
+    if "Fixed_PG_Eukaryotic_fixed_sizes" in sims_to_perform:
+        rba_session.reload_model()
+
+        if not apply_model:
+            #Densities & PG
+            if compartment_sizes is not None:
+                if pg_fractions is not None:
+                    compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                    for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                        rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+                        rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+            # Process efficiencies & Def/Spec Kapps
+            process_efficiencies_to_inject=None
+            Default_Kapps_to_inject=None
+            Specific_Kapps_to_inject=None
+            if process_efficiencies is not None:
+                process_efficiencies_to_inject=generate_process_efficiency_input(process_efficiencies=process_efficiencies,condition=condition,parameter_name_suffix="_apparent_efficiency")
+            if Default_Kapps is not None:
+                Default_Kapps_to_inject=generate_default_kapp_input(default_kapps=Default_Kapps,condition=condition,transporter_multiplier=transporter_multiplier)
+            # Spec Kapps
+            if Specific_Kapps is not None:
+                Specific_Kapps_to_inject=generate_specific_kapp_input(specific_kapps=Specific_Kapps,condition=condition)
+            inject_estimated_efficiencies_into_model(rba_session, specific_kapps=Specific_Kapps_to_inject, default_kapps=Default_Kapps_to_inject, process_efficiencies=process_efficiencies_to_inject)
+        else:
+            if "Specific_Kapps" in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=Specific_Kapps,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                Specific_Kapps_to_inject=generate_specific_kapp_input(specific_kapps=Specific_Kapps,condition=condition)
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=Specific_Kapps_to_inject, default_kapps=None, process_efficiencies=None)
+            if "Default_Kapps" in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=Default_Kapps,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                Default_Kapps_to_inject=generate_default_kapp_input(default_kapps=Default_Kapps,condition=condition,transporter_multiplier=transporter_multiplier)
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=Default_Kapps_to_inject, process_efficiencies=None)
+
+            if "Compartment_Sizes" in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=compartment_sizes,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                if compartment_sizes is not None:
+                    if pg_fractions is not None:
+                        compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                            rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+
+            if "PG_Fractions" in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=pg_fractions,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                if compartment_sizes is not None:
+                    if pg_fractions is not None:
+                        compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                            rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+
+            if "Process_Efficiencies" in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=process_efficiencies,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                process_efficiencies_to_inject=generate_process_efficiency_input(process_efficiencies=process_efficiencies,condition=condition,parameter_name_suffix="_apparent_efficiency")
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=None, process_efficiencies=process_efficiencies_to_inject)
+
+        rba_session.rebuild_from_model()
+        # Medium
+        rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
+
+        #rba_session.eukaryotic_densities_calibration(CompartmentRelationships=False)
+        #rba_session.eukaryotic_densities_pg_fraction(fixed_size_compartments=[],compartment_fraction_prefix="fraction_protein_")
+        pg_fractions_for_euk={comp: str('fraction_non_enzymatic_protein_'+comp) for comp in list(compartment_densities_and_PGs['Compartment_ID'])}
+        compartment_fractions_for_euk={comp:str('fraction_protein_'+comp) for comp in list(compartment_densities_and_PGs['Compartment_ID'])}
+        rba_session.make_eukaryotic_fixed_pg_content(amino_acid_concentration_total='amino_acid_concentration',
+                                                    external_compartment_fractions=[],                                         
+                                                    pg_fractions=pg_fractions_for_euk,
+                                                    compartment_fractions=compartment_fractions_for_euk,
+                                                    compartments_with_imposed_sizes=list(compartment_fractions_for_euk.keys()))
+
+        if equality_capacity_constraints:
+            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
+            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
+        if Exchanges_to_impose is not None:
+            rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
+            rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]["UB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["UB"])})
+
+        mumax_fixed_pg_euk_fixed = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        #mumax_fixed_pg_euk_fixed = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        sol_status=rba_session.Problem.SolutionStatus
+        try:
+            rba_session.record_results('Fixed_PG_Eukaryotic_fixed_sizes')
+            if print_output:
+                print('Mu fixed PG Euk fixed: {}'.format(mumax_euk_fixed))
+            fixed_pg_euk_fixed_results = copy.deepcopy(rba_session.Results)
+
+            compartment_fractions_euk_fixed = {}
+            for comp in list(compartment_fractions_for_euk.keys()):
+                compartment_fractions_fixed_pg_euk_fixed[comp] = rba_session.Problem.SolutionValues[str('f_'+comp)]
+            rba_session.clear_results_and_parameters()
+        except:
+            compartment_fractions_fixed_pg_euk_fixed={}
+            fixed_pg_euk_fixed_results = {}
+        if variability_analysis is not None:
+            if len(list(fixed_pg_euk_fixed_results.keys()))!=0:
+                rba_session.set_growth_rate(mumax_euk_fixed*mu_factor_for_variability)
+                fixed_pg_euk_fixed_Feasible_Ranges=rba_session.get_feasible_range(variability_analysis)
+
 
     #rba_session.model.write(output_dir="Yeast_model_test")
     return({"SolutionStatus":sol_status,
@@ -1090,16 +1370,24 @@ def perform_simulations(condition,
             "FeasibleRange_prok":prok_Feasible_Ranges,
             "FeasibleRange_euk":euk_Feasible_Ranges,
             "FeasibleRange_euk_fixed":euk_fixed_Feasible_Ranges,
+            "FeasibleRange_fixed_pg_euk":fixed_pg_euk_Feasible_Ranges,
+            "FeasibleRange_fixed_pg_euk_fixed":fixed_pg_euk_fixed_Feasible_Ranges,
             "Mu_def":mumax_def,
             "Mu_prok":mumax_prok,
             "Mu_euk":mumax_euk,
             "Mu_euk_fixed":mumax_euk_fixed,
+            "Mu_fixed_pg_euk":mumax_fixed_pg_euk,
+            "Mu_euk_fixed_pg_fixed":mumax_fixed_pg_euk_fixed,
             'Simulation_Results': prok_results, 
             'Simulation_Results_Euk': euk_results, 
             'Simulation_Results_Euk_fixed': euk_fixed_results, 
             'Simulation_Results_DefKapp': def_results, 
+            'Simulation_Results_fixed_pg_Euk': fixed_pg_euk_results, 
+            'Simulation_Results_fixed_pg_Euk_fixed': fixed_pg_euk_fixed_results, 
             'Euk_CompSizes': compartment_fractions_euk,
             'Euk_fixed_CompSizes': compartment_fractions_euk_fixed,
+            'Fixed_pg_Euk_CompSizes': compartment_fractions_fixed_pg_euk,
+            'Fixed_pg_Euk_fixed_CompSizes': compartment_fractions_fixed_pg_euk_fixed,
             "Condition":condition})
 
 
@@ -2377,7 +2665,7 @@ def regression_on_default_enzyme_efficiencies(default_kapps,min_kapp,max_kapp,co
     return(out)
 
 
-def plot_predicted_fluxes(simulation_outputs,types=['Eukaryotic_fixed_sizes',"DefaultKapp","Prokaryotic","Eukaryotic"],input_definition=None):
+def plot_predicted_fluxes(simulation_outputs,types=['Fixed_PG_Eukaryotic_fixed_sizes','Fixed_PG_Eukaryotic','Eukaryotic_fixed_sizes',"DefaultKapp","Prokaryotic","Eukaryotic"],input_definition=None):
 
     ########
     Mus_o2 = [0.025, 0.05, 0.1, 0.15, 0.2, 0.25, 0.28, 0.3, 0.35, 0.4]
@@ -2508,6 +2796,8 @@ def plot_predicted_fluxes(simulation_outputs,types=['Eukaryotic_fixed_sizes',"De
     Mus_predicted = extract_predicted_growth_rates(inputs=simulation_outputs,result_object='Simulation_Results', run='Prokaryotic')
     Mus_predicted_euk = extract_predicted_growth_rates(inputs=simulation_outputs,result_object='Simulation_Results_Euk', run='Eukaryotic')
     Mus_predicted_euk_fixed = extract_predicted_growth_rates(inputs=simulation_outputs,result_object='Simulation_Results_Euk_fixed', run='Eukaryotic_fixed_sizes')
+    Mus_predicted_fixed_pg_euk = extract_predicted_growth_rates(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk', run='Fixed_PG_Eukaryotic')
+    Mus_predicted_fixed_pg_euk_fixed = extract_predicted_growth_rates(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk_fixed', run='Fixed_PG_Eukaryotic_fixed_sizes')
 
     Glc_Exchange_predicted_def = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_DefKapp', run='DefaultKapp', metabolite='M_glc__D')
     EtOH_Exchange_predicted_def = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_DefKapp', run='DefaultKapp', metabolite='M_etoh')
@@ -2548,6 +2838,27 @@ def plot_predicted_fluxes(simulation_outputs,types=['Eukaryotic_fixed_sizes',"De
     Acald_Exchange_predicted_euk_fixed = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_Euk_fixed', run='Eukaryotic_fixed_sizes', metabolite='M_acald')
     Lac_Exchange_predicted_euk_fixed = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_Euk_fixed', run='Eukaryotic_fixed_sizes', metabolite='M_lac__D')
     Succ_Exchange_predicted_euk_fixed = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_Euk_fixed', run='Eukaryotic_fixed_sizes', metabolite='M_succ')
+
+#
+    Glc_Exchange_predicted_fixed_pg_euk = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk', run='Fixed_PG_Eukaryotic', metabolite='M_glc__D')
+    EtOH_Exchange_predicted_fixed_pg_euk = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk', run='Fixed_PG_Eukaryotic', metabolite='M_etoh')
+    O2_Exchange_predicted_fixed_pg_euk = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk', run='Fixed_PG_Eukaryotic', metabolite='M_o2')
+    CO2_Exchange_predicted_fixed_pg_euk = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk', run='Fixed_PG_Eukaryotic', metabolite='M_co2')
+    Ac_Exchange_predicted_fixed_pg_euk = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk', run='Fixed_PG_Eukaryotic', metabolite='M_ac')
+    Glycerol_Exchange_predicted_fixed_pg_euk = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk', run='Fixed_PG_Eukaryotic', metabolite='M_glyc')
+    Acald_Exchange_predicted_fixed_pg_euk = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk', run='Fixed_PG_Eukaryotic', metabolite='M_acald')
+    Lac_Exchange_predicted_fixed_pg_euk = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk', run='Fixed_PG_Eukaryotic', metabolite='M_lac__D')
+    Succ_Exchange_predicted_fixed_pg_euk = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk', run='Fixed_PG_Eukaryotic', metabolite='M_succ')
+
+    Glc_Exchange_predicted_fixed_pg_euk_fixed = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk_fixed', run='Fixed_PG_Eukaryotic_fixed_sizes', metabolite='M_glc__D')
+    EtOH_Exchange_predicted_fixed_pg_euk_fixed = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk_fixed', run='Fixed_PG_Eukaryotic_fixed_sizes', metabolite='M_etoh')
+    O2_Exchange_predicted_fixed_pg_euk_fixed = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk_fixed', run='Fixed_PG_Eukaryotic_fixed_sizes', metabolite='M_o2')
+    CO2_Exchange_predicted_fixed_pg_euk_fixed = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk_fixed', run='Fixed_PG_Eukaryotic_fixed_sizes', metabolite='M_co2')
+    Ac_Exchange_predicted_fixed_pg_euk_fixed = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk_fixed', run='Fixed_PG_Eukaryotic_fixed_sizes', metabolite='M_ac')
+    Glycerol_Exchange_predicted_fixed_pg_euk_fixed = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk_fixed', run='Fixed_PG_Eukaryotic_fixed_sizes', metabolite='M_glyc')
+    Acald_Exchange_predicted_fixed_pg_euk_fixed = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk_fixed', run='Fixed_PG_Eukaryotic_fixed_sizes', metabolite='M_acald')
+    Lac_Exchange_predicted_fixed_pg_euk_fixed = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk_fixed', run='Fixed_PG_Eukaryotic_fixed_sizes', metabolite='M_lac__D')
+    Succ_Exchange_predicted_fixed_pg_euk_fixed = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk_fixed', run='Fixed_PG_Eukaryotic_fixed_sizes', metabolite='M_succ')
 
 
     Glc_VAmin_def=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_def', variable='R_EX_glc__D_e',bound_type="Min")
@@ -2618,6 +2929,40 @@ def plot_predicted_fluxes(simulation_outputs,types=['Eukaryotic_fixed_sizes',"De
     Lac_VAmax_euk_fixed=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_euk_fixed', variable='R_EX_lac__D_e',bound_type="Max")
     Succ_VAmax_euk_fixed=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_euk_fixed', variable='R_EX_succ_e',bound_type="Max")
 
+    Glc_VAmin_fixed_pg_euk=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk', variable='R_EX_glc__D_e',bound_type="Min")
+    EtOH_VAmin_fixed_pg_euk=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk', variable='R_EX_etoh_e',bound_type="Min")
+    O2_VAmin_fixed_pg_euk=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk', variable='R_EX_o2_e',bound_type="Min")
+    Ac_VAmin_fixed_pg_euk=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk', variable='R_EX_ac_e',bound_type="Min")
+    Glycerol_VAmin_fixed_pg_euk=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk', variable='R_EX_glyc_e',bound_type="Min")
+    Acald_VAmin_fixed_pg_euk=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk', variable='R_EX_acald_e',bound_type="Min")
+    Lac_VAmin_fixed_pg_euk=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk', variable='R_EX_lac__D_e',bound_type="Min")
+    Succ_VAmin_fixed_pg_euk=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk', variable='R_EX_succ_e',bound_type="Min")
+    Glc_VAmax_fixed_pg_euk=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk', variable='R_EX_glc__D_e',bound_type="Max")
+    EtOH_VAmax_fixed_pg_euk=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk', variable='R_EX_etoh_e',bound_type="Max")
+    O2_VAmax_fixed_pg_euk=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk', variable='R_EX_o2_e',bound_type="Max")
+    Ac_VAmax_fixed_pg_euk=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk', variable='R_EX_ac_e',bound_type="Max")
+    Glycerol_VAmax_fixed_pg_euk=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk', variable='R_EX_glyc_e',bound_type="Max")
+    Acald_VAmax_fixed_pg_euk=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk', variable='R_EX_acald_e',bound_type="Max")
+    Lac_VAmax_fixed_pg_euk=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk', variable='R_EX_lac__D_e',bound_type="Max")
+    Succ_VAmax_fixed_pg_euk=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk', variable='R_EX_succ_e',bound_type="Max")
+
+    Glc_VAmin_fixed_pg_euk_fixed=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk_fixed', variable='R_EX_glc__D_e',bound_type="Min")
+    EtOH_VAmin_fixed_pg_euk_fixed=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk_fixed', variable='R_EX_etoh_e',bound_type="Min")
+    O2_VAmin_fixed_pg_euk_fixed=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk_fixed', variable='R_EX_o2_e',bound_type="Min")
+    Ac_VAmin_fixed_pg_euk_fixed=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk_fixed', variable='R_EX_ac_e',bound_type="Min")
+    Glycerol_VAmin_fixed_pg_euk_fixed=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk_fixed', variable='R_EX_glyc_e',bound_type="Min")
+    Acald_VAmin_fixed_pg_euk_fixed=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk_fixed', variable='R_EX_acald_e',bound_type="Min")
+    Lac_VAmin_fixed_pg_euk_fixed=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk_fixed', variable='R_EX_lac__D_e',bound_type="Min")
+    Succ_VAmin_fixed_pg_euk_fixed=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk_fixed', variable='R_EX_succ_e',bound_type="Min")
+    Glc_VAmax_fixed_pg_euk_fixed=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk_fixed', variable='R_EX_glc__D_e',bound_type="Max")
+    EtOH_VAmax_fixed_pg_euk_fixed=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk_fixed', variable='R_EX_etoh_e',bound_type="Max")
+    O2_VAmax_fixed_pg_euk_fixed=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk_fixed', variable='R_EX_o2_e',bound_type="Max")
+    Ac_VAmax_fixed_pg_euk_fixed=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk_fixed', variable='R_EX_ac_e',bound_type="Max")
+    Glycerol_VAmax_fixed_pg_euk_fixed=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk_fixed', variable='R_EX_glyc_e',bound_type="Max")
+    Acald_VAmax_fixed_pg_euk_fixed=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk_fixed', variable='R_EX_acald_e',bound_type="Max")
+    Lac_VAmax_fixed_pg_euk_fixed=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk_fixed', variable='R_EX_lac__D_e',bound_type="Max")
+    Succ_VAmax_fixed_pg_euk_fixed=extract_feasible_bounds(inputs=simulation_outputs,feasible_range_object='FeasibleRange_fixed_pg_euk_fixed', variable='R_EX_succ_e',bound_type="Max")
+
     ###
     fig, axs = plt.subplots(3, 3, figsize=(18, 11), sharex=True)
     axs[0, 0].plot(Mu_Hackett, Mu_Hackett, color='lightgreen')
@@ -2634,6 +2979,12 @@ def plot_predicted_fluxes(simulation_outputs,types=['Eukaryotic_fixed_sizes',"De
     if "Eukaryotic_fixed_sizes" in types:
         axs[0, 0].scatter(Mu_Hackett, Mus_predicted_euk_fixed, color='steelblue')
         legendlist.append("Euk. (fixed)")
+    if "Fixed_PG_Eukaryotic" in types:
+        axs[0, 0].scatter(Mu_Hackett, Mus_predicted_fixed_pg_euk, color='green')
+        legendlist.append("Euk_PG.")
+    if "Fixed_PG_Eukaryotic_fixed_sizes" in types:
+        axs[0, 0].scatter(Mu_Hackett, Mus_predicted_fixed_pg_euk_fixed, color='pink')
+        legendlist.append("Euk_Pg. (fixed)")
     axs[0, 0].legend(legendlist)
     axs[0, 0].set_title('Predicted vs measured growth-rate')
     axs[0, 0].set_ylabel('$\mu$ [$h^{-1}$]')
@@ -2655,6 +3006,12 @@ def plot_predicted_fluxes(simulation_outputs,types=['Eukaryotic_fixed_sizes',"De
     if "Eukaryotic_fixed_sizes" in types:
         axs[0, 1].scatter(Mus_predicted_euk_fixed, Glc_Exchange_predicted_euk_fixed, color='steelblue', alpha=0.8)
         legendlist.append("Euk. (fixed)")
+    if "Fixed_PG_Eukaryotic" in types:
+        axs[0, 1].scatter(Mus_predicted_fixed_pg_euk, Glc_Exchange_predicted_fixed_pg_euk, color='green', alpha=0.8)
+        legendlist.append("Euk_PG.")
+    if "Fixed_PG_Eukaryotic_fixed_sizes" in types:
+        axs[0, 1].scatter(Mus_predicted_fixed_pg_euk_fixed, Glc_Exchange_predicted_fixed_pg_euk_fixed, color='pink', alpha=0.8)
+        legendlist.append("Euk_PG. (fixed)")
     axs[0, 1].legend(legendlist)
     #axs[0, 1].scatter(Mus_predicted_def, Glc_VAmin_def, color='orange',marker=6, alpha=0.5)
     #axs[0, 1].scatter(Mus_predicted_def, Glc_VAmax_def, color='orange',marker=7, alpha=0.5)
@@ -2729,6 +3086,12 @@ def plot_predicted_fluxes(simulation_outputs,types=['Eukaryotic_fixed_sizes',"De
     if "Eukaryotic_fixed_sizes" in types:
         axs[1, 0].scatter(Mus_predicted_euk_fixed, EtOH_Exchange_predicted_euk_fixed, color='steelblue', alpha=0.8)
         legendlist.append("Euk. (fixed)")
+    if "Fixed_PG_Eukaryotic" in types:
+        axs[1, 0].scatter(Mus_predicted_fixed_pg_euk, EtOH_Exchange_predicted_fixed_pg_euk, color='green', alpha=0.8)
+        legendlist.append("Euk_PG.")
+    if "Fixed_PG_Eukaryotic_fixed_sizes" in types:
+        axs[1, 0].scatter(Mus_predicted_fixed_pg_euk_fixed, EtOH_Exchange_predicted_fixed_pg_euk_fixed, color='pink', alpha=0.8)
+        legendlist.append("Euk_PG. (fixed)")
     axs[1, 0].legend(legendlist)
     #axs[1, 0].scatter(Mus_predicted_def, EtOH_VAmin_def, color='orange',marker=7, alpha=0.5)
     #axs[1, 0].scatter(Mus_predicted_def, EtOH_VAmax_def, color='orange',marker=6, alpha=0.5)
