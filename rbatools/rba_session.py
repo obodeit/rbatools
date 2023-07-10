@@ -76,7 +76,9 @@ class SessionRBA(object):
             else:
                 self.build_model_structure(file_name='/ModelStructure.json',print_warnings=True)
 
-        self.Problem = ProblemRBA(matrix=rba.ConstraintMatrix(model=self.model),ModelStructure=self.ModelStructure,lp_solver=self.lp_solver)
+        self.Problem = ProblemRBA(matrix=rba.ConstraintMatrix(model=self.model),
+                                  ModelStructure=self.ModelStructure,
+                                  lp_solver=self.lp_solver)
 
         medium = pandas.read_csv(xml_dir+'/medium.tsv', sep='\t')
         self.Medium = dict(zip(list(medium.iloc[:, 0]), [float(i) for i in list(medium.iloc[:, 1])]))
@@ -432,7 +434,7 @@ class SessionRBA(object):
             else:
                 maxMu = testMu
             testMu = (maxMu+minMu)/2
-        if optMu == max_value:
+        if optMu >= max_value:
             print('WARNING: Maximum growth rate might exceed specified range. Try rerunning this method with larger "max" argument.')
         if omit_objective:
             self.Problem.set_objective(old_Obj)
