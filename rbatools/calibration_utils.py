@@ -1223,8 +1223,8 @@ def perform_simulations(condition,
             compartment_fractions_fixed_pg_euk={}
             fixed_pg_euk_results = {}
         if variability_analysis is not None:
-            if len(list(euk_results.keys()))!=0:
-                rba_session.set_growth_rate(mumax_euk*mu_factor_for_variability)
+            if len(list(fixed_pg_euk_results.keys()))!=0:
+                rba_session.set_growth_rate(mumax_fixed_pg_euk*mu_factor_for_variability)
                 fixed_pg_euk_Feasible_Ranges=rba_session.get_feasible_range(variability_analysis)
 
     if "Fixed_PG_Eukaryotic_fixed_sizes" in sims_to_perform:
@@ -1348,10 +1348,10 @@ def perform_simulations(condition,
         try:
             rba_session.record_results('Fixed_PG_Eukaryotic_fixed_sizes')
             if print_output:
-                print('Mu fixed PG Euk fixed: {}'.format(mumax_euk_fixed))
+                print('Mu fixed PG Euk fixed: {}'.format(mumax_fixed_pg_euk_fixed))
             fixed_pg_euk_fixed_results = copy.deepcopy(rba_session.Results)
 
-            compartment_fractions_euk_fixed = {}
+            compartment_fractions_fixed_pg_euk_fixed = {}
             for comp in list(compartment_fractions_for_euk.keys()):
                 compartment_fractions_fixed_pg_euk_fixed[comp] = rba_session.Problem.SolutionValues[str('f_'+comp)]
             rba_session.clear_results_and_parameters()
@@ -1360,9 +1360,8 @@ def perform_simulations(condition,
             fixed_pg_euk_fixed_results = {}
         if variability_analysis is not None:
             if len(list(fixed_pg_euk_fixed_results.keys()))!=0:
-                rba_session.set_growth_rate(mumax_euk_fixed*mu_factor_for_variability)
+                rba_session.set_growth_rate(mumax_fixed_pg_euk_fixed*mu_factor_for_variability)
                 fixed_pg_euk_fixed_Feasible_Ranges=rba_session.get_feasible_range(variability_analysis)
-
 
     #rba_session.model.write(output_dir="Yeast_model_test")
     return({"SolutionStatus":sol_status,
