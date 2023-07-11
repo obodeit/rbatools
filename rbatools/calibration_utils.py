@@ -4043,7 +4043,7 @@ def calibration_workflow(proteome,
                                                                 n_th_root_mispred=1,
                                                                 print_outputs=False,
                                                                 adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'],
-                                                                equality_capacity_constraints=True)
+                                                                equality_capacity_constraints=False)
 
                 
                 Simulation_results=results_global_scaling["simulation_results"]
@@ -4070,7 +4070,7 @@ def calibration_workflow(proteome,
                                                              n_th_root_mispred=1,
                                                              print_outputs=False,
                                                              adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'],
-                                                             equality_capacity_constraints=True)
+                                                             equality_capacity_constraints=False)
 
             
             Simulation_results=results_global_scaling["simulation_results"]
