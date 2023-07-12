@@ -4366,7 +4366,7 @@ def global_efficiency_scaling(condition,
                                              transporter_multiplier=transporter_multiplier,
                                              start_val=0,
                                              Mu_approx_precision=mu_approx_precision,
-                                             max_mu_in_dichotomy=2*mu_measured)
+                                             max_mu_in_dichotomy=4.0)
 
     mumax_predicted=simulation_results[growth_rate_to_look_up]
     if print_outputs:
