@@ -234,12 +234,12 @@ class ProblemRBA(object):
         else:
             if try_unscaling_if_sol_status_is_feasible_only_before_unscaling:
                 if self.SolutionStatus in ["feasible_only_before_unscaling"]:
+                    self.Solved = True
                     self.LP.unscale_lp()
                     self.LP.solve_lp()
                     self.SolutionStatus = self.LP.return_solution_status()
                     if self.SolutionStatus in feasible_stati:
                         ## Extract solution-data ##
-                        self.Solved = True
                         self.ObjectiveValue = self.LP.return_objective_value()
                         self.SolutionValues = self.LP.return_primal_values()
                         self.DualValues = self.LP.return_dual_values()
