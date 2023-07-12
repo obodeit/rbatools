@@ -566,8 +566,7 @@ def perform_simulations(condition,
                         transporter_multiplier=3,
                         start_val=numpy.nan,
                         Mu_approx_precision=0.000001,
-                        max_mu_in_dichotomy=1,
-                        equality_capacity_constraints=False):
+                        max_mu_in_dichotomy=1):
     mumax_def=numpy.nan
     mumax_prok=numpy.nan
     mumax_euk=numpy.nan
@@ -673,10 +672,6 @@ def perform_simulations(condition,
         rba_session.rebuild_from_model()
         # Medium
         rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
-
-        if equality_capacity_constraints:
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
@@ -793,9 +788,6 @@ def perform_simulations(condition,
         rba_session.rebuild_from_model()
         # Medium
         rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
-        if equality_capacity_constraints:
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
@@ -925,9 +917,6 @@ def perform_simulations(condition,
                                 normalise_global_fraction=True,
                                 compartment_bound_tolerance=0.0)
 
-        if equality_capacity_constraints:
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
             rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]["UB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["UB"])})
@@ -1063,9 +1052,6 @@ def perform_simulations(condition,
                                 compartment_bound_tolerance=0.1,
                                 imposed_compartments_without_tolerance=['Secreted','n'])
 
-        if equality_capacity_constraints:
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
             rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]["UB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["UB"])})
@@ -1199,9 +1185,6 @@ def perform_simulations(condition,
                                                     compartment_fractions=compartment_fractions_for_euk,
                                                     compartments_with_imposed_sizes=[])
 
-        if equality_capacity_constraints:
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
             rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]["UB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["UB"])})
@@ -1335,9 +1318,6 @@ def perform_simulations(condition,
                                                     compartment_fractions=compartment_fractions_for_euk,
                                                     compartments_with_imposed_sizes=list(compartment_fractions_for_euk.keys()))
 
-        if equality_capacity_constraints:
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
             rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]["UB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["UB"])})
@@ -1410,7 +1390,7 @@ def perform_simulations_fixed_Mu(condition,
                                  mu_factor_for_variability=1,
                                  apply_model=False,
                                  functions_to_include_list=[],
-                                 transporter_multiplier=3,equality_capacity_constraints=False):
+                                 transporter_multiplier=3):
 
     def_Feasible_Ranges={}
     prok_Feasible_Ranges={}
@@ -1503,9 +1483,6 @@ def perform_simulations_fixed_Mu(condition,
         rba_session.rebuild_from_model()
         # Medium
         rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
-        if equality_capacity_constraints:
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
@@ -1630,10 +1607,6 @@ def perform_simulations_fixed_Mu(condition,
         rba_session.rebuild_from_model()
         # Medium
         rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
-
-        if equality_capacity_constraints:
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
@@ -1767,10 +1740,6 @@ def perform_simulations_fixed_Mu(condition,
                                 compartments_with_imposed_sizes=[],
                                 normalise_global_fraction=True,
                                 compartment_bound_tolerance=0.0)
-
-        if equality_capacity_constraints:
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
@@ -1911,10 +1880,6 @@ def perform_simulations_fixed_Mu(condition,
                                 normalise_global_fraction=True,
                                 compartment_bound_tolerance=0.1,
                                 imposed_compartments_without_tolerance=['Secreted','n'])
-
-        if equality_capacity_constraints:
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_enzyme_constraints(),['E']*len(rba_session.get_enzyme_constraints()))))
-            rba_session.Problem.set_constraint_types(dict(zip(rba_session.get_process_constraints(),['E']*len(rba_session.get_process_constraints()))))
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
@@ -4023,34 +3988,6 @@ def calibration_workflow(proteome,
         while continuation_criterion:
             iteration_count+=1
             ### GLOBAL SCALING
-            if condition_to_look_up != "Prokaryotic":
-                results_global_scaling=global_efficiency_scaling(condition=condition,
-                                                                definition_file=definition_file,
-                                                                rba_session=rba_session,
-                                                                compartment_densities_and_pg=compartment_densities_and_PGs,
-                                                                process_efficiencies=process_efficiencies,
-                                                                default_kapps=Default_Kapps,
-                                                                specific_kapps=Specific_Kapps,
-                                                                exchanges_to_impose=Exchanges_to_impose,
-                                                                feasible_stati=feasible_stati,
-                                                                transporter_multiplier=transporter_multiplier,
-                                                                mu_approx_precision=Mu_approx_precision,
-                                                                mu_misprediction_tolerance=correction_settings['tolerance_global_scaling'],
-                                                                condition_to_look_up="Prokaryotic",
-                                                                growth_rate_to_look_up="Mu_prok",
-                                                                results_to_look_up="Simulation_Results",
-                                                                fixed_mu_when_above_target_mu_in_correction=correction_settings['fixed_growth_rate_global_scaling'],
-                                                                n_th_root_mispred=1,
-                                                                print_outputs=False,
-                                                                adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'],
-                                                                equality_capacity_constraints=False)
-
-                
-                Simulation_results=results_global_scaling["simulation_results"]
-                Specific_Kapps=results_global_scaling["specific_kapps"]
-                Default_Kapps=results_global_scaling["default_kapps"]
-                process_efficiencies=results_global_scaling["process_efficiencies"]
-
             results_global_scaling=global_efficiency_scaling(condition=condition,
                                                              definition_file=definition_file,
                                                              rba_session=rba_session,
@@ -4069,8 +4006,7 @@ def calibration_workflow(proteome,
                                                              fixed_mu_when_above_target_mu_in_correction=correction_settings['fixed_growth_rate_global_scaling'],
                                                              n_th_root_mispred=1,
                                                              print_outputs=False,
-                                                             adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'],
-                                                             equality_capacity_constraints=False)
+                                                             adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'])
 
             
             Simulation_results=results_global_scaling["simulation_results"]
@@ -4402,7 +4338,7 @@ def global_efficiency_scaling(condition,
                               fixed_mu_when_above_target_mu_in_correction,
                               n_th_root_mispred=1,
                               print_outputs=False,
-                              adjust_root=True,equality_capacity_constraints=False):
+                              adjust_root=True):
     
     mu_measured=growth_rate_from_input(input=definition_file, condition=condition)
 
@@ -4430,8 +4366,7 @@ def global_efficiency_scaling(condition,
                                              transporter_multiplier=transporter_multiplier,
                                              start_val=0,
                                              Mu_approx_precision=mu_approx_precision,
-                                             max_mu_in_dichotomy=2*mu_measured,
-                                             equality_capacity_constraints=equality_capacity_constraints)
+                                             max_mu_in_dichotomy=2*mu_measured)
 
     mumax_predicted=simulation_results[growth_rate_to_look_up]
     if print_outputs:
@@ -4483,8 +4418,7 @@ def global_efficiency_scaling(condition,
                                                     transporter_multiplier=transporter_multiplier,
                                                     start_val=mu_measured,
                                                     Mu_approx_precision=mu_approx_precision,
-                                                    max_mu_in_dichotomy=2*mu_measured,
-                                                    equality_capacity_constraints=equality_capacity_constraints)
+                                                    max_mu_in_dichotomy=2*mu_measured)
             mumax_predicted=simulation_results[growth_rate_to_look_up]
 
             predicted_growth_rates.append(mumax_predicted)
@@ -4546,8 +4480,7 @@ def global_efficiency_scaling(condition,
                                                                 try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
                                                                 print_output=print_outputs,
                                                                 apply_model=False,
-                                                                transporter_multiplier=transporter_multiplier,
-                                                                equality_capacity_constraints=equality_capacity_constraints)
+                                                                transporter_multiplier=transporter_multiplier)
         if len(list(simulation_results_fixed[results_to_look_up].keys()))>0:
             simulation_results=simulation_results_fixed
 
@@ -4585,7 +4518,7 @@ def global_efficiency_scaling(condition,
                                                     transporter_multiplier=transporter_multiplier,
                                                     start_val=mu_measured,
                                                     Mu_approx_precision=mu_approx_precision,
-                                                    max_mu_in_dichotomy=2*mu_measured,equality_capacity_constraints=equality_capacity_constraints)
+                                                    max_mu_in_dichotomy=2*mu_measured)
             mumax_predicted=simulation_results[growth_rate_to_look_up]
 
             predicted_growth_rates.append(mumax_predicted)
@@ -4650,7 +4583,7 @@ def global_efficiency_scaling(condition,
                                                 transporter_multiplier=transporter_multiplier,
                                                 start_val=mu_measured,
                                                 Mu_approx_precision=mu_approx_precision,
-                                                max_mu_in_dichotomy=2*mu_measured,equality_capacity_constraints=equality_capacity_constraints)
+                                                max_mu_in_dichotomy=2*mu_measured)
 
     return({"specific_kapps":specific_kapps_out,"default_kapps":default_kapps_out,"process_efficiencies":process_efficiencies_out,"correction_factor":best_cumulative_correction_factor,"simulation_results":simulation_results})
 
