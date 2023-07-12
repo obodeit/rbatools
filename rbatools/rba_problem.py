@@ -218,6 +218,7 @@ class ProblemRBA(object):
         self.ObjectiveValue = None
         self.SolutionValues = None
         self.DualValues = None
+        self.SolutionStatus=''
 
         ## Solve cplex LP ##
         self.LP.solve_lp()
