@@ -381,7 +381,7 @@ class SessionRBA(object):
         precision : float
             Numberic precision with which maximum is approximated.
             Default: 0.00001
-        max : float
+        max_value : float
             Defines the highest growth rate to be screened for.
             Default: 4.0
         start_value : float
@@ -417,7 +417,6 @@ class SessionRBA(object):
         if omit_objective:
             old_Obj = self.Problem.get_objective()
             self.Problem.clear_objective()
-        optMu=testMu
         while (maxMu - minMu) > precision:
             if verbose:
                 print('Mu: set to {}'.format(testMu))
@@ -430,17 +429,16 @@ class SessionRBA(object):
                 if recording:
                     self.record_results('DichotomyMu_iteration_'+str(iteration))
                 minMu = testMu
-                optMu = testMu
             else:
                 maxMu = testMu
             testMu = (maxMu+minMu)/2
-        if optMu >= max_value:
+        if minMu >= max_value:
             print('WARNING: Maximum growth rate might exceed specified range. Try rerunning this method with larger "max" argument.')
         if omit_objective:
             self.Problem.set_objective(old_Obj)
-        self.set_growth_rate(Mu=optMu)
+        self.set_growth_rate(Mu=minMu)
         self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
-        return(optMu)
+        return(minMu)
 
     def find_min_substrate_concentration(self, metabolite: str, precision: float =0.00001, max: float =100.0, recording:bool =False, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool = True):
         """
