@@ -244,7 +244,7 @@ class ProblemRBA(object):
                         self.DualValues = self.LP.return_dual_values()
         self.SolutionType = 'Normal'
 
-    def update_growth_rate(self, Mu: float, keepParameters: dict = {}):
+    def set_growth_rate(self, Mu: float, keepParameters: dict = {}):
         """
         Changes growth-rate of problem and sets all associated coefficients.
 
@@ -266,6 +266,7 @@ class ProblemRBA(object):
             Default: keepParameters=None
         """
         ## Pass new matrix and indices of elements to update to LP.update_matrix-method ##
+        self.Mu = numpy.float64(Mu)
         self.ClassicRBAmatrix.build_matrices(self.Mu)
         inputMatrix = ProblemMatrix()
         inputMatrix.load_matrix(matrix=self.ClassicRBAmatrix)
@@ -304,31 +305,6 @@ class ProblemRBA(object):
             self.set_lb({self.MuDependencies['FromParameters']['LB'][i]['Coefficient']: self.evaluate_parameter(self.MuDependencies['FromParameters']['LB'][i]) for i in list(self.MuDependencies['FromParameters']['LB'].keys())})
         if self.MuDependencies['FromParameters']['UB']:
             self.set_ub({self.MuDependencies['FromParameters']['UB'][i]['Coefficient']: self.evaluate_parameter(self.MuDependencies['FromParameters']['UB'][i]) for i in list(self.MuDependencies['FromParameters']['UB'].keys())})
-
-    def set_growth_rate(self, Mu: float, keepParameters: dict = {}):
-        """
-        Changes growth-rate of problem and sets all associated coefficients.
-
-        Can be provided with 'keepParameters' argument
-        to define problem coefficients which should remain unchanged.
-
-        Parameters
-        ----------
-        Mu : float
-            Growth rate
-        keepParameters : dict
-            Dictionary indicating which elements of the linear problem should
-            not be affected when setting growth-rate. Possible keys of dictionary:
-                'LHS': List of index-tuples (constraint-ID,variable-ID),
-                       indicating elements of the lefthandside (constraint-matrix).
-                'RHS': List of constraint IDs, indicating elements of the righthandside (b-vector).
-                'LB': List of variable-IDs, indicating elements of the lower-bound vector.
-                'UB': List of variable-IDs, indicating elements of the upper-bound vector.
-            Default: keepParameters=None
-        """
-
-        self.Mu = numpy.float64(Mu)
-        self.update_growth_rate(Mu=numpy.float64(Mu), keepParameters=keepParameters)
 
     def get_constraint_types(self, constraints: Union[list,str] = []) -> dict:
         """
