@@ -372,7 +372,13 @@ class SessionRBA(object):
     def find_max_growth_rate(self, 
                              precision: float = 0.001, 
                              max_value: float = 4.0, 
-                             start_value: float = numpy.nan, recording: bool = False, omit_objective: bool = False, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool = True,verbose: bool = False) -> float:
+                             start_value: float = numpy.nan, 
+                             recording: bool = False, 
+                             omit_objective: bool = False, 
+                             feasible_stati: list = ["optimal","feasible"], 
+                             try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool = True,
+                             verbose: bool = False,
+                             iteration_limit=100) -> float:
         """
         Applies dichotomy-search to find the maximal feasible growth-rate.
 
@@ -417,15 +423,15 @@ class SessionRBA(object):
         if omit_objective:
             old_Obj = self.Problem.get_objective()
             self.Problem.clear_objective()
-        while (maxMu - minMu) > precision:
+        while ((maxMu - minMu) > precision) and iteration <= iteration_limit:
             if verbose:
                 print('Mu: set to {}'.format(testMu))
             self.set_growth_rate(Mu=testMu)
             self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
             if verbose:
                 print('Mu: {} - Solved: {} - Status: {}'.format(testMu,self.Problem.Solved,self.Problem.SolutionStatus))
+            iteration += 1
             if self.Problem.Solved:
-                iteration += 1
                 if recording:
                     self.record_results('DichotomyMu_iteration_'+str(iteration))
                 minMu = testMu
