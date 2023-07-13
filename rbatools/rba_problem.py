@@ -195,7 +195,7 @@ class ProblemRBA(object):
         self.Mu = Mu
         self.ClassicRBAmatrix.build_matrices(Mu)
 
-    def solve_lp(self, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool =True):
+    def solve_lp_2(self, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool =True):
         """
         Solves Linear RBA problem.
 
@@ -243,6 +243,56 @@ class ProblemRBA(object):
                         self.ObjectiveValue = self.LP.return_objective_value()
                         self.SolutionValues = self.LP.return_primal_values()
                         self.DualValues = self.LP.return_dual_values()
+        self.SolutionType = 'Normal'
+
+    def solve_lp(self, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool =True):
+        """
+        Solves Linear RBA problem.
+
+        When solution-status is amongst the user-defined feasible statuses;
+        boolean 'Solved' is set to True and 'ObjectiveValue', 'SolutionValues' and 'DualValues'
+        are stored as attributes.
+
+        Parameters
+        ----------
+        feasible_stati : list of int
+            List with identifiers of acceptable solution statuses.
+            (consult ILOG-CPLEX documentation for information on them).
+            Default: feasible_stati=["optimal","feasible"]
+        try_unscaling_if_sol_status_is_feasible_only_before_unscaling :bool
+            Try re-solving problem with less aggressive scaling, when solution status is infeasible after unscaling
+            Default: True
+        """
+
+        self.Solved = False
+        try:
+            ## Solve cplex LP ##
+            self.LP.solve_lp()
+            ## Determin solution-status ##
+            self.SolutionStatus = self.LP.return_solution_status()
+            ## Check if solution status is amongst acceptable ones ##
+            if self.SolutionStatus in feasible_stati:
+                ## Extract solution-data ##
+                self.Solved = True
+                self.ObjectiveValue = self.LP.return_objective_value()
+                self.SolutionValues = self.LP.return_primal_values()
+                self.DualValues = self.LP.return_dual_values()
+            else:
+                if try_unscaling_if_sol_status_is_feasible_only_before_unscaling:
+                    if self.SolutionStatus in ["feasible_only_before_unscaling"]:
+                        self.LP.unscale_lp()
+                        self.LP.solve_lp()
+                        self.SolutionStatus = self.LP.return_solution_status()
+                        if self.SolutionStatus in feasible_stati:
+                            ## Extract solution-data ##
+                            self.Solved = True
+                            self.ObjectiveValue = self.LP.return_objective_value()
+                            self.SolutionValues = self.LP.return_primal_values()
+                            self.DualValues = self.LP.return_dual_values()
+        except:
+            self.ObjectiveValue = None
+            self.SolutionValues = None
+            self.DualValues = None
         self.SolutionType = 'Normal'
 
     def set_growth_rate(self, Mu: float, keepParameters: dict = {}):
