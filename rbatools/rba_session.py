@@ -369,7 +369,7 @@ class SessionRBA(object):
         solver.solve()
         return(solver.mu_opt)
 
-    def find_max_growth_rate(self, 
+    def find_max_growth_rate_2(self, 
                              precision: float = 0.001, 
                              max_value: float = 4.0, 
                              start_value: float = numpy.nan, 
@@ -445,6 +445,73 @@ class SessionRBA(object):
         self.set_growth_rate(Mu=minMu)
         self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
         return(minMu)
+
+    def find_max_growth_rate(self, precision: float = 0.001, max: float = 4.0, start_value: float = numpy.nan, recording: bool = False, omit_objective: bool = False, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool = True) -> float:
+        """
+        Applies dichotomy-search to find the maximal feasible growth-rate.
+
+        Parameters
+        ----------
+        precision : float
+            Numberic precision with which maximum is approximated.
+            Default: 0.00001
+        max : float
+            Defines the highest growth rate to be screened for.
+            Default: 4.0
+        start_value : float
+            Defines the first growth-rate to test during the dichotomy search.
+            Default: numpy.nan --> then the middle between 0 and max is used.
+        recording : bool
+            Records intermediate feasible solutions
+            while approaching the maximum growth-rate.
+            Default: False
+        feasible_stati : list of str
+            List with acceptable solution statuses.
+            Default: ["optimal","feasible"]
+        try_unscaling_if_sol_status_is_feasible_only_before_unscaling : bool
+            If true; the problem will be attempted to be solved without scaling,
+            if the scaled problem is feasible but the solution is not feasible
+            after unscaling (CPLEX solution-status 5).
+            Default: True
+
+        Returns
+        -------
+        maximum feasible growth rate as float.
+        """
+
+        minMu = 0
+        maxMu = max
+        if numpy.isfinite(start_value):
+            testMu = start_value
+        else:
+            testMu =0
+            #testMu = max/2
+        iteration = 0
+
+        if omit_objective:
+            old_Obj = self.Problem.get_objective()
+            self.Problem.clear_objective()
+        optMu=testMu
+        while (maxMu - minMu) > precision:
+            self.set_growth_rate(Mu=testMu)
+            self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
+            if self.Problem.Solved:
+                iteration += 1
+                if recording:
+                    self.record_results('DichotomyMu_iteration_'+str(iteration))
+                minMu = testMu
+                optMu = testMu
+            else:
+                maxMu = testMu
+            testMu = (maxMu+minMu)/2
+        effective_Mu_difference=maxMu - minMu
+        if optMu == max:
+            print('WARNING: Maximum growth rate might exceed specified range. Try rerunning this method with larger "max" argument.')
+        if omit_objective:
+            self.Problem.set_objective(old_Obj)
+        self.set_growth_rate(Mu=optMu)
+        self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
+        return(optMu)
 
     def find_min_substrate_concentration(self, metabolite: str, precision: float =0.00001, max: float =100.0, recording:bool =False, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool = True):
         """
