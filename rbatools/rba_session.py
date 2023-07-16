@@ -369,7 +369,7 @@ class SessionRBA(object):
         solver.solve()
         return(solver.mu_opt)
 
-    def find_max_growth_rate_2(self, 
+    def find_max_growth_rate(self, 
                              precision: float = 0.001, 
                              max_value: float = 4.0, 
                              start_value: float = numpy.nan, 
@@ -446,7 +446,7 @@ class SessionRBA(object):
         self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
         return(minMu)
 
-    def find_max_growth_rate(self, precision: float = 0.001, max: float = 4.0, start_value: float = numpy.nan, recording: bool = False, omit_objective: bool = False, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool = True) -> float:
+    def find_max_growth_rate_old(self, precision: float = 0.001, max_value: float = 4.0, start_value: float = numpy.nan, recording: bool = False, omit_objective: bool = False, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool = True,verbose=False) -> float:
         """
         Applies dichotomy-search to find the maximal feasible growth-rate.
 
@@ -480,12 +480,12 @@ class SessionRBA(object):
         """
 
         minMu = 0
-        maxMu = max
+        maxMu = max_value
         if numpy.isfinite(start_value):
             testMu = start_value
         else:
             testMu =0
-            #testMu = max/2
+            #testMu = max_value/2
         iteration = 0
 
         if omit_objective:
@@ -505,7 +505,7 @@ class SessionRBA(object):
                 maxMu = testMu
             testMu = (maxMu+minMu)/2
         effective_Mu_difference=maxMu - minMu
-        if optMu == max:
+        if optMu == max_value:
             print('WARNING: Maximum growth rate might exceed specified range. Try rerunning this method with larger "max" argument.')
         if omit_objective:
             self.Problem.set_objective(old_Obj)
@@ -2416,7 +2416,9 @@ class SessionRBA(object):
                                          external_compartment_fractions=[],                                         
                                          pg_fractions={},
                                          compartment_fractions={},
-                                         compartments_with_imposed_sizes=[]):
+                                         compartments_with_imposed_sizes=[],
+                                         compartment_bound_tolerance=0.0,
+                                         imposed_compartments_without_tolerance=[]):
 
         density_dict={}
         row_signs_densities={}
@@ -2456,39 +2458,76 @@ class SessionRBA(object):
             if density_constraint in self.Problem.MuDependencies['FromMatrix']['b']:
                 self.Problem.MuDependencies['FromMatrix']['b'].remove(density_constraint)
 
-        if len(external_compartment_fractions)!=0:
+       #if len(external_compartment_fractions)!=0:
             #self.Problem.MuDependencies['FromParameters']['b'].update({'Global_density_RHS':
             #                                                            {'Coefficient':'global_density',
             #                                                            'Equation':'1-({})'.format(' + '.join(external_compartment_fractions)),
             #                                                            'Variables': external_compartment_fractions},
             #               
             #                                         })
-
-            comp_fractions=[c for c in list(compartment_fractions.values()) if c not in external_compartment_fractions]
-            self.Problem.MuDependencies['FromParameters']['b'].update({'Global_density_RHS':
+        #else:    
+        comp_fractions=[c for c in list(compartment_fractions.values()) if c not in external_compartment_fractions]
+        self.Problem.MuDependencies['FromParameters']['b'].update({'Global_density_RHS':
                                                                         {'Coefficient':'global_density',
                                                                         'Equation':' + '.join(comp_fractions),
                                                                         'Variables': comp_fractions},
                                                                       })
 
         if len(compartments_with_imposed_sizes)>0:
-            matrix_to_add=ProblemMatrix()
-            matrix_to_add.row_names=['f_size_{}'.format(i) for i in compartments_with_imposed_sizes]
-            matrix_to_add.col_names=['f_{}'.format(i) for i in compartments_with_imposed_sizes]
-            matrix_to_add.b=numpy.array(list([1.0]*len(compartments_with_imposed_sizes))).astype('float64')
-            matrix_to_add.row_signs=['L']*len(compartments_with_imposed_sizes)
-            matrix_to_add.LB=numpy.array(list([0.0]*len(compartments_with_imposed_sizes))).astype('float64')
-            matrix_to_add.UB=numpy.array(list([1.0]*len(compartments_with_imposed_sizes))).astype('float64')
-            matrix_to_add.f=numpy.array(list([0.0]*len(compartments_with_imposed_sizes))).astype('float64')
-            matrix_to_add.A=scipy.sparse.coo_matrix(numpy.eye(len(compartments_with_imposed_sizes))).astype('float64')
-            self.Problem.LP.add_matrix(matrix=matrix_to_add)
+            #matrix_to_add=ProblemMatrix()
+            #matrix_to_add.row_names=['f_size_{}'.format(i) for i in compartments_with_imposed_sizes]
+            #matrix_to_add.col_names=['f_{}'.format(i) for i in compartments_with_imposed_sizes]
+            #matrix_to_add.b=numpy.array(list([1.0]*len(compartments_with_imposed_sizes))).astype('float64')
+            #matrix_to_add.row_signs=['E']*len(compartments_with_imposed_sizes)
+            #matrix_to_add.LB=numpy.array(list([0.0]*len(compartments_with_imposed_sizes))).astype('float64')
+            #matrix_to_add.UB=numpy.array(list([1.0]*len(compartments_with_imposed_sizes))).astype('float64')
+            #matrix_to_add.f=numpy.array(list([0.0]*len(compartments_with_imposed_sizes))).astype('float64')
+            #matrix_to_add.A=scipy.sparse.coo_matrix(numpy.eye(len(compartments_with_imposed_sizes))).astype('float64')
+            #self.Problem.LP.add_matrix(matrix=matrix_to_add)
 
+            #for i in compartments_with_imposed_sizes:
+            #    self.Problem.MuDependencies['FromParameters']['b'].update({'Imposed_size{}'.format(i):
+            #                                                                {'Coefficient':'f_size_{}'.format(i),
+            #                                                                 'Equation':'{}'.format(compartment_fractions[i]),
+            #                                                                 'Variables': [compartment_fractions[i]]},
+            #                                                              })
             for i in compartments_with_imposed_sizes:
-                self.Problem.MuDependencies['FromParameters']['b'].update({'Imposed_size{}'.format(i):
-                                                                            {'Coefficient':'f_size_{}'.format(i),
-                                                                             'Equation':'{}'.format(compartment_fractions[i]),
-                                                                             'Variables': [compartment_fractions[i]]},
-                                                                          })
+                if i not in imposed_compartments_without_tolerance:
+                    if compartment_bound_tolerance != 0:
+                        lb_tol=1-compartment_bound_tolerance
+                        ub_tol=1+compartment_bound_tolerance
+                        self.Problem.MuDependencies['FromParameters']['LB'].update({'Imposed_size_{}'.format(i):
+                                                                                    {'Coefficient':'f_{}'.format(i),
+                                                                                    'Equation':'{} * {}'.format(lb_tol,compartment_fractions[i]),
+                                                                                    'Variables': [compartment_fractions[i]]},
+                                                                                })
+                        self.Problem.MuDependencies['FromParameters']['UB'].update({'Imposed_size_{}'.format(i):
+                                                                                    {'Coefficient':'f_{}'.format(i),
+                                                                                    'Equation':'{} * {}'.format(ub_tol,compartment_fractions[i]),
+                                                                                    'Variables': [compartment_fractions[i]]},
+                                                                                })
+                    else:
+                        self.Problem.MuDependencies['FromParameters']['LB'].update({'Imposed_size_{}'.format(i):
+                                                                                    {'Coefficient':'f_{}'.format(i),
+                                                                                    'Equation':'{}'.format(compartment_fractions[i]),
+                                                                                    'Variables': [compartment_fractions[i]]},
+                                                                                })
+                        self.Problem.MuDependencies['FromParameters']['UB'].update({'Imposed_size_{}'.format(i):
+                                                                                    {'Coefficient':'f_{}'.format(i),
+                                                                                    'Equation':'{}'.format(compartment_fractions[i]),
+                                                                                    'Variables': [compartment_fractions[i]]},
+                                                                                })
+                else:
+                    self.Problem.MuDependencies['FromParameters']['LB'].update({'Imposed_size_{}'.format(i):
+                                                                                {'Coefficient':'f_{}'.format(i),
+                                                                                'Equation':'{}'.format(compartment_fractions[i]),
+                                                                                'Variables': [compartment_fractions[i]]},
+                                                                               })
+                    self.Problem.MuDependencies['FromParameters']['UB'].update({'Imposed_size_{}'.format(i):
+                                                                                {'Coefficient':'f_{}'.format(i),
+                                                                                'Equation':'{}'.format(compartment_fractions[i]),
+                                                                                'Variables': [compartment_fractions[i]]},
+                                                                               })
         self.set_growth_rate(self.Mu) 
 
 
