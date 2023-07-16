@@ -296,6 +296,10 @@ class ProblemRBA(object):
         self.SolutionType = 'Normal'
 
     def set_growth_rate(self, Mu: float, keepParameters: dict = {}):
+        self.Mu = numpy.float64(Mu)
+        self.update_growth_rate(Mu=Mu, keepParameters=keepParameters)
+  
+    def update_growth_rate(self, Mu: float, keepParameters: dict = {}):
         """
         Changes growth-rate of problem and sets all associated coefficients.
 
@@ -317,7 +321,6 @@ class ProblemRBA(object):
             Default: keepParameters=None
         """
         ## Pass new matrix and indices of elements to update to LP.update_matrix-method ##
-        self.Mu = numpy.float64(Mu)
         self.ClassicRBAmatrix.build_matrices(self.Mu)
         inputMatrix = ProblemMatrix()
         inputMatrix.load_matrix(matrix=self.ClassicRBAmatrix)
