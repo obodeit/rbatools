@@ -195,7 +195,7 @@ class ProblemRBA(object):
         self.Mu = Mu
         self.ClassicRBAmatrix.build_matrices(Mu)
 
-    def solve_lp_2(self, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool =True):
+    def solve_lp(self, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool =True):
         """
         Solves Linear RBA problem.
 
@@ -245,7 +245,7 @@ class ProblemRBA(object):
                         self.DualValues = self.LP.return_dual_values()
         self.SolutionType = 'Normal'
 
-    def solve_lp(self, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool =True):
+    def solve_lp_old(self, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool =True):
         """
         Solves Linear RBA problem.
 
@@ -295,11 +295,11 @@ class ProblemRBA(object):
             self.DualValues = None
         self.SolutionType = 'Normal'
 
-    def set_growth_rate(self, Mu: float, keepParameters: dict = {}):
-        self.Mu = numpy.float64(Mu)
-        self.update_growth_rate(Mu=Mu, keepParameters=keepParameters)
+#    def set_growth_rate(self, Mu: float, keepParameters: dict = {}):
+#        self.Mu = numpy.float64(Mu)
+#        self.update_growth_rate(Mu=Mu, keepParameters=keepParameters)
   
-    def update_growth_rate(self, Mu: float, keepParameters: dict = {}):
+    def set_growth_rate(self, Mu: float, keepParameters: dict = {}):
         """
         Changes growth-rate of problem and sets all associated coefficients.
 
@@ -320,6 +320,7 @@ class ProblemRBA(object):
                 'UB': List of variable-IDs, indicating elements of the upper-bound vector.
             Default: keepParameters=None
         """
+        self.Mu = numpy.float64(Mu)
         ## Pass new matrix and indices of elements to update to LP.update_matrix-method ##
         self.ClassicRBAmatrix.build_matrices(self.Mu)
         inputMatrix = ProblemMatrix()
