@@ -378,7 +378,8 @@ class SessionRBA(object):
                              feasible_stati: list = ["optimal","feasible"], 
                              try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool = True,
                              verbose: bool = False,
-                             iteration_limit=100) -> float:
+                             iteration_limit=100,
+                             n_search_blocks=2) -> float:
         """
         Applies dichotomy-search to find the maximal feasible growth-rate.
 
@@ -411,40 +412,56 @@ class SessionRBA(object):
         maximum feasible growth rate as float.
         """
 
-        minMu = 0
-        maxMu = max_value
+        lb_mu_range = 0.0
+        ub_mu_range = max_value
         if numpy.isfinite(start_value):
-            testMu = start_value
+            test_mu = start_value
         else:
-            #testMu =0
-            testMu = max_value/2
+            test_mu = max_value/2
         iteration = 0
 
         if omit_objective:
-            old_Obj = self.Problem.get_objective()
+            old_objective_function = self.Problem.get_objective()
             self.Problem.clear_objective()
-        while ((maxMu - minMu) > precision) and iteration <= iteration_limit:
-            if verbose:
-                print('Mu: set to {}'.format(testMu))
-            self.set_growth_rate(Mu=testMu)
-            self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
-            if verbose:
-                print('Mu: {} - Solved: {} - Status: {}'.format(testMu,self.Problem.Solved,self.Problem.SolutionStatus))
-            iteration += 1
-            if self.Problem.Solved:
-                if recording:
-                    self.record_results('DichotomyMu_iteration_'+str(iteration))
-                minMu = testMu
-            else:
-                maxMu = testMu
-            testMu = (maxMu+minMu)/2
-        if minMu >= max_value:
+
+        iteration = 0
+        for i in range(n_search_blocks):
+            current_precision=numpy.power(precision,1/(n_search_blocks-i))
+            ub_mu_range = max_value
+            continuation_criterion=True
+            while continuation_criterion:
+                if verbose:
+                    print('Mu: set to {} -- Min: {} - Max: {}'.format(test_mu,lb_mu_range,ub_mu_range))
+                self.set_growth_rate(Mu=test_mu)
+                self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
+                if verbose:
+                    print('Mu: {} - Solved: {} - Status: {}'.format(test_mu,self.Problem.Solved,self.Problem.SolutionStatus))
+                iteration += 1
+                if self.Problem.Solved:
+                    if recording:
+                        self.record_results('DichotomyMu_iteration_'+str(iteration))
+                    lb_mu_range = test_mu
+                else:
+                    ub_mu_range = test_mu
+                test_mu = (ub_mu_range+lb_mu_range)/2
+
+                if lb_mu_range != 0:
+                    if (ub_mu_range - lb_mu_range)/lb_mu_range <= current_precision:
+                        continuation_criterion=False
+                    elif iteration > iteration_limit:
+                        continuation_criterion=False
+                if lb_mu_range == ub_mu_range:
+                    continuation_criterion=False
+
+        if lb_mu_range >= max_value:
             print('WARNING: Maximum growth rate might exceed specified range. Try rerunning this method with larger "max" argument.')
+
         if omit_objective:
-            self.Problem.set_objective(old_Obj)
-        self.set_growth_rate(Mu=minMu)
+            self.Problem.set_objective(old_objective_function)
+        self.set_growth_rate(Mu=lb_mu_range)
         self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
-        return(minMu)
+
+        return(lb_mu_range)
 
     def find_max_growth_rate_old(self, precision: float = 0.001, max_value: float = 4.0, start_value: float = numpy.nan, recording: bool = False, omit_objective: bool = False, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool = True,verbose=False) -> float:
         """
@@ -479,14 +496,14 @@ class SessionRBA(object):
         maximum feasible growth rate as float.
         """
 
-        minMu = 0
+        minMu = 0.0
         maxMu = max_value
         if numpy.isfinite(start_value):
             testMu = start_value
         else:
-            testMu =0
+            testMu =0.0
             #testMu = max_value/2
-        iteration = 0
+        iteration = 0.0
 
         if omit_objective:
             old_Obj = self.Problem.get_objective()
@@ -2355,24 +2372,7 @@ class SessionRBA(object):
                 self.Problem.MuDependencies['FromMatrix']['b'].remove(density_constraint)
 
         if len(compartments_with_imposed_sizes)>0:
-            #matrix_to_add=ProblemMatrix()
-            #matrix_to_add.row_names=['f_size_{}'.format(i) for i in compartments_with_imposed_sizes]
-            #matrix_to_add.col_names=['f_{}'.format(i) for i in compartments_with_imposed_sizes]
-            #matrix_to_add.b=numpy.array(list([1.0]*len(compartments_with_imposed_sizes))).astype('float64')
-            #matrix_to_add.row_signs=['E']*len(compartments_with_imposed_sizes)
-            #matrix_to_add.LB=numpy.array(list([0.0]*len(compartments_with_imposed_sizes))).astype('float64')
-            #matrix_to_add.UB=numpy.array(list([1.0]*len(compartments_with_imposed_sizes))).astype('float64')
-            #matrix_to_add.f=numpy.array(list([0.0]*len(compartments_with_imposed_sizes))).astype('float64')
-            #matrix_to_add.A=scipy.sparse.coo_matrix(numpy.eye(len(compartments_with_imposed_sizes))).astype('float64')
-            #self.Problem.LP.add_matrix(matrix=matrix_to_add)
-
             for i in compartments_with_imposed_sizes:
-            #    self.Problem.MuDependencies['FromParameters']['b'].update({'Imposed_size{}'.format(i):
-            #                                                                {'Coefficient':'f_size_{}'.format(i),
-            #                                                                 'Equation':'{}'.format(compartment_fractions[i]),
-            #                                                                 'Variables': [compartment_fractions[i]]},
-            #                        
-            #                                       })
                 if i not in imposed_compartments_without_tolerance:
                     if compartment_bound_tolerance != 0:
                         lb_tol=1-compartment_bound_tolerance
@@ -2458,14 +2458,6 @@ class SessionRBA(object):
             if density_constraint in self.Problem.MuDependencies['FromMatrix']['b']:
                 self.Problem.MuDependencies['FromMatrix']['b'].remove(density_constraint)
 
-       #if len(external_compartment_fractions)!=0:
-            #self.Problem.MuDependencies['FromParameters']['b'].update({'Global_density_RHS':
-            #                                                            {'Coefficient':'global_density',
-            #                                                            'Equation':'1-({})'.format(' + '.join(external_compartment_fractions)),
-            #                                                            'Variables': external_compartment_fractions},
-            #               
-            #                                         })
-        #else:    
         comp_fractions=[c for c in list(compartment_fractions.values()) if c not in external_compartment_fractions]
         self.Problem.MuDependencies['FromParameters']['b'].update({'Global_density_RHS':
                                                                         {'Coefficient':'global_density',
@@ -2474,23 +2466,6 @@ class SessionRBA(object):
                                                                       })
 
         if len(compartments_with_imposed_sizes)>0:
-            #matrix_to_add=ProblemMatrix()
-            #matrix_to_add.row_names=['f_size_{}'.format(i) for i in compartments_with_imposed_sizes]
-            #matrix_to_add.col_names=['f_{}'.format(i) for i in compartments_with_imposed_sizes]
-            #matrix_to_add.b=numpy.array(list([1.0]*len(compartments_with_imposed_sizes))).astype('float64')
-            #matrix_to_add.row_signs=['E']*len(compartments_with_imposed_sizes)
-            #matrix_to_add.LB=numpy.array(list([0.0]*len(compartments_with_imposed_sizes))).astype('float64')
-            #matrix_to_add.UB=numpy.array(list([1.0]*len(compartments_with_imposed_sizes))).astype('float64')
-            #matrix_to_add.f=numpy.array(list([0.0]*len(compartments_with_imposed_sizes))).astype('float64')
-            #matrix_to_add.A=scipy.sparse.coo_matrix(numpy.eye(len(compartments_with_imposed_sizes))).astype('float64')
-            #self.Problem.LP.add_matrix(matrix=matrix_to_add)
-
-            #for i in compartments_with_imposed_sizes:
-            #    self.Problem.MuDependencies['FromParameters']['b'].update({'Imposed_size{}'.format(i):
-            #                                                                {'Coefficient':'f_size_{}'.format(i),
-            #                                                                 'Equation':'{}'.format(compartment_fractions[i]),
-            #                                                                 'Variables': [compartment_fractions[i]]},
-            #                                                              })
             for i in compartments_with_imposed_sizes:
                 if i not in imposed_compartments_without_tolerance:
                     if compartment_bound_tolerance != 0:
@@ -2529,7 +2504,6 @@ class SessionRBA(object):
                                                                                 'Variables': [compartment_fractions[i]]},
                                                                                })
         self.set_growth_rate(self.Mu) 
-
 
     def make_eukaryotic_fixed_pg_content_2(self,
                                            amino_acid_concentration_total,
