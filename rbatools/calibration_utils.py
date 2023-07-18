@@ -554,7 +554,7 @@ def perform_simulations(condition,
                         Default_Kapps,
                         Specific_Kapps,
                         Exchanges_to_impose=None,
-                        sims_to_perform=['Prokaryotic'],
+                        sims_to_perform=['DefaultKapp','Prokaryotic','Eukaryotic'],
                         feasible_stati=['optimal','feasible'],
                         try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
                         print_output=True,
@@ -798,7 +798,7 @@ def perform_simulations(condition,
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]['LB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['LB'])})
             rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]['UB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['UB'])})
-        out['Mu_prok'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=start_val, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=True)
+        out['Mu_prok'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=start_val, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
 #        out['Mu_prok'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
         out['SolutionStatus_prok']=rba_session.Problem.SolutionStatus
         try:
@@ -1351,6 +1351,7 @@ def perform_simulations(condition,
 
     #rba_session.model.write(output_dir='Yeast_model_test')
     return(out)
+
 
 def perform_simulations_old(condition,
                         rba_session,
