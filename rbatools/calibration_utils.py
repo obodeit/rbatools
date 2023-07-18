@@ -802,16 +802,21 @@ def perform_simulations(condition,
         out['Mu_prok'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=start_val, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
 #        out['Mu_prok'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
         out['SolutionStatus_prok']=rba_session.Problem.SolutionStatus
-        try:
-            rba_session.record_results('Prokaryotic')
-            if print_output:
-                print('Mu Prok: {}'.format(out['Mu_prok']))
-            out['Simulation_Results'] = copy.deepcopy(rba_session.Results)
-            rba_session.clear_results_and_parameters()
-        except:
-            if print_output:
-                print('Mu Prok: failed')
-                print('Status: {} - Mu: {}'.format(out['SolutionStatus_prok'],out['Mu_prok']))
+        
+        rba_session.record_results('Prokaryotic')
+        out['Simulation_Results'] = copy.deepcopy(rba_session.Results)
+        rba_session.clear_results_and_parameters()
+        
+        #try:
+        #    rba_session.record_results('Prokaryotic')
+        #    if print_output:
+        #        print('Mu Prok: {}'.format(out['Mu_prok']))
+        #    out['Simulation_Results'] = copy.deepcopy(rba_session.Results)
+        #    rba_session.clear_results_and_parameters()
+        #except:
+        #    if print_output:
+        #        print('Mu Prok: failed')
+        #        print('Status: {} - Mu: {}'.format(out['SolutionStatus_prok'],out['Mu_prok']))
         if variability_analysis is not None:
             if len(list(out['Simulation_Results'].keys()))!=0:
                 rba_session.set_growth_rate(out['Mu_prok']*mu_factor_for_variability)
