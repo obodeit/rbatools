@@ -545,8 +545,814 @@ def inject_estimated_efficiencies_as_functions_into_model(rba_session,
     if process_efficiencies is not None:
         inject_process_capacities_as_function(rba_session=rba_session,process_efficiencies=process_efficiencies, round_to_digits=round_to_digits,x_min=0.05,x_max=0.3,indep_variable="growth_rate")
 
-
 def perform_simulations(condition,
+                        rba_session,
+                        definition_file,
+                        compartment_sizes,
+                        pg_fractions,
+                        process_efficiencies,
+                        Default_Kapps,
+                        Specific_Kapps,
+                        Exchanges_to_impose=None,
+                        sims_to_perform=['Prokaryotic'],
+                        feasible_stati=['optimal','feasible'],
+                        try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
+                        print_output=True,
+                        variability_analysis=None,
+                        mu_factor_for_variability=1,
+                        apply_model=False,
+                        functions_to_include_list=[],
+                        transporter_multiplier=3,
+                        start_val=numpy.nan,
+                        Mu_approx_precision=0.000001,
+                        max_mu_in_dichotomy=1):
+    out={'SolutionStatus_def':None,
+        'SolutionStatus_prok':None,
+        'SolutionStatus_euk':None,
+        'SolutionStatus_euk_fixed':None,
+        'SolutionStatus_fixed_pg_euk':None,
+        'SolutionStatus_fixed_pg_euk_fixed':None,
+        'FeasibleRange_def':{},
+        'FeasibleRange_prok':{},
+        'FeasibleRange_euk':{},
+        'FeasibleRange_euk_fixed':{},
+        'FeasibleRange_fixed_pg_euk':{},
+        'FeasibleRange_fixed_pg_euk_fixed':{},
+        'Mu_def':numpy.nan,
+        'Mu_prok':numpy.nan,
+        'Mu_euk':numpy.nan,
+        'Mu_euk_fixed':numpy.nan,
+        'Mu_fixed_pg_euk':numpy.nan,
+        'Mu_euk_fixed_pg_fixed':numpy.nan,
+        'Simulation_Results': {}, 
+        'Simulation_Results_Euk': {}, 
+        'Simulation_Results_Euk_fixed': {}, 
+        'Simulation_Results_DefKapp': {}, 
+        'Simulation_Results_fixed_pg_Euk': {}, 
+        'Simulation_Results_fixed_pg_Euk_fixed': {}, 
+        'Euk_CompSizes': {},
+        'Euk_fixed_CompSizes': {},
+        'Fixed_pg_Euk_CompSizes': {},
+        'Fixed_pg_Euk_fixed_CompSizes': {},
+        'Condition':condition,
+        'Performed_simulations':sims_to_perform}
+
+    if 'DefaultKapp' in sims_to_perform:
+        rba_session.reload_model()
+
+        if not apply_model:
+            #Densities & PG
+            if compartment_sizes is not None:
+                if pg_fractions is not None:
+                    compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                    for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                        rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+                        rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+            # Process efficiencies & Def Kapps
+            process_efficiencies_to_inject=None
+            Default_Kapps_to_inject=None
+            if process_efficiencies is not None:
+                process_efficiencies_to_inject=generate_process_efficiency_input(process_efficiencies=process_efficiencies,condition=condition,parameter_name_suffix='_apparent_efficiency')
+            if Default_Kapps is not None:
+                Default_Kapps_to_inject=generate_default_kapp_input(default_kapps=Default_Kapps,condition=condition,transporter_multiplier=transporter_multiplier)
+            inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=Default_Kapps_to_inject, process_efficiencies=process_efficiencies_to_inject)
+        else:
+            if 'Default_Kapps' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=Default_Kapps,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                Default_Kapps_to_inject=generate_default_kapp_input(default_kapps=Default_Kapps,condition=condition,transporter_multiplier=transporter_multiplier)
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=Default_Kapps_to_inject, process_efficiencies=None)
+
+            if 'Compartment_Sizes' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=compartment_sizes,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                if compartment_sizes is not None:
+                    if pg_fractions is not None:
+                        compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                            rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+
+            if 'PG_Fractions' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=pg_fractions,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                if compartment_sizes is not None:
+                    if pg_fractions is not None:
+                        compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                            rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+
+            if 'Process_Efficiencies' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=process_efficiencies,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                process_efficiencies_to_inject=generate_process_efficiency_input(process_efficiencies=process_efficiencies,condition=condition,parameter_name_suffix='_apparent_efficiency')
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=None, process_efficiencies=process_efficiencies_to_inject)
+
+        rba_session.rebuild_from_model()
+        # Medium
+        rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
+
+        if Exchanges_to_impose is not None:
+            rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]['LB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['LB'])})
+            rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]['UB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['UB'])})
+        out['Mu_def']=rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=start_val, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
+        out['SolutionStatus_def']=rba_session.Problem.SolutionStatus
+        try:
+            rba_session.record_results('DefaultKapp')
+            if print_output:
+                print('Mu Def: {}'.format(out['Mu_def']))
+            out['Simulation_Results_DefKapp'] = copy.deepcopy(rba_session.Results)
+            rba_session.clear_results_and_parameters()
+        except:
+            out['Simulation_Results_DefKapp'] = {}
+        if variability_analysis is not None:
+            if len(list(out['Simulation_Results_DefKapp'].keys()))!=0:
+                rba_session.set_growth_rate(out['Mu_def']*mu_factor_for_variability)
+                out['FeasibleRange_def']=rba_session.get_feasible_range(variability_analysis)
+
+    if 'Prokaryotic' in sims_to_perform:
+        rba_session.reload_model()
+
+        if not apply_model:
+            #Densities & PG
+            if compartment_sizes is not None:
+                if pg_fractions is not None:
+                    compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                    for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                        rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+                        rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+            # Process efficiencies & Def/Spec Kapps
+            process_efficiencies_to_inject=None
+            Default_Kapps_to_inject=None
+            Specific_Kapps_to_inject=None
+            if process_efficiencies is not None:
+                process_efficiencies_to_inject=generate_process_efficiency_input(process_efficiencies=process_efficiencies,condition=condition,parameter_name_suffix='_apparent_efficiency')
+            if Default_Kapps is not None:
+                Default_Kapps_to_inject=generate_default_kapp_input(default_kapps=Default_Kapps,condition=condition,transporter_multiplier=transporter_multiplier)
+            # Spec Kapps
+            if Specific_Kapps is not None:
+                Specific_Kapps_to_inject=generate_specific_kapp_input(specific_kapps=Specific_Kapps,condition=condition)
+            inject_estimated_efficiencies_into_model(rba_session, specific_kapps=Specific_Kapps_to_inject, default_kapps=Default_Kapps_to_inject, process_efficiencies=process_efficiencies_to_inject)
+        else:
+            if 'Specific_Kapps' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=Specific_Kapps,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                Specific_Kapps_to_inject=generate_specific_kapp_input(specific_kapps=Specific_Kapps,condition=condition)
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=Specific_Kapps_to_inject, default_kapps=None, process_efficiencies=None)
+            if 'Default_Kapps' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=Default_Kapps,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                Default_Kapps_to_inject=generate_default_kapp_input(default_kapps=Default_Kapps,condition=condition,transporter_multiplier=transporter_multiplier)
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=Default_Kapps_to_inject, process_efficiencies=None)
+
+            if 'Compartment_Sizes' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=compartment_sizes,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                if compartment_sizes is not None:
+                    if pg_fractions is not None:
+                        compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                            rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+
+            if 'PG_Fractions' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=pg_fractions,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                if compartment_sizes is not None:
+                    if pg_fractions is not None:
+                        compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                            rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+
+            if 'Process_Efficiencies' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=process_efficiencies,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                process_efficiencies_to_inject=generate_process_efficiency_input(process_efficiencies=process_efficiencies,condition=condition,parameter_name_suffix='_apparent_efficiency')
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=None, process_efficiencies=process_efficiencies_to_inject)
+
+        rba_session.rebuild_from_model()
+        # Medium
+        rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
+
+        if Exchanges_to_impose is not None:
+            rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]['LB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['LB'])})
+            rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]['UB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['UB'])})
+        out['Mu_prok'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=start_val, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=True)
+#        out['Mu_prok'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
+        out['SolutionStatus_prok']=rba_session.Problem.SolutionStatus
+        try:
+            rba_session.record_results('Prokaryotic')
+            if print_output:
+                print('Mu Prok: {}'.format(out['Mu_prok']))
+            out['Simulation_Results'] = copy.deepcopy(rba_session.Results)
+            rba_session.clear_results_and_parameters()
+        except:
+            out['Simulation_Results'] = {}
+        if variability_analysis is not None:
+            if len(list(out['Simulation_Results'].keys()))!=0:
+                rba_session.set_growth_rate(out['Mu_prok']*mu_factor_for_variability)
+                out['FeasibleRange_prok']=rba_session.get_feasible_range(variability_analysis)
+
+    if 'Eukaryotic' in sims_to_perform:
+        rba_session.reload_model()
+
+        if not apply_model:
+            #Densities & PG
+            if compartment_sizes is not None:
+                if pg_fractions is not None:
+                    compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                    for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                        rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+                        rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+            # Process efficiencies & Def/Spec Kapps
+            process_efficiencies_to_inject=None
+            Default_Kapps_to_inject=None
+            Specific_Kapps_to_inject=None
+            if process_efficiencies is not None:
+                process_efficiencies_to_inject=generate_process_efficiency_input(process_efficiencies=process_efficiencies,condition=condition,parameter_name_suffix='_apparent_efficiency')
+            if Default_Kapps is not None:
+                Default_Kapps_to_inject=generate_default_kapp_input(default_kapps=Default_Kapps,condition=condition,transporter_multiplier=transporter_multiplier)
+            # Spec Kapps
+            if Specific_Kapps is not None:
+                Specific_Kapps_to_inject=generate_specific_kapp_input(specific_kapps=Specific_Kapps,condition=condition)
+            inject_estimated_efficiencies_into_model(rba_session, specific_kapps=Specific_Kapps_to_inject, default_kapps=Default_Kapps_to_inject, process_efficiencies=process_efficiencies_to_inject)
+        else:
+            if 'Specific_Kapps' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=Specific_Kapps,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                Specific_Kapps_to_inject=generate_specific_kapp_input(specific_kapps=Specific_Kapps,condition=condition)
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=Specific_Kapps_to_inject, default_kapps=None, process_efficiencies=None)
+            if 'Default_Kapps' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=Default_Kapps,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                Default_Kapps_to_inject=generate_default_kapp_input(default_kapps=Default_Kapps,condition=condition,transporter_multiplier=transporter_multiplier)
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=Default_Kapps_to_inject, process_efficiencies=None)
+
+            if 'Compartment_Sizes' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=compartment_sizes,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                if compartment_sizes is not None:
+                    if pg_fractions is not None:
+                        compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                            rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+
+            if 'PG_Fractions' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=pg_fractions,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                if compartment_sizes is not None:
+                    if pg_fractions is not None:
+                        compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                            rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+
+            if 'Process_Efficiencies' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=process_efficiencies,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                process_efficiencies_to_inject=generate_process_efficiency_input(process_efficiencies=process_efficiencies,condition=condition,parameter_name_suffix='_apparent_efficiency')
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=None, process_efficiencies=process_efficiencies_to_inject)
+
+        rba_session.rebuild_from_model()
+        # Medium
+        rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
+
+        #rba_session.eukaryotic_densities_calibration(CompartmentRelationships=False)
+        #rba_session.eukaryotic_densities_pg_fraction(fixed_size_compartments=[],compartment_fraction_prefix='fraction_protein_')
+        pg_fractions_for_euk={comp: str('fraction_non_enzymatic_protein_'+comp) for comp in list(compartment_densities_and_PGs['Compartment_ID'])}
+        compartment_fractions_for_euk={comp:str('fraction_protein_'+comp) for comp in list(compartment_densities_and_PGs['Compartment_ID'])}
+        rba_session.make_eukaryotic(amino_acid_concentration_total='amino_acid_concentration',
+                                pg_fractions=pg_fractions_for_euk,
+                                compartment_fractions=compartment_fractions_for_euk,
+                                compartments_with_imposed_sizes=[],
+                                normalise_global_fraction=True,
+                                compartment_bound_tolerance=0.0)
+
+        if Exchanges_to_impose is not None:
+            rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]['LB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['LB'])})
+            rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]['UB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['UB'])})
+
+        out['Mu_euk'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        #out['Mu_euk'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        out['SolutionStatus_euk']=rba_session.Problem.SolutionStatus
+        try:
+            rba_session.record_results('Eukaryotic')
+            if print_output:
+                print('Mu Euk: {}'.format(out['Mu_euk']))
+            out['Simulation_Results_Euk'] = copy.deepcopy(rba_session.Results)
+
+            out['Euk_CompSizes'] = {}
+            for comp in list(compartment_fractions_for_euk.keys()):
+                out['Euk_CompSizes'][comp] = rba_session.Problem.SolutionValues[str('f_'+comp)]
+            rba_session.clear_results_and_parameters()
+        except:
+            out['Euk_CompSizes']={}
+            out['Simulation_Results_Euk'] = {}
+        if variability_analysis is not None:
+            if len(list(out['Simulation_Results_Euk'].keys()))!=0:
+                rba_session.set_growth_rate(out['Mu_euk']*mu_factor_for_variability)
+                out['FeasibleRange_euk']=rba_session.get_feasible_range(variability_analysis)
+
+    if 'Eukaryotic_fixed_sizes' in sims_to_perform:
+        rba_session.reload_model()
+
+        if not apply_model:
+            #Densities & PG
+            if compartment_sizes is not None:
+                if pg_fractions is not None:
+                    compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                    for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                        rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+                        rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+            # Process efficiencies & Def/Spec Kapps
+            process_efficiencies_to_inject=None
+            Default_Kapps_to_inject=None
+            Specific_Kapps_to_inject=None
+            if process_efficiencies is not None:
+                process_efficiencies_to_inject=generate_process_efficiency_input(process_efficiencies=process_efficiencies,condition=condition,parameter_name_suffix='_apparent_efficiency')
+            if Default_Kapps is not None:
+                Default_Kapps_to_inject=generate_default_kapp_input(default_kapps=Default_Kapps,condition=condition,transporter_multiplier=transporter_multiplier)
+            # Spec Kapps
+            if Specific_Kapps is not None:
+                Specific_Kapps_to_inject=generate_specific_kapp_input(specific_kapps=Specific_Kapps,condition=condition)
+            inject_estimated_efficiencies_into_model(rba_session, specific_kapps=Specific_Kapps_to_inject, default_kapps=Default_Kapps_to_inject, process_efficiencies=process_efficiencies_to_inject)
+        else:
+            if 'Specific_Kapps' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=Specific_Kapps,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                Specific_Kapps_to_inject=generate_specific_kapp_input(specific_kapps=Specific_Kapps,condition=condition)
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=Specific_Kapps_to_inject, default_kapps=None, process_efficiencies=None)
+            if 'Default_Kapps' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=Default_Kapps,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                Default_Kapps_to_inject=generate_default_kapp_input(default_kapps=Default_Kapps,condition=condition,transporter_multiplier=transporter_multiplier)
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=Default_Kapps_to_inject, process_efficiencies=None)
+
+            if 'Compartment_Sizes' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=compartment_sizes,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                if compartment_sizes is not None:
+                    if pg_fractions is not None:
+                        compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                            rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+
+            if 'PG_Fractions' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=pg_fractions,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                if compartment_sizes is not None:
+                    if pg_fractions is not None:
+                        compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                            rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+
+            if 'Process_Efficiencies' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=process_efficiencies,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                process_efficiencies_to_inject=generate_process_efficiency_input(process_efficiencies=process_efficiencies,condition=condition,parameter_name_suffix='_apparent_efficiency')
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=None, process_efficiencies=process_efficiencies_to_inject)
+
+        rba_session.rebuild_from_model()
+        # Medium
+        rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
+
+        #rba_session.eukaryotic_densities_calibration(CompartmentRelationships=False)
+        #rba_session.eukaryotic_densities_pg_fraction(fixed_size_compartments=[],compartment_fraction_prefix='fraction_protein_')
+        pg_fractions_for_euk={comp: str('fraction_non_enzymatic_protein_'+comp) for comp in list(compartment_densities_and_PGs['Compartment_ID'])}
+        compartment_fractions_for_euk={comp:str('fraction_protein_'+comp) for comp in list(compartment_densities_and_PGs['Compartment_ID'])}
+        rba_session.make_eukaryotic(amino_acid_concentration_total='amino_acid_concentration',
+                                pg_fractions=pg_fractions_for_euk,
+                                compartment_fractions=compartment_fractions_for_euk,
+                                compartments_with_imposed_sizes=list(compartment_fractions_for_euk.keys()),
+                                normalise_global_fraction=True,
+                                compartment_bound_tolerance=0.1,
+                                imposed_compartments_without_tolerance=['Secreted','n'])
+
+        if Exchanges_to_impose is not None:
+            rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]['LB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['LB'])})
+            rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]['UB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['UB'])})
+
+        out['Mu_euk_fixed'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        #out['Mu_euk_fixed'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        out['SolutionStatus_euk_fixed']=rba_session.Problem.SolutionStatus
+        try:
+            rba_session.record_results('Eukaryotic_fixed_sizes')
+            if print_output:
+                print('Mu Euk fixed: {}'.format(out['Mu_euk_fixed']))
+            out['Simulation_Results_Euk_fixed'] = copy.deepcopy(rba_session.Results)
+
+            out['Euk_fixed_CompSizes'] = {}
+            for comp in list(compartment_fractions_for_euk.keys()):
+                out['Euk_fixed_CompSizes'][comp] = rba_session.Problem.SolutionValues[str('f_'+comp)]
+            rba_session.clear_results_and_parameters()
+        except:
+            out['Euk_fixed_CompSizes']={}
+            out['Simulation_Results_Euk_fixed'] = {}
+        if variability_analysis is not None:
+            if len(list(out['Simulation_Results_Euk_fixed'].keys()))!=0:
+                rba_session.set_growth_rate(out['Mu_euk_fixed']*mu_factor_for_variability)
+                out['FeasibleRange_euk_fixed']=rba_session.get_feasible_range(variability_analysis)
+
+    if 'Fixed_PG_Eukaryotic' in sims_to_perform:
+        rba_session.reload_model()
+
+        if not apply_model:
+            #Densities & PG
+            if compartment_sizes is not None:
+                if pg_fractions is not None:
+                    compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                    for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                        rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+                        rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+            # Process efficiencies & Def/Spec Kapps
+            process_efficiencies_to_inject=None
+            Default_Kapps_to_inject=None
+            Specific_Kapps_to_inject=None
+            if process_efficiencies is not None:
+                process_efficiencies_to_inject=generate_process_efficiency_input(process_efficiencies=process_efficiencies,condition=condition,parameter_name_suffix='_apparent_efficiency')
+            if Default_Kapps is not None:
+                Default_Kapps_to_inject=generate_default_kapp_input(default_kapps=Default_Kapps,condition=condition,transporter_multiplier=transporter_multiplier)
+            # Spec Kapps
+            if Specific_Kapps is not None:
+                Specific_Kapps_to_inject=generate_specific_kapp_input(specific_kapps=Specific_Kapps,condition=condition)
+            inject_estimated_efficiencies_into_model(rba_session, specific_kapps=Specific_Kapps_to_inject, default_kapps=Default_Kapps_to_inject, process_efficiencies=process_efficiencies_to_inject)
+        else:
+            if 'Specific_Kapps' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=Specific_Kapps,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                Specific_Kapps_to_inject=generate_specific_kapp_input(specific_kapps=Specific_Kapps,condition=condition)
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=Specific_Kapps_to_inject, default_kapps=None, process_efficiencies=None)
+            if 'Default_Kapps' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=Default_Kapps,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                Default_Kapps_to_inject=generate_default_kapp_input(default_kapps=Default_Kapps,condition=condition,transporter_multiplier=transporter_multiplier)
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=Default_Kapps_to_inject, process_efficiencies=None)
+
+            if 'Compartment_Sizes' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=compartment_sizes,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                if compartment_sizes is not None:
+                    if pg_fractions is not None:
+                        compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                            rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+
+            if 'PG_Fractions' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=pg_fractions,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                if compartment_sizes is not None:
+                    if pg_fractions is not None:
+                        compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                            rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+
+            if 'Process_Efficiencies' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=process_efficiencies,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                process_efficiencies_to_inject=generate_process_efficiency_input(process_efficiencies=process_efficiencies,condition=condition,parameter_name_suffix='_apparent_efficiency')
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=None, process_efficiencies=process_efficiencies_to_inject)
+
+        rba_session.rebuild_from_model()
+        # Medium
+        rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
+
+        #rba_session.eukaryotic_densities_calibration(CompartmentRelationships=False)
+        #rba_session.eukaryotic_densities_pg_fraction(fixed_size_compartments=[],compartment_fraction_prefix='fraction_protein_')
+        pg_fractions_for_euk={comp: str('fraction_non_enzymatic_protein_'+comp) for comp in list(compartment_densities_and_PGs['Compartment_ID'])}
+        compartment_fractions_for_euk={comp:str('fraction_protein_'+comp) for comp in list(compartment_densities_and_PGs['Compartment_ID'])}
+        rba_session.make_eukaryotic_fixed_pg_content(amino_acid_concentration_total='amino_acid_concentration',
+                                                    external_compartment_fractions=[],                                         
+                                                    pg_fractions=pg_fractions_for_euk,
+                                                    compartment_fractions=compartment_fractions_for_euk,
+                                                    compartments_with_imposed_sizes=[])
+
+        if Exchanges_to_impose is not None:
+            rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]['LB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['LB'])})
+            rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]['UB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['UB'])})
+
+        out['Mu_fixed_pg_euk'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        #out['Mu_fixed_pg_euk'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        out['SolutionStatus_fixed_pg_euk']=rba_session.Problem.SolutionStatus
+        try:
+            rba_session.record_results('Fixed_PG_Eukaryotic')
+            if print_output:
+                print('Mu fixed PG Euk: {}'.format(out['Mu_fixed_pg_euk']))
+            out['Simulation_Results_fixed_pg_Euk'] = copy.deepcopy(rba_session.Results)
+
+            out['Fixed_pg_Euk_CompSizes'] = {}
+            for comp in list(compartment_fractions_for_euk.keys()):
+                out['Fixed_pg_Euk_CompSizes'][comp] = rba_session.Problem.SolutionValues[str('f_'+comp)]
+            rba_session.clear_results_and_parameters()
+        except:
+            out['Fixed_pg_Euk_CompSizes']={}
+            out['Simulation_Results_fixed_pg_Euk'] = {}
+        if variability_analysis is not None:
+            if len(list(out['Simulation_Results_fixed_pg_Euk'].keys()))!=0:
+                rba_session.set_growth_rate(out['Mu_fixed_pg_euk']*mu_factor_for_variability)
+                out['FeasibleRange_fixed_pg_euk']=rba_session.get_feasible_range(variability_analysis)
+
+    if 'Fixed_PG_Eukaryotic_fixed_sizes' in sims_to_perform:
+        rba_session.reload_model()
+
+        if not apply_model:
+            #Densities & PG
+            if compartment_sizes is not None:
+                if pg_fractions is not None:
+                    compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                    for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                        rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+                        rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+            # Process efficiencies & Def/Spec Kapps
+            process_efficiencies_to_inject=None
+            Default_Kapps_to_inject=None
+            Specific_Kapps_to_inject=None
+            if process_efficiencies is not None:
+                process_efficiencies_to_inject=generate_process_efficiency_input(process_efficiencies=process_efficiencies,condition=condition,parameter_name_suffix='_apparent_efficiency')
+            if Default_Kapps is not None:
+                Default_Kapps_to_inject=generate_default_kapp_input(default_kapps=Default_Kapps,condition=condition,transporter_multiplier=transporter_multiplier)
+            # Spec Kapps
+            if Specific_Kapps is not None:
+                Specific_Kapps_to_inject=generate_specific_kapp_input(specific_kapps=Specific_Kapps,condition=condition)
+            inject_estimated_efficiencies_into_model(rba_session, specific_kapps=Specific_Kapps_to_inject, default_kapps=Default_Kapps_to_inject, process_efficiencies=process_efficiencies_to_inject)
+        else:
+            if 'Specific_Kapps' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=Specific_Kapps,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                Specific_Kapps_to_inject=generate_specific_kapp_input(specific_kapps=Specific_Kapps,condition=condition)
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=Specific_Kapps_to_inject, default_kapps=None, process_efficiencies=None)
+            if 'Default_Kapps' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=Default_Kapps,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                Default_Kapps_to_inject=generate_default_kapp_input(default_kapps=Default_Kapps,condition=condition,transporter_multiplier=transporter_multiplier)
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=Default_Kapps_to_inject, process_efficiencies=None)
+
+            if 'Compartment_Sizes' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=compartment_sizes,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                if compartment_sizes is not None:
+                    if pg_fractions is not None:
+                        compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                            rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'Density'].values[0]
+
+            if 'PG_Fractions' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=None,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=pg_fractions,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                if compartment_sizes is not None:
+                    if pg_fractions is not None:
+                        compartment_densities_and_PGs=generate_compartment_size_and_pg_input(compartment_sizes=compartment_sizes,pg_fractions=pg_fractions,condition=condition)
+                        for comp in list(compartment_densities_and_PGs['Compartment_ID']):
+                            rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_PGs.loc[compartment_densities_and_PGs['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+
+            if 'Process_Efficiencies' in functions_to_include_list:
+                inject_estimated_efficiencies_as_functions_into_model(rba_session,
+                                                                    specific_kapps=None,
+                                                                    default_kapps=None,
+                                                                    process_efficiencies=process_efficiencies,
+                                                                    compartment_densities=None,
+                                                                    pg_fractions=None,
+                                                                    round_to_digits=2,
+                                                                    transporter_coeff=3)
+            else:
+                process_efficiencies_to_inject=generate_process_efficiency_input(process_efficiencies=process_efficiencies,condition=condition,parameter_name_suffix='_apparent_efficiency')
+                inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=None, process_efficiencies=process_efficiencies_to_inject)
+
+        rba_session.rebuild_from_model()
+        # Medium
+        rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
+
+        #rba_session.eukaryotic_densities_calibration(CompartmentRelationships=False)
+        #rba_session.eukaryotic_densities_pg_fraction(fixed_size_compartments=[],compartment_fraction_prefix='fraction_protein_')
+        pg_fractions_for_euk={comp: str('fraction_non_enzymatic_protein_'+comp) for comp in list(compartment_densities_and_PGs['Compartment_ID'])}
+        compartment_fractions_for_euk={comp:str('fraction_protein_'+comp) for comp in list(compartment_densities_and_PGs['Compartment_ID'])}
+        rba_session.make_eukaryotic_fixed_pg_content(amino_acid_concentration_total='amino_acid_concentration',
+                                                    external_compartment_fractions=[],                                         
+                                                    pg_fractions=pg_fractions_for_euk,
+                                                    compartment_fractions=compartment_fractions_for_euk,
+                                                    compartments_with_imposed_sizes=list(compartment_fractions_for_euk.keys()))
+
+        if Exchanges_to_impose is not None:
+            rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]['LB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['LB'])})
+            rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]['UB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['UB'])})
+
+        out['Mu_fixed_pg_euk_fixed'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        #out['Mu_fixed_pg_euk_fixed'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        out['SolutionStatus_fixed_pg_euk_fixed']=rba_session.Problem.SolutionStatus
+        try:
+            rba_session.record_results('Fixed_PG_Eukaryotic_fixed_sizes')
+            if print_output:
+                print('Mu fixed PG Euk fixed: {}'.format(out['Mu_fixed_pg_euk_fixed']))
+            out['Simulation_Results_fixed_pg_Euk_fixed'] = copy.deepcopy(rba_session.Results)
+
+            out['Fixed_pg_Euk_fixed_CompSizes'] = {}
+            for comp in list(compartment_fractions_for_euk.keys()):
+                out['Fixed_pg_Euk_fixed_CompSizes'][comp] = rba_session.Problem.SolutionValues[str('f_'+comp)]
+            rba_session.clear_results_and_parameters()
+        except:
+            out['Fixed_pg_Euk_fixed_CompSizes']={}
+            out['Simulation_Results_fixed_pg_Euk_fixed'] = {}
+        if variability_analysis is not None:
+            if len(list(out['Simulation_Results_fixed_pg_Euk_fixed'].keys()))!=0:
+                rba_session.set_growth_rate(out['Mu_fixed_pg_euk_fixed']*mu_factor_for_variability)
+                out['FeasibleRange_fixed_pg_euk_fixed']=rba_session.get_feasible_range(variability_analysis)
+
+    #rba_session.model.write(output_dir='Yeast_model_test')
+    return(out)
+
+def perform_simulations_old(condition,
                         rba_session,
                         definition_file,
                         compartment_sizes,
@@ -1373,7 +2179,6 @@ def perform_simulations(condition,
             'Fixed_pg_Euk_CompSizes': compartment_fractions_fixed_pg_euk,
             'Fixed_pg_Euk_fixed_CompSizes': compartment_fractions_fixed_pg_euk_fixed,
             "Condition":condition})
-
 
 def perform_simulations_fixed_Mu(condition,
                                  rba_session,
