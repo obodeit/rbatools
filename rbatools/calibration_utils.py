@@ -811,6 +811,7 @@ def perform_simulations(condition,
         except:
             if print_output:
                 print('Mu Prok: failed')
+                print('Status: {} - Mu: {}'.format(out['SolutionStatus_prok'],out['Mu_prok']))
         if variability_analysis is not None:
             if len(list(out['Simulation_Results'].keys()))!=0:
                 rba_session.set_growth_rate(out['Mu_prok']*mu_factor_for_variability)
