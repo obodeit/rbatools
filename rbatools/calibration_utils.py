@@ -691,7 +691,8 @@ def perform_simulations(condition,
             out['Simulation_Results_DefKapp'] = copy.deepcopy(rba_session.Results)
             rba_session.clear_results_and_parameters()
         except:
-            out['Simulation_Results_DefKapp'] = {}
+            if print_output:
+                print('Mu Def: failed')
         if variability_analysis is not None:
             if len(list(out['Simulation_Results_DefKapp'].keys()))!=0:
                 rba_session.set_growth_rate(out['Mu_def']*mu_factor_for_variability)
@@ -808,7 +809,8 @@ def perform_simulations(condition,
             out['Simulation_Results'] = copy.deepcopy(rba_session.Results)
             rba_session.clear_results_and_parameters()
         except:
-            out['Simulation_Results'] = {}
+            if print_output:
+                print('Mu Prok: failed')
         if variability_analysis is not None:
             if len(list(out['Simulation_Results'].keys()))!=0:
                 rba_session.set_growth_rate(out['Mu_prok']*mu_factor_for_variability)
@@ -941,8 +943,8 @@ def perform_simulations(condition,
                 out['Euk_CompSizes'][comp] = rba_session.Problem.SolutionValues[str('f_'+comp)]
             rba_session.clear_results_and_parameters()
         except:
-            out['Euk_CompSizes']={}
-            out['Simulation_Results_Euk'] = {}
+            if print_output:
+                print('Mu Euk: failed')
         if variability_analysis is not None:
             if len(list(out['Simulation_Results_Euk'].keys()))!=0:
                 rba_session.set_growth_rate(out['Mu_euk']*mu_factor_for_variability)
@@ -1076,8 +1078,8 @@ def perform_simulations(condition,
                 out['Euk_fixed_CompSizes'][comp] = rba_session.Problem.SolutionValues[str('f_'+comp)]
             rba_session.clear_results_and_parameters()
         except:
-            out['Euk_fixed_CompSizes']={}
-            out['Simulation_Results_Euk_fixed'] = {}
+            if print_output:
+                print('Mu Euk fixed: failed')
         if variability_analysis is not None:
             if len(list(out['Simulation_Results_Euk_fixed'].keys()))!=0:
                 rba_session.set_growth_rate(out['Mu_euk_fixed']*mu_factor_for_variability)
@@ -1209,8 +1211,8 @@ def perform_simulations(condition,
                 out['Fixed_pg_Euk_CompSizes'][comp] = rba_session.Problem.SolutionValues[str('f_'+comp)]
             rba_session.clear_results_and_parameters()
         except:
-            out['Fixed_pg_Euk_CompSizes']={}
-            out['Simulation_Results_fixed_pg_Euk'] = {}
+            if print_output:
+                print('Mu fixed PG Euk: failed')
         if variability_analysis is not None:
             if len(list(out['Simulation_Results_fixed_pg_Euk'].keys()))!=0:
                 rba_session.set_growth_rate(out['Mu_fixed_pg_euk']*mu_factor_for_variability)
@@ -1342,8 +1344,8 @@ def perform_simulations(condition,
                 out['Fixed_pg_Euk_fixed_CompSizes'][comp] = rba_session.Problem.SolutionValues[str('f_'+comp)]
             rba_session.clear_results_and_parameters()
         except:
-            out['Fixed_pg_Euk_fixed_CompSizes']={}
-            out['Simulation_Results_fixed_pg_Euk_fixed'] = {}
+            if print_output:
+                print('Mu fixed PG Euk fixed: failed')
         if variability_analysis is not None:
             if len(list(out['Simulation_Results_fixed_pg_Euk_fixed'].keys()))!=0:
                 rba_session.set_growth_rate(out['Mu_fixed_pg_euk_fixed']*mu_factor_for_variability)
