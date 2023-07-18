@@ -1352,7 +1352,6 @@ def perform_simulations(condition,
     #rba_session.model.write(output_dir='Yeast_model_test')
     return(out)
 
-
 def perform_simulations_old(condition,
                         rba_session,
                         definition_file,
