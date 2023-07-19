@@ -69,20 +69,22 @@ for condition in conditions:
                                                   Exchanges_to_impose=Exchanges_to_impose,
                                                   #sims_to_perform=["DefaultKapp","Prokaryotic","Eukaryotic"],
                                                   #sims_to_perform=["Prokaryotic","Eukaryotic",'Eukaryotic_fixed_sizes'],
-                                                  #sims_to_perform=["Prokaryotic","Eukaryotic",'Eukaryotic_fixed_sizes','Fixed_PG_Eukaryotic','Fixed_PG_Eukaryotic_fixed_sizes'],
+                                                  sims_to_perform=["Prokaryotic","Eukaryotic",'Eukaryotic_fixed_sizes','Fixed_PG_Eukaryotic','Fixed_PG_Eukaryotic_fixed_sizes'],
                                                   #sims_to_perform=["Prokaryotic","Eukaryotic"],
-                                                  sims_to_perform=["Prokaryotic"],
-                                                  feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
-                                                  try_unscaling_if_sol_status_is_feasible_only_before_unscaling=False,
+                                                  #sims_to_perform=["Prokaryotic"],
+                                                  #feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
+                                                  feasible_stati=["optimal","feasible"],
+                                                  try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
                                                   print_output=True,
-                                                  #variability_analysis=["R_EX_glc__D_e","R_EX_etoh_e","R_EX_ac_e","R_EX_glyc_e","R_EX_acald_e","R_EX_lac__D_e","R_EX_succ_e","R_EX_o2_e"],
-                                                  variability_analysis=None,
+                                                  variability_analysis=["R_EX_glc__D_e","R_EX_etoh_e","R_EX_ac_e","R_EX_glyc_e","R_EX_acald_e","R_EX_lac__D_e","R_EX_succ_e","R_EX_o2_e"],
+                                                  #variability_analysis=None,
                                                   mu_factor_for_variability=0.99,
                                                   apply_model=False,
                                                   functions_to_include_list=functions_to_include_list,
                                                   transporter_multiplier=1,
-                                                  start_val=growth_rates[condition],
-                                                  Mu_approx_precision=0.0001
+#                                                  start_val=0,
+                                                  #start_val=growth_rates[condition],
+                                                  Mu_approx_precision= 0.00001
                                                   )
     simulation_results_Js_not_imposed.append(simulation_result)
 
@@ -109,20 +111,23 @@ for condition in conditions:
                                                   Specific_Kapps=specific_kapps_from_calibration,
                                                   #Specific_Kapps=regressed_specific_kapps,
                                                   Exchanges_to_impose=Exchanges_to_impose,
+                                                  sims_to_perform=["Prokaryotic","Eukaryotic",'Eukaryotic_fixed_sizes','Fixed_PG_Eukaryotic','Fixed_PG_Eukaryotic_fixed_sizes'],
                                                   #sims_to_perform=["Prokaryotic","Eukaryotic",'Eukaryotic_fixed_sizes'],
                                                   #sims_to_perform=["Prokaryotic","Eukaryotic"],
-                                                  sims_to_perform=["Prokaryotic"],
-                                                  feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
-                                                  try_unscaling_if_sol_status_is_feasible_only_before_unscaling=False,
+                                                  #sims_to_perform=["Prokaryotic"],
+                                                  #feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
+                                                  feasible_stati=["optimal","feasible"],
+                                                  try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
                                                   print_output=True,
-                                                  variability_analysis=None,
-                                                  #variability_analysis=["R_EX_glc__D_e","R_EX_etoh_e","R_EX_ac_e","R_EX_glyc_e","R_EX_acald_e","R_EX_lac__D_e","R_EX_succ_e","R_EX_o2_e"],
+                                                  #variability_analysis=None,
+                                                  variability_analysis=["R_EX_glc__D_e","R_EX_etoh_e","R_EX_ac_e","R_EX_glyc_e","R_EX_acald_e","R_EX_lac__D_e","R_EX_succ_e","R_EX_o2_e"],
                                                   mu_factor_for_variability=0.99,
                                                   apply_model=False,
                                                   functions_to_include_list=functions_to_include_list,
                                                   transporter_multiplier=1,
-                                                  start_val=growth_rates[condition],
-                                                  Mu_approx_precision=0.0001
+                                                  #start_val=0,
+                                                  #start_val=growth_rates[condition],
+                                                  Mu_approx_precision= 0.00001
                                                   )
     simulation_results_Js_imposed.append(simulation_result)
 
@@ -178,7 +183,7 @@ measured_proteomes=pandas.read_csv("../Corrected_calibration_proteomes.csv",inde
 plot_predicted_fluxes(simulation_outputs=simulation_results_Js_not_imposed,types=["Prokaryotic"],input_definition=Input_Data)
 plot_protein_protein_comparison(predicted_proteomes=pred_prot,measured_proteomes=measured_proteomes,conditions=conditions)
 plot_predicted_fluxes(simulation_outputs=simulation_results_Js_not_imposed,types=["Prokaryotic","Eukaryotic_fixed_sizes","Eukaryotic",'Fixed_PG_Eukaryotic','Fixed_PG_Eukaryotic_fixed_sizes'],input_definition=Input_Data)
-plot_predicted_fluxes(simulation_outputs=simulation_results_Js_imposed,types=["Prokaryotic","Eukaryotic_fixed_sizes","Eukaryotic"],input_definition=Input_Data)
+plot_predicted_fluxes(simulation_outputs=simulation_results_Js_imposed,types=["Prokaryotic","Eukaryotic_fixed_sizes","Eukaryotic",'Fixed_PG_Eukaryotic','Fixed_PG_Eukaryotic_fixed_sizes'],input_definition=Input_Data)
 plot_protein_protein_comparison(predicted_proteomes=pred_prot_fixed,measured_proteomes=measured_proteomes,conditions=conditions)
 
 #FD=get_flux_distribution(simulation_outputs=simulation_results_Js_not_imposed,result_object='Simulation_Results_Euk', run='Eukaryotic')
