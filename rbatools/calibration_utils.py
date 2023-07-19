@@ -4816,7 +4816,7 @@ def calibration_workflow(proteome,
                                                              results_to_look_up=results_to_look_up,
                                                              fixed_mu_when_above_target_mu_in_correction=correction_settings['fixed_growth_rate_global_scaling'],
                                                              n_th_root_mispred=1,
-                                                             print_outputs=False,
+                                                             print_outputs=True,
                                                              adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'])
 
             
