@@ -417,7 +417,6 @@ class SessionRBA(object):
             test_mu = start_value
         else:
             test_mu = max_value/2
-        iteration = 0
 
         if omit_objective:
             old_objective_function = self.Problem.get_objective()
@@ -449,15 +448,15 @@ class SessionRBA(object):
                 if lb_mu_range != 0:
                     if (ub_mu_range - lb_mu_range)/lb_mu_range <= current_precision:
                         continuation_criterion=False
-                    elif iteration > iteration_limit:
-                        continuation_criterion=False
-                if lb_mu_range == ub_mu_range:
+                if (ub_mu_range-lb_mu_range) <= 0.000000000000001:
+                    continuation_criterion=False
+                if iteration > iteration_limit:
                     continuation_criterion=False
 
         if omit_objective:
             self.Problem.set_objective(old_objective_function)
 
-        self.Problem.rebuild_lp()
+        #self.Problem.rebuild_lp()
         self.set_growth_rate(Mu=lb_mu_range)
         self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
         if self.Problem.Solved:
@@ -489,11 +488,12 @@ class SessionRBA(object):
                 if lb_mu_range != 0:
                     if (ub_mu_range - lb_mu_range)/lb_mu_range <= current_precision:
                         continuation_criterion=False
-                if lb_mu_range == ub_mu_range:
+                if (ub_mu_range-lb_mu_range) <= 0.000000000000001:
                     continuation_criterion=False
 
+            print("Mu in question: {}".format(mus_to_screen))
             for mu_in_question in sorted(mus_to_screen, reverse=True):
-                self.Problem.rebuild_lp()
+                #self.Problem.rebuild_lp()
                 self.set_growth_rate(Mu=mu_in_question)
                 self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
                 if verbose:
@@ -502,9 +502,9 @@ class SessionRBA(object):
                     if mu_in_question >= max_value:
                         print('WARNING: Maximum growth rate might exceed specified range. Try rerunning this method with larger "max" argument.')
                     return(mu_in_question)
-            return(numpy.nan)
+            return(0.0)
 
-    def find_max_growth_rate_improved_old(self, 
+    def find_max_growth_rate_2(self, 
                              precision: float = 0.001, 
                              max_value: float = 4.0, 
                              start_value: float = numpy.nan, 
@@ -640,7 +640,6 @@ class SessionRBA(object):
                     continuation_criterion_precision_scaling=False
                 elif current_precision >= 0.001:
                     continuation_criterion_precision_scaling=False
-
 
             self.set_growth_rate(Mu=lb_mu_range)
             self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
