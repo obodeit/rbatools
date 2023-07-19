@@ -201,8 +201,7 @@ class SessionRBA(object):
             Value=self.Problem.SolutionValues[i], RBA_Session=self) for i in list(self.Results['Enzymes'].index)]
         self.Results['Processes'][run_name] = [_auxiliary_functions.check_solution_feasibility(
             Value=self.Problem.SolutionValues[i], RBA_Session=self) for i in list(self.Results['Processes'].index)]
-        self.Results['Constraints'][run_name] = [_auxiliary_functions.check_solution_feasibility(
-            Value=self.Problem.DualValues[i], RBA_Session=self) for i in self.Problem.LP.row_names]
+        self.Results['Constraints'][run_name] = [_auxiliary_functions.check_solution_feasibility(Value=self.Problem.DualValues[i], RBA_Session=self) for i in self.Problem.LP.row_names]
         self.Results['Proteins'][run_name] = _auxiliary_functions.record_proteome(RBA_Session=self, run=run_name)
         self.Results['ProtoProteins'][run_name] = _auxiliary_functions.record_proto_proteome(RBA_Session=self, run=run_name, Proteinlevels=self.Results['Proteins'])
         self.Results['SolutionType'][run_name] = _auxiliary_functions.check_solution_feasibility(Value=self.Problem.SolutionType, RBA_Session=self)
@@ -425,6 +424,7 @@ class SessionRBA(object):
             self.Problem.clear_objective()
 
         iteration = 0
+        second_highest_growth_rate_so_far=0.0
         for i in range(n_search_blocks):
             current_precision=numpy.power(precision,1/(n_search_blocks-i))
             ub_mu_range = max_value
@@ -440,6 +440,7 @@ class SessionRBA(object):
                 if self.Problem.Solved:
                     if recording:
                         self.record_results('DichotomyMu_iteration_'+str(iteration))
+                    second_highest_growth_rate_so_far=lb_mu_range
                     lb_mu_range = test_mu
                 else:
                     ub_mu_range = test_mu
@@ -453,15 +454,73 @@ class SessionRBA(object):
                 if lb_mu_range == ub_mu_range:
                     continuation_criterion=False
 
-        if lb_mu_range >= max_value:
-            print('WARNING: Maximum growth rate might exceed specified range. Try rerunning this method with larger "max" argument.')
-
         if omit_objective:
             self.Problem.set_objective(old_objective_function)
+
         self.set_growth_rate(Mu=lb_mu_range)
         self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
+        if self.Problem.Solved:
+            if lb_mu_range >= max_value:
+                print('WARNING: Maximum growth rate might exceed specified range. Try rerunning this method with larger "max" argument.')
+            if verbose:
+                print('Mu: {} - Solved: {} - Status: {}'.format(lb_mu_range,self.Problem.Solved,self.Problem.SolutionStatus))
+            return(lb_mu_range)
+        else:
+            precision_multiplier_exponent=0
+            continuation_criterion_precision_scaling=True
+            while continuation_criterion_precision_scaling:
+                current_precision*=numpy.power(10,precision_multiplier_exponent)
+                test_mu=lb_mu_range
+                ub_mu_range = lb_mu_range
+                lb_mu_range = second_highest_growth_rate_so_far
+                continuation_criterion=True
+                while continuation_criterion:
+                    if verbose:
+                        print('Mu: set to {} -- Min: {} - Max: {}'.format(test_mu,lb_mu_range,ub_mu_range))
+                    self.set_growth_rate(Mu=test_mu)
+                    self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
+                    if verbose:
+                        print('Mu: {} - Solved: {} - Status: {}'.format(test_mu,self.Problem.Solved,self.Problem.SolutionStatus))
+                    if self.Problem.Solved:
+                        if recording:
+                            self.record_results('DichotomyMu_iteration_'+str(iteration))
+                        lb_mu_range = test_mu
+                    else:
+                        ub_mu_range = test_mu
+                    test_mu = (ub_mu_range+lb_mu_range)/2
 
-        return(lb_mu_range)
+                    if lb_mu_range != 0:
+                        if (ub_mu_range - lb_mu_range)/lb_mu_range <= current_precision:
+                            continuation_criterion=False
+                    if lb_mu_range == ub_mu_range:
+                        continuation_criterion=False
+                self.set_growth_rate(Mu=lb_mu_range)
+                self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
+                precision_multiplier_exponent+=1
+                
+                if not self.Problem.Solved:
+                    continuation_criterion_precision_scaling=False
+                elif precision_multiplier_exponent > 100:
+                    continuation_criterion_precision_scaling=False
+                elif current_precision >= 0.001:
+                    continuation_criterion_precision_scaling=False
+
+
+            self.set_growth_rate(Mu=lb_mu_range)
+            self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
+            if self.Problem.Solved:
+                if lb_mu_range >= max_value:
+                    print('WARNING: Maximum growth rate might exceed specified range. Try rerunning this method with larger "max" argument.')
+                if verbose:
+                    print('Mu: {} - Solved: {} - Status: {}'.format(lb_mu_range,self.Problem.Solved,self.Problem.SolutionStatus))
+                return(lb_mu_range)
+            else:
+                self.set_growth_rate(Mu=second_highest_growth_rate_so_far)
+                self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
+                if verbose:
+                    print('Mu: {} - Solved: {} - Status: {}'.format(lb_mu_range,self.Problem.Solved,self.Problem.SolutionStatus))
+                return(second_highest_growth_rate_so_far)
+
 
     def find_max_growth_rate_old(self, precision: float = 0.001, max_value: float = 4.0, start_value: float = numpy.nan, recording: bool = False, omit_objective: bool = False, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool = True,verbose=False) -> float:
         """
