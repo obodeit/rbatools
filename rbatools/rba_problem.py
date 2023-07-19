@@ -195,6 +195,9 @@ class ProblemRBA(object):
         self.Mu = Mu
         self.ClassicRBAmatrix.build_matrices(Mu)
 
+    def rebuild_lp(self):
+        self.LP.rebuild_lp()
+
     def solve_lp(self, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool =True):
         """
         Solves Linear RBA problem.
