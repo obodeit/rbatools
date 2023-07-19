@@ -487,7 +487,7 @@ class SessionRBA(object):
                 test_mu = (ub_mu_range+lb_mu_range)/2
 
                 if lb_mu_range != 0:
-                    if (ub_mu_range - lb_mu_range)/lb_mu_range <= current_precision/1000:
+                    if (ub_mu_range - lb_mu_range)/lb_mu_range <= current_precision:
                         continuation_criterion=False
                 if lb_mu_range == ub_mu_range:
                     continuation_criterion=False
