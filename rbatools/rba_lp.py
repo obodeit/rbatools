@@ -387,6 +387,10 @@ class LinearProblem(ProblemMatrix):
         self._lp_solver.build_lp()
         return(True)
 
+    def rebuild_lp(self):
+        self._lp_solver.import_lp(input_lp=self)
+        self.build_lp()
+
     def solve_lp(self):
         """
         solves linear problem
