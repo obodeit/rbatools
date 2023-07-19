@@ -368,7 +368,7 @@ class SessionRBA(object):
         solver.solve()
         return(solver.mu_opt)
 
-    def find_max_growth_rate(self, 
+    def find_max_growth_rate_improved_new(self, 
                              precision: float = 0.001, 
                              max_value: float = 4.0, 
                              start_value: float = numpy.nan, 
@@ -487,7 +487,7 @@ class SessionRBA(object):
                 test_mu = (ub_mu_range+lb_mu_range)/2
 
                 if lb_mu_range != 0:
-                    if (ub_mu_range - lb_mu_range)/lb_mu_range <= current_precision/1000:
+                    if (ub_mu_range - lb_mu_range)/lb_mu_range <= current_precision:
                         continuation_criterion=False
                 if lb_mu_range == ub_mu_range:
                     continuation_criterion=False
@@ -502,9 +502,10 @@ class SessionRBA(object):
                     if mu_in_question >= max_value:
                         print('WARNING: Maximum growth rate might exceed specified range. Try rerunning this method with larger "max" argument.')
                     return(mu_in_question)
-            return(numpy.nan)
+            print(mu_in_question)    
+            return(0.0)
 
-    def find_max_growth_rate_improved_old(self, 
+    def find_max_growth_rate(self, 
                              precision: float = 0.001, 
                              max_value: float = 4.0, 
                              start_value: float = numpy.nan, 
@@ -640,7 +641,6 @@ class SessionRBA(object):
                     continuation_criterion_precision_scaling=False
                 elif current_precision >= 0.001:
                     continuation_criterion_precision_scaling=False
-
 
             self.set_growth_rate(Mu=lb_mu_range)
             self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
