@@ -799,8 +799,7 @@ def perform_simulations(condition,
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]['LB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['LB'])})
             rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]['UB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['UB'])})
-        print("Performing...")
-        out['Mu_prok'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=start_val, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=True)
+        out['Mu_prok'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=start_val, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
 #        out['Mu_prok'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
         out['SolutionStatus_prok']=rba_session.Problem.SolutionStatus
                 
@@ -4774,66 +4773,6 @@ def calibration_workflow(proteome,
     Default_Kapps_original=Default_Kapps.copy()
     process_efficiencies_original=process_efficiencies.copy()
 
-    print("Test")
-    print("---------------------------------1-----------------------------------")
-    mumumu=rba_session.find_max_growth_rate(verbose=True)
-    print(mumumu)
-    print("---------------------------------2-----------------------------------")
-    xx = perform_simulations(condition=condition,
-                                             rba_session=rba_session,
-                                             definition_file=definition_file,
-                                             compartment_sizes=extract_compartment_sizes_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Densities_PGs":compartment_densities_and_PGs}]),
-                                             pg_fractions=extract_pg_fractions_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Densities_PGs":compartment_densities_and_PGs}]),
-                                             process_efficiencies=extract_process_capacities_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Process_Efficiencies":process_efficiencies}]),
-                                             Default_Kapps=extract_default_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Default_Kapps":Default_Kapps}]),
-                                             Specific_Kapps=extract_specific_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Specific_Kapps":Specific_Kapps}]),
-                                             sims_to_perform=["Prokaryotic"],
-                                             try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
-                                             print_output=True,
-                                             apply_model=False,
-                                             transporter_multiplier=1)
-    print("----------------------------------3----------------------------------")
-    xxx = perform_simulations(condition=condition,
-                                             rba_session=rba_session,
-                                             definition_file=definition_file,
-                                             compartment_sizes=extract_compartment_sizes_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Densities_PGs":compartment_densities_and_PGs}]),
-                                             pg_fractions=extract_pg_fractions_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Densities_PGs":compartment_densities_and_PGs}]),
-                                             process_efficiencies=extract_process_capacities_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Process_Efficiencies":process_efficiencies}]),
-                                             Default_Kapps=extract_default_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Default_Kapps":Default_Kapps}]),
-                                             Specific_Kapps=extract_specific_kapps_from_calibration_outputs(calibration_outputs=[{"Condition":condition,"Specific_Kapps":Specific_Kapps}]),
-                                             sims_to_perform=["Prokaryotic"],
-                                             try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
-                                             print_output=True,
-                                             apply_model=False,
-                                             transporter_multiplier=1,
-                                             Exchanges_to_impose=Exchanges_to_impose)
-
-    print("----------------------------------4----------------------------------")
-    condition_to_look_up="Prokaryotic"
-    growth_rate_to_look_up="Mu_prok"
-    results_to_look_up="Simulation_Results"
-    xxxx=global_efficiency_scaling(condition=condition,
-                                                             definition_file=definition_file,
-                                                             rba_session=rba_session,
-                                                             compartment_densities_and_pg=compartment_densities_and_PGs,
-                                                             process_efficiencies=process_efficiencies,
-                                                             default_kapps=Default_Kapps,
-                                                             specific_kapps=Specific_Kapps,
-                                                             exchanges_to_impose=Exchanges_to_impose,
-                                                             feasible_stati=feasible_stati,
-                                                             transporter_multiplier=transporter_multiplier,
-                                                             mu_approx_precision=Mu_approx_precision,
-                                                             mu_misprediction_tolerance=correction_settings['tolerance_global_scaling'],
-                                                             condition_to_look_up=condition_to_look_up,
-                                                             growth_rate_to_look_up=growth_rate_to_look_up,
-                                                             results_to_look_up=results_to_look_up,
-                                                             fixed_mu_when_above_target_mu_in_correction=correction_settings['fixed_growth_rate_global_scaling'],
-                                                             n_th_root_mispred=1,
-                                                             print_outputs=True,
-                                                             adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'])
-
-    print("--------------------------------------------------------------------")
-
     if correction_settings['correct_efficiencies']:
         #rba_session.Problem.set_constraint_types(dict(zip(Simulation.get_enzyme_constraints(),['E']*len(Simulation.get_enzyme_constraints()))))
         condition_to_look_up="Prokaryotic"
@@ -5320,7 +5259,7 @@ def global_efficiency_scaling(condition,
                 last_misprediction_direction=current_misprediction_direction
 
             if print_outputs:
-                print("Measured: {} - Predicted: {} - mispred coeff: {} - root: {} - runs_of_sign: {} -- status: {}".format(mu_measured,mumax_predicted,mu_misprediction_factor,n_th_root_mispred,runs_of_sign,simulation_results["SolutionStatus"]))
+                print("Measured: {} - Predicted: {} - mispred coeff: {} - root: {} - runs_of_sign: {}".format(mu_measured,mumax_predicted,mu_misprediction_factor,n_th_root_mispred,runs_of_sign))
 
         prediction_residulas_growth_rates=[mu_measured-mu_pred for mu_pred in predicted_growth_rates]
         minimum_prediction_residual=min([abs(i) for i in prediction_residulas_growth_rates])
@@ -5420,7 +5359,7 @@ def global_efficiency_scaling(condition,
                 last_misprediction_direction=current_misprediction_direction
 
             if print_outputs:
-                print("Measured: {} - Predicted: {} - mispred coeff: {} - root: {} - runs_of_sign: {}-- status: {}".format(mu_measured,mumax_predicted,mu_misprediction_factor,n_th_root_mispred,runs_of_sign,simulation_results["SolutionStatus"]))
+                print("Measured: {} - Predicted: {} - mispred coeff: {} - root: {} - runs_of_sign: {}-- status: {}".format(mu_measured,mumax_predicted,mu_misprediction_factor,n_th_root_mispred,runs_of_sign))
 
         prediction_residulas_growth_rates=[mu_measured-mu_pred for mu_pred in predicted_growth_rates]
         minimum_prediction_residual=min([abs(i) for i in prediction_residulas_growth_rates])
