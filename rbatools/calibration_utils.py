@@ -4134,7 +4134,7 @@ def plot_rss_trajectory(calibration_outputs):
     out.to_csv("RRS_trajectory.csv")
     n_figs=len(calibration_outputs)
     if n_figs<=3:
-        n_rows=1
+        n_rows=2
         n_cols=3
         ax_indices=[(0,0),(0,1),(0,2)]
     elif n_figs<=6:
