@@ -2,7 +2,8 @@ import pandas
 from rbatools.rba_session import SessionRBA
 from rbatools.calibration_utils import *
 
-conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03']
+#conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03']
+conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C03']
 #conditions = ['Hackett_N005', 'Hackett_N01', 'Hackett_N016', 'Hackett_N03']
 #conditions = ['Hackett_P005', 'Hackett_P01', 'Hackett_P016', 'Hackett_P022']
 #conditions = ['0102_mean', '0152_mean', '0214_mean', '0254_mean', '0284_mean', '0334_mean', '0379_mean']
@@ -67,10 +68,7 @@ for condition in conditions:
                                                   Specific_Kapps=specific_kapps_from_calibration,
                                                   #Specific_Kapps=regressed_specific_kapps,
                                                   Exchanges_to_impose=Exchanges_to_impose,
-                                                  #sims_to_perform=["DefaultKapp","Prokaryotic","Eukaryotic"],
-                                                  #sims_to_perform=["Prokaryotic","Eukaryotic",'Eukaryotic_fixed_sizes'],
                                                   sims_to_perform=["Prokaryotic","Eukaryotic",'Eukaryotic_fixed_sizes','Fixed_PG_Eukaryotic','Fixed_PG_Eukaryotic_fixed_sizes'],
-                                                  #sims_to_perform=["Prokaryotic","Eukaryotic"],
                                                   #sims_to_perform=["Prokaryotic"],
                                                   #feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
                                                   feasible_stati=["optimal","feasible"],
@@ -112,8 +110,6 @@ for condition in conditions:
                                                   #Specific_Kapps=regressed_specific_kapps,
                                                   Exchanges_to_impose=Exchanges_to_impose,
                                                   sims_to_perform=["Prokaryotic","Eukaryotic",'Eukaryotic_fixed_sizes','Fixed_PG_Eukaryotic','Fixed_PG_Eukaryotic_fixed_sizes'],
-                                                  #sims_to_perform=["Prokaryotic","Eukaryotic",'Eukaryotic_fixed_sizes'],
-                                                  #sims_to_perform=["Prokaryotic","Eukaryotic"],
                                                   #sims_to_perform=["Prokaryotic"],
                                                   #feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
                                                   feasible_stati=["optimal","feasible"],
