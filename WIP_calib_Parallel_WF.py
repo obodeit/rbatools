@@ -23,7 +23,7 @@ def calibration(input_dict):
                                          transporter_multiplier=1,
                                          prelim_run=input_dict["preliminary_run"],
                                          #Mu_approx_precision=  0.000000001,
-                                         Mu_approx_precision= 0.00001,
+                                         Mu_approx_precision= 0.000001,
                                          #feasible_stati=["optimal","feasible"],
                                          feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
                                          min_kapp=None,
@@ -178,8 +178,10 @@ def main(conditions,n_parallel_processes=None):
                                 conditions=conditions,
                                 growth_rates=growth_rates,
                                 filename="../Compartment_sizes_and_PG.pdf")
-
-    plot_rss_trajectory(calibration_results_2)
+    try:
+        plot_rss_trajectory(calibration_results_2)
+    except:
+        print("No RSS trajectory")
 
 if __name__ == "__main__":
     warnings.simplefilter('ignore', UserWarning)
