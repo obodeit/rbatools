@@ -799,7 +799,7 @@ def perform_simulations(condition,
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]['LB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['LB'])})
             rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]['UB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['UB'])})
-        out['Mu_prok'] = rba_session.find_max_growth_rate_old(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=start_val, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        out['Mu_prok'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=start_val, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
 #        out['Mu_prok'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
         out['SolutionStatus_prok']=rba_session.Problem.SolutionStatus
                 
@@ -5515,7 +5515,7 @@ def global_efficiency_scaling(condition,
                                              apply_model=False,
                                              transporter_multiplier=transporter_multiplier,
                                              #start_val=0,
-                                             start_val=mu_measured,
+                                             #start_val=mu_measured,
                                              Mu_approx_precision=mu_approx_precision,
                                              max_mu_in_dichotomy=4.0)
 
@@ -5567,7 +5567,7 @@ def global_efficiency_scaling(condition,
                                                     print_output=print_outputs,
                                                     apply_model=False,
                                                     transporter_multiplier=transporter_multiplier,
-                                                    start_val=mu_measured,
+                                                    #start_val=mu_measured,
                                                     Mu_approx_precision=mu_approx_precision,
                                                     max_mu_in_dichotomy=2*mu_measured)
             mumax_predicted=simulation_results[growth_rate_to_look_up]
@@ -5667,7 +5667,7 @@ def global_efficiency_scaling(condition,
                                                     print_output=print_outputs,
                                                     apply_model=False,
                                                     transporter_multiplier=transporter_multiplier,
-                                                    start_val=mu_measured,
+                                                    #start_val=mu_measured,
                                                     Mu_approx_precision=mu_approx_precision,
                                                     max_mu_in_dichotomy=2*mu_measured)
             mumax_predicted=simulation_results[growth_rate_to_look_up]
@@ -5732,7 +5732,7 @@ def global_efficiency_scaling(condition,
                                                 print_output=print_outputs,
                                                 apply_model=False,
                                                 transporter_multiplier=transporter_multiplier,
-                                                start_val=mu_measured,
+                                                #start_val=mu_measured,
                                                 Mu_approx_precision=mu_approx_precision,
                                                 max_mu_in_dichotomy=2*mu_measured)
 
