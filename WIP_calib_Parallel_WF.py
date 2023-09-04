@@ -23,7 +23,7 @@ def calibration(input_dict):
                                          transporter_multiplier=1,
                                          prelim_run=input_dict["preliminary_run"],
                                          #Mu_approx_precision=  0.000000001,
-                                         Mu_approx_precision= 0.000001,
+                                         Mu_approx_precision= 0.000005,
                                          #feasible_stati=["optimal","feasible"],
                                          feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
                                          min_kapp=None,
@@ -189,8 +189,8 @@ if __name__ == "__main__":
     warnings.simplefilter('ignore', RuntimeWarning)
     #warnings.simplefilter('ignore', SettingWithCopyWarning)
     main(n_parallel_processes=3,
-        conditions = ['Hackett_C022']
-        #conditions = ['Hackett_C03','Hackett_C005', 'Hackett_C022', 'Hackett_C016', 'Hackett_C01']
+        #conditions = ['Hackett_C022']
+        conditions = ['Hackett_C03','Hackett_C005', 'Hackett_C022', 'Hackett_C016', 'Hackett_C01']
         #conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03']
         #conditions = ['Hackett_N005', 'Hackett_N01', 'Hackett_N016', 'Hackett_N03']
         #conditions = ['Hackett_P005', 'Hackett_P01', 'Hackett_P016', 'Hackett_P022']
