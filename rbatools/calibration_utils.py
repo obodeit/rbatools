@@ -799,7 +799,7 @@ def perform_simulations(condition,
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]['LB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['LB'])})
             rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]['UB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['UB'])})
-        out['Mu_prok'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=start_val, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
+        out['Mu_prok'] = rba_session.find_max_growth_rate_old(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=start_val, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
 #        out['Mu_prok'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
         out['SolutionStatus_prok']=rba_session.Problem.SolutionStatus
                 
@@ -4817,7 +4817,7 @@ def calibration_workflow(proteome,
                                                                 results_to_look_up=results_to_look_up,
                                                                 fixed_mu_when_above_target_mu_in_correction=correction_settings['fixed_growth_rate_global_scaling'],
                                                                 n_th_root_mispred=1,
-                                                                print_outputs=True,
+                                                                print_outputs=False,
                                                                 adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'])
 
                 
@@ -5208,7 +5208,7 @@ def calibration_workflow_2(proteome,
                                                             results_to_look_up=results_to_look_up,
                                                             fixed_mu_when_above_target_mu_in_correction=correction_settings['fixed_growth_rate_global_scaling'],
                                                             n_th_root_mispred=1,
-                                                            print_outputs=False,
+                                                            print_outputs=True,
                                                             adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'])
 
             Simulation_results=results_global_scaling["simulation_results"]
