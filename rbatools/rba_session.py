@@ -368,6 +368,7 @@ class SessionRBA(object):
         solver.solve()
         return(solver.mu_opt)
 
+
     def find_max_growth_rate(self, 
                              precision: float = 0.001, 
                              max_value: float = 4.0, 
@@ -430,11 +431,11 @@ class SessionRBA(object):
             continuation_criterion=True
             while continuation_criterion:
                 if verbose:
-                    print('Mu: set to {} -- Min: {} - Max: {}'.format(test_mu,lb_mu_range,ub_mu_range))
+                    print('1. Mu: set to {} -- Min: {} - Max: {}'.format(test_mu,lb_mu_range,ub_mu_range))
                 self.set_growth_rate(Mu=test_mu)
                 self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
                 if verbose:
-                    print('Mu: {} - Solved: {} - Status: {}'.format(test_mu,self.Problem.Solved,self.Problem.SolutionStatus))
+                    print('1. Mu: {} - Solved: {} - Status: {} - search_block: {}'.format(test_mu,self.Problem.Solved,self.Problem.SolutionStatus,i))
                 iteration += 1
                 if self.Problem.Solved:
                     if recording:
@@ -463,7 +464,7 @@ class SessionRBA(object):
             if lb_mu_range >= max_value:
                 print('WARNING: Maximum growth rate might exceed specified range. Try rerunning this method with larger "max" argument.')
             if verbose:
-                print('Mu: {} - Solved: {} - Status: {}'.format(lb_mu_range,self.Problem.Solved,self.Problem.SolutionStatus))
+                print('1.2 Mu: {} - Solved: {} - Status: {}'.format(lb_mu_range,self.Problem.Solved,self.Problem.SolutionStatus))
             return(lb_mu_range)
         else:
             mus_to_screen=[lb_mu_range,second_highest_growth_rate_so_far]
@@ -491,7 +492,8 @@ class SessionRBA(object):
                 if (ub_mu_range-lb_mu_range) <= 0.000000000000001:
                     continuation_criterion=False
 
-            print("Mu in question: {}".format(mus_to_screen))
+            if verbose:
+                print("Mu in question: {}".format(mus_to_screen))
             for mu_in_question in sorted(mus_to_screen, reverse=True):
                 #self.Problem.rebuild_lp()
                 self.set_growth_rate(Mu=mu_in_question)
@@ -503,6 +505,7 @@ class SessionRBA(object):
                         print('WARNING: Maximum growth rate might exceed specified range. Try rerunning this method with larger "max" argument.')
                     return(mu_in_question)
             return(0.0)
+
 
     def find_max_growth_rate_2(self, 
                              precision: float = 0.001, 
@@ -657,6 +660,7 @@ class SessionRBA(object):
                 #return(second_highest_growth_rate_so_far)
                 return(0)
 
+
     def find_max_growth_rate_old(self, precision: float = 0.001, max_value: float = 4.0, start_value: float = numpy.nan, recording: bool = False, omit_objective: bool = False, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool = True,verbose=False) -> float:
         """
         Applies dichotomy-search to find the maximal feasible growth-rate.
@@ -723,6 +727,7 @@ class SessionRBA(object):
         self.set_growth_rate(Mu=optMu)
         self.Problem.solve_lp(feasible_stati=feasible_stati,try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
         return(optMu)
+
 
     def find_min_substrate_concentration(self, metabolite: str, precision: float =0.00001, max: float =100.0, recording:bool =False, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool = True):
         """
