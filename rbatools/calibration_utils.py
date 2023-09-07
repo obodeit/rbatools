@@ -4722,7 +4722,7 @@ def calibration_workflow(proteome,
                                                                                condition=condition, 
                                                                                store_output=True,
                                                                                rxns_to_ignore_when_parsimonious=[],
-                                                                               use_bm_flux_of_one=False)
+                                                                               use_bm_flux_of_one=True)
 
         Specific_Kapps=Specific_Kapps_Results["Overview"]
         if min_kapp is not None:
