@@ -4150,7 +4150,8 @@ def plot_rss_trajectory(calibration_outputs):
     count=0
     for cal_input in calibration_outputs:
         axs[ax_indices[count][0],ax_indices[count][1]].plot([i+1 for i in range(len(cal_input["RSS_trajectory"]))],cal_input["RSS_trajectory"])
-        axs[ax_indices[count][0],ax_indices[count][1]].scatter([cal_input["RSS_trajectory"].index(min(cal_input["RSS_trajectory"]))+1] , min(cal_input["RSS_trajectory"]) , color="red")
+        axs[ax_indices[count][0],ax_indices[count][1]].scatter([cal_input["RSS_trajectory"].index(min(cal_input["RSS_trajectory"]))+1] , min(cal_input["RSS_trajectory"]) , color="green",alpha=0.7)
+        axs[ax_indices[count][0],ax_indices[count][1]].scatter([cal_input["Chosen_RSS_index"]+1] , cal_input["RSS_trajectory"][cal_input["Chosen_RSS_index"]] , color="red",alpha=0.7)
         axs[ax_indices[count][0],ax_indices[count][1]].set_title("RSS: {}".format(cal_input["Condition"]))
         axs[ax_indices[count][0],ax_indices[count][1]].set_xlabel("Iteration")
         axs[ax_indices[count][0],ax_indices[count][1]].set_ylabel("Residual Sum of squares")
@@ -4616,7 +4617,8 @@ def calibration_workflow(proteome,
                          min_kapp=None,
                          print_outputs=True,
                          global_protein_scaling_coeff=1,
-                         use_mean_enzyme_composition_for_calibration=False):
+                         use_mean_enzyme_composition_for_calibration=False,
+                         max_kapp_threshold=None):
     
     correction_settings=machinery_efficiency_correction_settings_from_input(input=definition_file, condition=condition)
     enzyme_efficiency_estimation_settings=enzyme_efficiency_estimation_settings_from_input(input=definition_file, condition=condition)
@@ -4719,7 +4721,8 @@ def calibration_workflow(proteome,
                                                                                impose_on_identical_enzymes=enzyme_efficiency_estimation_settings['impose_on_identical_enzymes'],
                                                                                condition=condition, 
                                                                                store_output=True,
-                                                                               rxns_to_ignore_when_parsimonious=[])
+                                                                               rxns_to_ignore_when_parsimonious=[],
+                                                                               use_bm_flux_of_one=False)
 
         Specific_Kapps=Specific_Kapps_Results["Overview"]
         if min_kapp is not None:
@@ -4894,7 +4897,18 @@ def calibration_workflow(proteome,
             except:
                 continuation_criterion_correction=False
         if len(rss_trajectory)>0:
-            lowest_RSS_index=rss_trajectory.index(min(rss_trajectory))
+            ### add max condition here ###
+            if max_kapp_threshold is not None:
+                feasible_iterations=[]
+                for i in range(len(rss_trajectory)):
+                    max_kapp_in_iteration=efficiencies_over_correction_iterations[i]["Specific_Kapps"]["Kapp"].max(skipna=True)
+                    if max_kapp_in_iteration <= max_kapp_threshold:
+                        feasible_iterations.append(i)
+                filtered_rss_trajectory=[rss_trajectory[i] for i in feasible_iterations]
+                lowest_RSS_index=feasible_iterations[filtered_rss_trajectory.index(min(filtered_rss_trajectory))]
+            ###
+            else:
+                lowest_RSS_index=rss_trajectory.index(min(rss_trajectory))
             Default_Kapps_to_return=efficiencies_over_correction_iterations[lowest_RSS_index]["Default_Kapps"]
             Specific_Kapps_to_return=efficiencies_over_correction_iterations[lowest_RSS_index]["Specific_Kapps"]
             process_efficiencies_to_return=efficiencies_over_correction_iterations[lowest_RSS_index]["Process_Efficiencies"]
@@ -4955,6 +4969,7 @@ def calibration_workflow(proteome,
         Default_Kapps_to_return=results_global_scaling["default_kapps"]
         process_efficiencies_to_return=results_global_scaling["process_efficiencies"]
         rss_trajectory=None
+        lowest_RSS_index=None
 
     if use_mean_enzyme_composition_for_calibration:
         rba_session.reload_model()
@@ -4979,6 +4994,7 @@ def calibration_workflow(proteome,
         print("")
 
     return({"RSS_trajectory":rss_trajectory,
+            "Chosen_RSS_index":lowest_RSS_index,
             "Densities_PGs":compartment_densities_and_PGs,
             "Condition":condition,
             'Proteome': build_input_proteome_for_specific_kapp_estimation(proteome, condition),
@@ -6114,7 +6130,9 @@ def determine_calibration_flux_distribution(rba_session,
                                             biomass_function,
                                             target_biomass_function,
                                             parsimonious_fba,
-                                            rxns_to_ignore_when_parsimonious
+                                            rxns_to_ignore_when_parsimonious,
+                                            condition=None,
+                                            use_bm_flux_of_one=False
                                             ):
     rba_session.rebuild_from_model()
     rba_session.set_medium(rba_session.Medium)
@@ -6129,12 +6147,12 @@ def determine_calibration_flux_distribution(rba_session,
         rba_session.Problem.set_constraint_types({i:"E" for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names})
         solved=rba_session.solve()
         if solved:
-            print("Solution with equality density successfully obtained")
+            #print("Solution with equality density successfully obtained")
             derive_bm_from_rbasolution=True
             derive_bm_from_targets=False
             rba_session.Problem.set_constraint_types(original_density_constraint_signs)
         else:
-            print("Solution with equality density not obtained")
+            print("{} - Solution with equality density not obtained".format(condition))
             rba_session.Problem.set_constraint_types(original_density_constraint_signs)
             solved2=rba_session.solve()
             if solved2:
@@ -6181,14 +6199,33 @@ def determine_calibration_flux_distribution(rba_session,
         rba_session.FBA.set_lb({BMfunction:0.0})
         rba_session.FBA.solve_lp()
         BMfluxOld = rba_session.FBA.SolutionValues[BMfunction]
-
+    print("{} - BM-flux: {}".format(condition,BMfluxOld))
     if parsimonious_fba:
         rba_session.FBA.parsimonise(rxns_to_ignore_in_objective=rxns_to_ignore_when_parsimonious)
         rba_session.FBA.set_lb(rxn_LBs)
         rba_session.FBA.set_ub(rxn_UBs)
-        rba_session.FBA.set_lb({BMfunction: BMfluxOld})
-        rba_session.FBA.set_ub({BMfunction: BMfluxOld})
-        rba_session.FBA.solve_lp()
+        if use_bm_flux_of_one:
+            if BMfluxOld >= 1.0:
+                rba_session.FBA.set_lb({BMfunction: 1.0})
+                rba_session.FBA.set_ub({BMfunction: 1.0})
+                rba_session.FBA.solve_lp()
+                if not rba_session.FBA.Solved:
+                    rba_session.FBA.set_lb({BMfunction: BMfluxOld})
+                    rba_session.FBA.set_ub({BMfunction: BMfluxOld})
+                    rba_session.FBA.solve_lp()
+                    print("{} - Parsi BM-flux: {}".format(condition,BMfluxOld))
+                else:
+                    print("{} - Parsi BM-flux: {}".format(condition,1.0))
+            else:
+                rba_session.FBA.set_lb({BMfunction: BMfluxOld})
+                rba_session.FBA.set_ub({BMfunction: BMfluxOld})
+                rba_session.FBA.solve_lp()
+                print("{} - Parsi BM-flux: {}".format(condition,BMfluxOld))
+        else:
+            rba_session.FBA.set_lb({BMfunction: BMfluxOld})
+            rba_session.FBA.set_ub({BMfunction: BMfluxOld})
+            rba_session.FBA.solve_lp()
+            print("{} - Parsi BM-flux: {}".format(condition,BMfluxOld))
 
     fba_solution=rba_session.FBA.SolutionValues
     FluxDistribution = pandas.DataFrame()
@@ -6320,7 +6357,8 @@ def estimate_specific_enzyme_efficiencies(rba_session,
                                           node_degree_identical_enzyme_network=1,
                                           condition=None, 
                                           store_output=True,
-                                          rxns_to_ignore_when_parsimonious=[]):
+                                          rxns_to_ignore_when_parsimonious=[],
+                                          use_bm_flux_of_one=False):
     """
     Parameters
     ----------
@@ -6342,7 +6380,9 @@ def estimate_specific_enzyme_efficiencies(rba_session,
                                                              biomass_function=biomass_function,
                                                              target_biomass_function=target_biomass_function,
                                                              parsimonious_fba=parsimonious_fba,
-                                                             rxns_to_ignore_when_parsimonious=rxns_to_ignore_when_parsimonious
+                                                             rxns_to_ignore_when_parsimonious=rxns_to_ignore_when_parsimonious,
+                                                             condition=condition,
+                                                             use_bm_flux_of_one=use_bm_flux_of_one
                                                              )
     #FluxDistribution=determine_calibration_flux_distribution_2(rba_session=rba_session,
     #                                                         mu=mu,
