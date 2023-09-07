@@ -368,7 +368,6 @@ class SessionRBA(object):
         solver.solve()
         return(solver.mu_opt)
 
-
     def find_max_growth_rate(self, 
                              precision: float = 0.001, 
                              max_value: float = 4.0, 
@@ -379,7 +378,7 @@ class SessionRBA(object):
                              try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool = True,
                              verbose: bool = False,
                              iteration_limit=100,
-                             n_search_blocks=2) -> float:
+                             n_search_blocks=3) -> float:
         """
         Applies dichotomy-search to find the maximal feasible growth-rate.
 
@@ -423,9 +422,9 @@ class SessionRBA(object):
             old_objective_function = self.Problem.get_objective()
             self.Problem.clear_objective()
 
-        iteration = 0
         second_highest_growth_rate_so_far=0.0
         for i in range(n_search_blocks):
+            iteration = 0
             current_precision=numpy.power(precision,1/(n_search_blocks-i))
             ub_mu_range = max_value
             continuation_criterion=True
