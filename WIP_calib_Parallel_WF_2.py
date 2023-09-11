@@ -6,6 +6,7 @@ import warnings
 from multiprocessing import Pool , cpu_count
 
 def run_calibration_over_conditions(input_dict,conditions,n_parallel_processes=None,bootstrapping=False):
+    initial_time=time.time()
     growth_rates={condition:growth_rate_from_input(input=input_dict["definition_file"], condition=condition) for condition in conditions}
     input_dict["preliminary_run"]=True
     input_dicts_for_conditions=[]
@@ -171,7 +172,6 @@ def main(conditions,n_parallel_processes=None):
                                                 full_annotations=full_annotations)
 
     restored_Hackett_Data.to_csv("../origRestoredProteome.csv")
-    initial_time=time.time()
 
     input_dict={}
     input_dict["xml_dir"]='../Yeast_iMM904_RBA_model'

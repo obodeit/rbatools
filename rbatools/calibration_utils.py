@@ -395,8 +395,8 @@ def flux_bounds_from_input(input,rba_session, condition, specific_exchanges=None
 
     out = pandas.DataFrame(columns=['Reaction_ID', 'LB', 'UB'])
 
-    flux_mean_df = input.loc[input['Type'] == 'ExchangeFlux_Mean', :]
-    flux_mean_SE = input.loc[input['Type'] == 'ExchangeFlux_StandardError', :]
+    flux_mean_df = input.loc[input['Type'] == 'Flux_Range_Mean', :]
+    flux_mean_SE = input.loc[input['Type'] == 'Flux_Range_StandardError', :]
     if specific_exchanges is None:
         exchanges_to_set = list(flux_mean_df['ID'])
     else:
@@ -3475,60 +3475,60 @@ def plot_predicted_fluxes(simulation_outputs,types=['Fixed_PG_Eukaryotic_fixed_s
             except:
                 Mu_Hackett_list.append(numpy.nan)
             try:
-                Glc_Hackett_list.append(input_definition.loc[(input_definition['Type'] == 'ExchangeFlux_Mean')&(input_definition['ID'] == 'R_EX_glc__D_e'), condition].values[0])
+                Glc_Hackett_list.append(input_definition.loc[(input_definition['Type'] == 'Flux_Range_Mean')&(input_definition['ID'] == 'R_EX_glc__D_e'), condition].values[0])
             except:
                 Glc_Hackett_list.append(numpy.nan)
             try:
-                EtOH_Hackett_list.append(-input_definition.loc[(input_definition['Type'] == 'ExchangeFlux_Mean')&(input_definition['ID'] == 'R_EX_etoh_e'), condition].values[0])
+                EtOH_Hackett_list.append(-input_definition.loc[(input_definition['Type'] == 'Flux_Range_Mean')&(input_definition['ID'] == 'R_EX_etoh_e'), condition].values[0])
             except:
                 EtOH_Hackett_list.append(numpy.nan)
             try:
-                Ac_Hackett_list.append(-input_definition.loc[(input_definition['Type'] == 'ExchangeFlux_Mean')&(input_definition['ID'] == 'R_EX_ac_e'), condition].values[0])
+                Ac_Hackett_list.append(-input_definition.loc[(input_definition['Type'] == 'Flux_Range_Mean')&(input_definition['ID'] == 'R_EX_ac_e'), condition].values[0])
             except:
                 Ac_Hackett_list.append(numpy.nan)
             try:
-                Acald_Hackett_list.append(-input_definition.loc[(input_definition['Type'] == 'ExchangeFlux_Mean')&(input_definition['ID'] == 'R_EX_acald_e'), condition].values[0])
+                Acald_Hackett_list.append(-input_definition.loc[(input_definition['Type'] == 'Flux_Range_Mean')&(input_definition['ID'] == 'R_EX_acald_e'), condition].values[0])
             except:
                 Acald_Hackett_list.append(numpy.nan)
             try:
-                Glyc_Hackett_list.append(-input_definition.loc[(input_definition['Type'] == 'ExchangeFlux_Mean')&(input_definition['ID'] == 'R_EX_glyc_e'), condition].values[0])
+                Glyc_Hackett_list.append(-input_definition.loc[(input_definition['Type'] == 'Flux_Range_Mean')&(input_definition['ID'] == 'R_EX_glyc_e'), condition].values[0])
             except:
                 Glyc_Hackett_list.append(numpy.nan)
             try:
-                Lac_Hackett_list.append(-input_definition.loc[(input_definition['Type'] == 'ExchangeFlux_Mean')&(input_definition['ID'] == 'R_EX_lac__D_e'), condition].values[0])
+                Lac_Hackett_list.append(-input_definition.loc[(input_definition['Type'] == 'Flux_Range_Mean')&(input_definition['ID'] == 'R_EX_lac__D_e'), condition].values[0])
             except:
                 Lac_Hackett_list.append(numpy.nan)
             try:
-                Succ_Hackett_list.append(-input_definition.loc[(input_definition['Type'] == 'ExchangeFlux_Mean')&(input_definition['ID'] == 'R_EX_succ_e'), condition].values[0])
+                Succ_Hackett_list.append(-input_definition.loc[(input_definition['Type'] == 'Flux_Range_Mean')&(input_definition['ID'] == 'R_EX_succ_e'), condition].values[0])
             except:
                 Succ_Hackett_list.append(numpy.nan)
 
             try:
-                Glc_Hackett_SE_list.append(input_definition.loc[(input_definition['Type'] == 'ExchangeFlux_StandardError')&(input_definition['ID'] == 'R_EX_glc__D_e_SE'), condition].values[0])
+                Glc_Hackett_SE_list.append(input_definition.loc[(input_definition['Type'] == 'Flux_Range_StandardError')&(input_definition['ID'] == 'R_EX_glc__D_e_SE'), condition].values[0])
             except:
                 Glc_Hackett_SE_list.append(numpy.nan)
             try:
-                EtOH_Hackett_SE_list.append(input_definition.loc[(input_definition['Type'] == 'ExchangeFlux_StandardError')&(input_definition['ID'] == 'R_EX_etoh_e_SE'), condition].values[0])
+                EtOH_Hackett_SE_list.append(input_definition.loc[(input_definition['Type'] == 'Flux_Range_StandardError')&(input_definition['ID'] == 'R_EX_etoh_e_SE'), condition].values[0])
             except:
                 EtOH_Hackett_SE_list.append(numpy.nan)
             try:
-                Ac_Hackett_SE_list.append(input_definition.loc[(input_definition['Type'] == 'ExchangeFlux_StandardError')&(input_definition['ID'] == 'R_EX_ac_e_SE'), condition].values[0])
+                Ac_Hackett_SE_list.append(input_definition.loc[(input_definition['Type'] == 'Flux_Range_StandardError')&(input_definition['ID'] == 'R_EX_ac_e_SE'), condition].values[0])
             except:
                 Ac_Hackett_SE_list.append(numpy.nan)
             try:
-                Acald_Hackett_SE_list.append(input_definition.loc[(input_definition['Type'] == 'ExchangeFlux_StandardError')&(input_definition['ID'] == 'R_EX_acald_e_SE'), condition].values[0])
+                Acald_Hackett_SE_list.append(input_definition.loc[(input_definition['Type'] == 'Flux_Range_StandardError')&(input_definition['ID'] == 'R_EX_acald_e_SE'), condition].values[0])
             except:
                 Acald_Hackett_SE_list.append(numpy.nan)
             try:
-                Glyc_Hackett_SE_list.append(input_definition.loc[(input_definition['Type'] == 'ExchangeFlux_StandardError')&(input_definition['ID'] == 'R_EX_glyc_e_SE'), condition].values[0])
+                Glyc_Hackett_SE_list.append(input_definition.loc[(input_definition['Type'] == 'Flux_Range_StandardError')&(input_definition['ID'] == 'R_EX_glyc_e_SE'), condition].values[0])
             except:
                 Glyc_Hackett_SE_list.append(numpy.nan)
             try:
-                Lac_Hackett_SE_list.append(input_definition.loc[(input_definition['Type'] == 'ExchangeFlux_StandardError')&(input_definition['ID'] == 'R_EX_lac__D_e_SE'), condition].values[0])
+                Lac_Hackett_SE_list.append(input_definition.loc[(input_definition['Type'] == 'Flux_Range_StandardError')&(input_definition['ID'] == 'R_EX_lac__D_e_SE'), condition].values[0])
             except:
                 Lac_Hackett_SE_list.append(numpy.nan)
             try:
-                Succ_Hackett_SE_list.append(input_definition.loc[(input_definition['Type'] == 'ExchangeFlux_StandardError')&(input_definition['ID'] == 'R_EX_succ_e_SE'), condition].values[0])
+                Succ_Hackett_SE_list.append(input_definition.loc[(input_definition['Type'] == 'Flux_Range_StandardError')&(input_definition['ID'] == 'R_EX_succ_e_SE'), condition].values[0])
             except:
                 Succ_Hackett_SE_list.append(numpy.nan)
 
@@ -4690,7 +4690,6 @@ def calibration_workflow(proteome,
                                                specific_exchanges=None, 
                                                specific_directions=None,
                                                also_consider_iso_enzmes=False)
-
         ## NEW
         #if enzyme_efficiency_estimation_settings['use_target_biomass_function']:
         #
