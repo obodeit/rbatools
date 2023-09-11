@@ -12,7 +12,7 @@ def run_calibration_over_conditions(input_dict,conditions,n_parallel_processes=N
     for condition in conditions:
         input_dicts_for_conditions.append(input_dict.copy())
         input_dicts_for_conditions[-1]["condition"]=condition
-    calib_dicts_1=[calibration(i) for i in input_dicts_for_conditions]
+    calib_dicts_1=[calibration(i,print_outputs= not bootstrapping) for i in input_dicts_for_conditions]
 
     calibration_results_1=[]
     for condition in conditions:
@@ -40,7 +40,7 @@ def run_calibration_over_conditions(input_dict,conditions,n_parallel_processes=N
         #for i in input_dicts:
         #    print(i["condition"])
         #    calib_dicts_2.append(calibration(i))
-        calib_dicts_2=[calibration(i) for i in input_dicts_for_conditions]
+        calib_dicts_2=[calibration(i, print_outputs= not bootstrapping) for i in input_dicts_for_conditions]
     else:
         pool=Pool(n_parallel_processes)
         calib_dicts_2=pool.map(calibration,input_dicts_for_conditions)
@@ -80,7 +80,7 @@ def run_calibration_over_conditions(input_dict,conditions,n_parallel_processes=N
         except:
             print("No RSS trajectory")
 
-def calibration(input_dict):
+def calibration(input_dict,print_outputs=True):
     Simulation = SessionRBA(input_dict["xml_dir"])
     Simulation.add_exchange_reactions()
     calib_results = calibration_workflow(proteome=input_dict["proteome"],
@@ -101,7 +101,7 @@ def calibration(input_dict):
                                          feasible_stati=["optimal","feasible"],
                                          #feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
                                          min_kapp=None,
-                                         print_outputs=True,
+                                         print_outputs=print_outputs,
                                          use_mean_enzyme_composition_for_calibration=False,
                                          global_protein_scaling_coeff=1000/6.022e23,
                                          max_kapp_threshold=10000000000)
