@@ -2,8 +2,8 @@ import pandas
 from rbatools.rba_session import SessionRBA
 from rbatools.calibration_utils import *
 
-#conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03']
-conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C03']
+conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03']
+#conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C03']
 #conditions = ['Hackett_N005', 'Hackett_N01', 'Hackett_N016', 'Hackett_N03']
 #conditions = ['Hackett_P005', 'Hackett_P01', 'Hackett_P016', 'Hackett_P022']
 #conditions = ['0102_mean', '0152_mean', '0214_mean', '0254_mean', '0284_mean', '0334_mean', '0379_mean']
@@ -80,7 +80,7 @@ for condition in conditions:
                                                   apply_model=False,
                                                   functions_to_include_list=functions_to_include_list,
                                                   transporter_multiplier=1,
-#                                                  start_val=0,
+                                                  start_val=0,
                                                   #start_val=growth_rates[condition],
                                                   Mu_approx_precision= 0.00001
                                                   )
@@ -121,7 +121,7 @@ for condition in conditions:
                                                   apply_model=False,
                                                   functions_to_include_list=functions_to_include_list,
                                                   transporter_multiplier=1,
-                                                  #start_val=0,
+                                                  start_val=0,
                                                   #start_val=growth_rates[condition],
                                                   Mu_approx_precision= 0.00001
                                                   )

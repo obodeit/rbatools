@@ -23,13 +23,14 @@ def calibration(input_dict):
                                          transporter_multiplier=1,
                                          prelim_run=input_dict["preliminary_run"],
                                          #Mu_approx_precision=  0.000000001,
-                                         Mu_approx_precision= 0.000005,
-                                         #feasible_stati=["optimal","feasible"],
-                                         feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
+                                         Mu_approx_precision= 0.000001,
+                                         feasible_stati=["optimal","feasible"],
+                                         #feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
                                          min_kapp=None,
                                          print_outputs=True,
                                          use_mean_enzyme_composition_for_calibration=False,
-                                         global_protein_scaling_coeff=1000/6.022e23)
+                                         global_protein_scaling_coeff=1000/6.022e23,
+                                         max_kapp_threshold=10000000000)
     return({input_dict["condition"]:calib_results})
 
 def generate_input_proteome(fold_changes,
@@ -189,8 +190,8 @@ if __name__ == "__main__":
     warnings.simplefilter('ignore', RuntimeWarning)
     #warnings.simplefilter('ignore', SettingWithCopyWarning)
     main(n_parallel_processes=3,
-        conditions = ['Hackett_C022']
-        #conditions = ['Hackett_C03','Hackett_C005', 'Hackett_C022', 'Hackett_C016', 'Hackett_C01']
+        #conditions = ['Hackett_C03']
+        conditions = ['Hackett_C03','Hackett_C005', 'Hackett_C022', 'Hackett_C016', 'Hackett_C01']
         #conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03']
         #conditions = ['Hackett_N005', 'Hackett_N01', 'Hackett_N016', 'Hackett_N03']
         #conditions = ['Hackett_P005', 'Hackett_P01', 'Hackett_P016', 'Hackett_P022']
