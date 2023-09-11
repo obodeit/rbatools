@@ -377,7 +377,7 @@ class SessionRBA(object):
                              feasible_stati: list = ["optimal","feasible"], 
                              try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool = True,
                              verbose: bool = False,
-                             iteration_limit=100,
+                             iteration_limit=150,
                              n_search_blocks=3) -> float:
         """
         Applies dichotomy-search to find the maximal feasible growth-rate.
