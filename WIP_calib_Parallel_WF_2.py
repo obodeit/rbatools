@@ -4,9 +4,9 @@ from rbatools.calibration_utils import *
 import time
 import warnings
 from multiprocessing import Pool , cpu_count
-#from joblib import Parallel, delayed
 
-def run_calibration_over_conditions(input_dict,conditions,n_parallel_processes=None):
+def run_calibration_over_conditions(input_dict,conditions,n_parallel_processes=None,bootstrapping=False):
+    growth_rates={condition:growth_rate_from_input(input=input_dict["definition_file"], condition=condition) for condition in conditions}
     input_dict["preliminary_run"]=True
     input_dicts_for_conditions=[]
     for condition in conditions:
@@ -54,31 +54,31 @@ def run_calibration_over_conditions(input_dict,conditions,n_parallel_processes=N
                 for gene in i[condition]["Proteome"].index:
                     corrected_proteomes_DF.loc[gene,condition]=i[condition]["Proteome"].loc[gene,"copy_number"]
 
-    corrected_proteomes_DF.to_csv("../Corrected_calibration_proteomes.csv",sep=",",decimal=".")
-
     process_efficiencies_from_calibration=extract_process_capacities_from_calibration_outputs(calibration_outputs=calibration_results_2)
     specific_kapps_from_calibration=extract_specific_kapps_from_calibration_outputs(calibration_outputs=calibration_results_2)
     default_kapps_from_calibration=extract_default_kapps_from_calibration_outputs(calibration_outputs=calibration_results_2)
 
-    regressed_pg_fractions_1.to_csv("../pg_fractions_refactored_WF.csv")
-    regressed_compartment_sizes_1.to_csv("../compartment_sizes_refactored_WF.csv")
-    default_kapps_from_calibration.to_csv("../default_kapps_refactored_WF.csv")
-    specific_kapps_from_calibration.to_csv("../specific_kapps_refactored_WF.csv")
-    process_efficiencies_from_calibration.to_csv("../process_efficiencies_refactored_WF.csv")
+    if not bootstrapping:
+        corrected_proteomes_DF.to_csv("../Corrected_calibration_proteomes.csv",sep=",",decimal=".")
+        regressed_pg_fractions_1.to_csv("../pg_fractions_refactored_WF.csv")
+        regressed_compartment_sizes_1.to_csv("../compartment_sizes_refactored_WF.csv")
+        default_kapps_from_calibration.to_csv("../default_kapps_refactored_WF.csv")
+        specific_kapps_from_calibration.to_csv("../specific_kapps_refactored_WF.csv")
+        process_efficiencies_from_calibration.to_csv("../process_efficiencies_refactored_WF.csv")
 
-    print("Total Runtime: {}".format(time.time()-initial_time))
+        print("Total Runtime: {}".format(time.time()-initial_time))
 
-    plot_compartment_sizes_and_pg(point_calibration_sizes=compartment_sizes_from_calibration_1,
-                                point_calibration_pg=pg_fractions_from_calibration_1,
-                                regressed_sizes=regressed_compartment_sizes_1,
-                                regressed_pg=regressed_pg_fractions_1,
-                                conditions=conditions,
-                                growth_rates=growth_rates,
-                                filename="../Compartment_sizes_and_PG.pdf")
-    try:
-        plot_rss_trajectory(calibration_results_2)
-    except:
-        print("No RSS trajectory")
+        plot_compartment_sizes_and_pg(point_calibration_sizes=compartment_sizes_from_calibration_1,
+                                    point_calibration_pg=pg_fractions_from_calibration_1,
+                                    regressed_sizes=regressed_compartment_sizes_1,
+                                    regressed_pg=regressed_pg_fractions_1,
+                                    conditions=conditions,
+                                    growth_rates=growth_rates,
+                                    filename="../Compartment_sizes_and_PG.pdf")
+        try:
+            plot_rss_trajectory(calibration_results_2)
+        except:
+            print("No RSS trajectory")
 
 def calibration(input_dict):
     Simulation = SessionRBA(input_dict["xml_dir"])
@@ -182,7 +182,10 @@ def main(conditions,n_parallel_processes=None):
     input_dict["Compartment_sizes"]=None
     input_dict["PG_fractions"]=None
 
-    run_calibration_over_conditions(input_dict,conditions,n_parallel_processes=n_parallel_processes)
+    run_calibration_over_conditions(input_dict=input_dict,
+                                    conditions=conditions,
+                                    n_parallel_processes=n_parallel_processes,
+                                    bootstrapping=False)
 
 if __name__ == "__main__":
     warnings.simplefilter('ignore', UserWarning)
