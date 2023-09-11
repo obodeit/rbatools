@@ -4,7 +4,7 @@ from rbatools.calibration_utils import *
 import time
 import warnings
 from multiprocessing import Pool , cpu_count
-from joblib import Parallel, delayed
+#from joblib import Parallel, delayed
 
 def calibration(input_dict):
     Simulation = SessionRBA(input_dict["xml_dir"])
