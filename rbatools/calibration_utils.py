@@ -403,9 +403,9 @@ def flux_bounds_from_input(input,rba_session, condition, specific_exchanges=None
         exchanges_to_set = specific_exchanges
     for rx in exchanges_to_set:
         reactions_to_consider=[rx]
-        if also_consider_iso_enzmes:
-            if rx in rba_session.get_reactions():
-                reactions_to_consider+=list(rba_session.get_reaction_information(rx)['Twins'])
+        #if also_consider_iso_enzmes:
+        #    if rx in rba_session.get_reactions():
+        #        reactions_to_consider+=list(rba_session.get_reaction_information(rx)['Twins'])
         for reaction_to_consider in reactions_to_consider:
             mean_val = flux_mean_df.loc[flux_mean_df['ID'] == rx, condition].values[0]
             if not pandas.isna(mean_val):
@@ -4800,6 +4800,7 @@ def calibration_workflow(proteome,
 
         while continuation_criterion_correction:
             iteration_count+=1
+            """
             try:
                 ### GLOBAL SCALING
                 results_global_scaling=global_efficiency_scaling(condition=condition,
@@ -4895,6 +4896,89 @@ def calibration_workflow(proteome,
                     continuation_criterion_correction=False
             except:
                 continuation_criterion_correction=False
+            """
+            ### GLOBAL SCALING
+            results_global_scaling=global_efficiency_scaling(condition=condition,
+                                                                definition_file=definition_file,
+                                                                rba_session=rba_session,
+                                                                compartment_densities_and_pg=compartment_densities_and_PGs,
+                                                                process_efficiencies=process_efficiencies,
+                                                                default_kapps=Default_Kapps,
+                                                                specific_kapps=Specific_Kapps,
+                                                                exchanges_to_impose=Exchanges_to_impose,
+                                                                feasible_stati=feasible_stati,
+                                                                transporter_multiplier=transporter_multiplier,
+                                                                mu_approx_precision=Mu_approx_precision,
+                                                                mu_misprediction_tolerance=correction_settings['tolerance_global_scaling'],
+                                                                condition_to_look_up=condition_to_look_up,
+                                                                growth_rate_to_look_up=growth_rate_to_look_up,
+                                                                results_to_look_up=results_to_look_up,
+                                                                fixed_mu_when_above_target_mu_in_correction=correction_settings['fixed_growth_rate_global_scaling'],
+                                                                n_th_root_mispred=1,
+                                                                print_outputs=False,
+                                                                adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'])
+
+                
+            Simulation_results=results_global_scaling["simulation_results"]
+            Specific_Kapps=results_global_scaling["specific_kapps"]
+            Default_Kapps=results_global_scaling["default_kapps"]
+            process_efficiencies=results_global_scaling["process_efficiencies"]
+
+            if len(list(Simulation_results[results_to_look_up].keys()))!=0:
+                efficiencies_over_correction_iterations.append({"Specific_Kapps":Specific_Kapps.copy(),"Default_Kapps":Default_Kapps.copy(),"Process_Efficiencies":process_efficiencies.copy()})
+
+                KappCorrectionResults=efficiency_correction(enzyme_efficiencies=Specific_Kapps,
+                                                                simulation_results=Simulation_results[results_to_look_up],
+                                                                protein_data=build_input_proteome_for_specific_kapp_estimation(proteome, condition),
+                                                                rba_session=rba_session,
+                                                                condition_to_look_up=condition_to_look_up,
+                                                                default_enzyme_efficiencies=Default_Kapps,
+                                                                tolerance=None,
+                                                                #tolerance=0.05,
+                                                                n_th_root_mispred=1,
+                                                                process_efficiencies=process_efficiencies,
+                                                                correct_default_kapp_enzymes=True,
+                                                                only_consider_misprediction_for_predicted_nonzero_enzymes=True)
+                    
+                current_RSS=KappCorrectionResults["Sum_of_squared_residuals"]
+
+                rss_trajectory.append(current_RSS)
+
+                Specific_Kapps=KappCorrectionResults["Kapps"]
+                if min_kapp is not None:
+                    Specific_Kapps.loc[(Specific_Kapps['Kapp']<min_kapp)&(Specific_Kapps['Kapp']!=0)&(pandas.isna(Specific_Kapps['Kapp'])==False),'Kapp']=min_kapp
+
+                process_efficiencies=KappCorrectionResults["ProcessEfficiencies"]
+                ###
+                spec_kapp_median=Specific_Kapps.loc[(Specific_Kapps['Kapp']!=0)&(pandas.isna(Specific_Kapps['Kapp'])==False),'Kapp'].median()
+                Default_Kapps={"default_efficiency":spec_kapp_median,"default_transporter_efficiency":transporter_multiplier*spec_kapp_median}
+
+                if iteration_count>=minimum_iteration_number:
+                    if not pandas.isna(previous_RSS):
+                        if not pandas.isna(current_RSS):
+                            if (1-rss_tolerance)<=current_RSS/previous_RSS<=(1+rss_tolerance):
+                                steady_count+=1
+                            else:
+                                steady_count=0
+                                #
+                                if current_RSS>=increasing_RSS_factor*previous_RSS:
+                                    increasing_RSS_count+=1
+                                else:
+                                    increasing_RSS_count=0
+                                #
+                if print_outputs:
+                    print("{} - {} - RSS:{} - Relative change:{} - n_inc:{} - n_steady:{}".format(condition,iteration_count,current_RSS,current_RSS/previous_RSS,increasing_RSS_count,steady_count))
+                previous_RSS=current_RSS
+
+            if current_RSS>rss_trajectory[0]:
+                continuation_criterion_correction=False
+            if steady_count>=steady_limit:
+                continuation_criterion_correction=False
+            elif iteration_count>=iteration_limit:
+                continuation_criterion_correction=False
+            elif increasing_RSS_count>=increasing_RSS_limit:
+                continuation_criterion_correction=False
+        #
         if len(rss_trajectory)>0:
             ### add max condition here ###
             if max_kapp_threshold is not None:
