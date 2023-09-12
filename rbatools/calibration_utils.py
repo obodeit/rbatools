@@ -6277,7 +6277,7 @@ def determine_calibration_flux_distribution(rba_session,
         rba_session.FBA.set_lb({BMfunction:0.0})
         rba_session.FBA.solve_lp()
         BMfluxOld = rba_session.FBA.SolutionValues[BMfunction]
-    print("{} - BM-flux: {}".format(condition,BMfluxOld))
+    #print("{} - BM-flux: {}".format(condition,BMfluxOld))
     if parsimonious_fba:
         rba_session.FBA.parsimonise(rxns_to_ignore_in_objective=rxns_to_ignore_when_parsimonious)
         rba_session.FBA.set_lb(rxn_LBs)
@@ -6291,19 +6291,19 @@ def determine_calibration_flux_distribution(rba_session,
                     rba_session.FBA.set_lb({BMfunction: BMfluxOld})
                     rba_session.FBA.set_ub({BMfunction: BMfluxOld})
                     rba_session.FBA.solve_lp()
-                    print("{} - Parsi BM-flux: {}".format(condition,BMfluxOld))
-                else:
-                    print("{} - Parsi BM-flux: {}".format(condition,1.0))
+                    #print("{} - Parsi BM-flux: {}".format(condition,BMfluxOld))
+                #else:
+                    #print("{} - Parsi BM-flux: {}".format(condition,1.0))
             else:
                 rba_session.FBA.set_lb({BMfunction: BMfluxOld})
                 rba_session.FBA.set_ub({BMfunction: BMfluxOld})
                 rba_session.FBA.solve_lp()
-                print("{} - Parsi BM-flux: {}".format(condition,BMfluxOld))
+                #print("{} - Parsi BM-flux: {}".format(condition,BMfluxOld))
         else:
             rba_session.FBA.set_lb({BMfunction: BMfluxOld})
             rba_session.FBA.set_ub({BMfunction: BMfluxOld})
             rba_session.FBA.solve_lp()
-            print("{} - Parsi BM-flux: {}".format(condition,BMfluxOld))
+            #print("{} - Parsi BM-flux: {}".format(condition,BMfluxOld))
 
     fba_solution=rba_session.FBA.SolutionValues
     FluxDistribution = pandas.DataFrame()
