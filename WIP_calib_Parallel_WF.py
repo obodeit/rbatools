@@ -11,7 +11,6 @@ def calibration(input_dict):
     Simulation.add_exchange_reactions()
     calib_results = calibration_workflow(proteome=input_dict["proteome"],
                                          condition=input_dict["condition"],
-                                         reference_condition=input_dict["reference_condition"],
                                          gene_ID_column='Gene',
                                          definition_file=input_dict["definition_file"],
                                          rba_session=Simulation,
@@ -107,7 +106,6 @@ def main(conditions,n_parallel_processes=None):
         dict_to_add["xml_dir"]='../Yeast_iMM904_RBA_model'
         dict_to_add["condition"]=condition
         dict_to_add["proteome"]=restored_Hackett_Data
-        dict_to_add["reference_condition"]=Reference_Condition
         dict_to_add["definition_file"]=Input_Data
         dict_to_add["process_efficiency_estimation_input"]=Process_Efficiency_Estimation_Input
         dict_to_add["Compartment_sizes"]=None
