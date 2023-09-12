@@ -17,6 +17,7 @@ from multiprocessing import Pool , cpu_count
 
 def run_calibration_over_conditions_for_bootstrapping_run(input_dict_for_run):
     run_id=list(input_dict_for_run.keys())[0]
+    print("Bootstrapping run: {}".format(run_id))
     input_dict=input_dict_for_run[run_id]
     growth_rates={condition:growth_rate_from_input(input=input_dict["definition_file"], condition=condition) for condition in input_dict["conditions"]}
     input_dict["preliminary_run"]=True
@@ -52,13 +53,14 @@ def run_calibration_over_conditions_for_bootstrapping_run(input_dict_for_run):
     for condition in input_dict["conditions"]:
         for calib_results in calib_dicts_2:
             if condition in list(calib_results.keys()):
-                proteome_corrected={i:calib_results["Proteome"].loc[i,"copy_number"] for i in calib_results["Proteome"].index}
+                [condition]
+                proteome_corrected={i:calib_results[condition]["Proteome"].loc[i,"copy_number"] for i in calib_results[condition]["Proteome"].index}
                 proteome_input={i:input_dict["proteome"].loc[i,condition] for i in input_dict["proteome"].index}
-                densities={i:round(calib_results["Densities_PGs"].loc[i,"Density"],6) for i in calib_results["Densities_PGs"].index}
-                pgs={i:round(calib_results["Densities_PGs"].loc[i,"PG_fraction"],6) for i in calib_results["Densities_PGs"].index}
-                spec_kapps={i:{"Kapp":calib_results["Specific_Kapps"].loc[calib_results["Specific_Kapps"]["Enzyme_ID"]==i,"Kapp"].values[0],"Flux":calib_results["Specific_Kapps"].loc[calib_results["Specific_Kapps"]["Enzyme_ID"]==i,"Flux"].values[0]} for i in calib_results["Specific_Kapps"]["Enzyme_ID"]}
-                process_effs={i:calib_results["Process_Efficiencies"].loc[calib_results["Process_Efficiencies"]['Process']==i,"Value"].values[0] for i in calib_results["Process_Efficiencies"]['Process']}
-                def_kapp={"default_efficiency":calib_results["Default_Kapps"]['default_efficiency']}
+                densities={i:round(calib_results[condition]["Densities_PGs"].loc[i,"Density"],6) for i in calib_results[condition]["Densities_PGs"].index}
+                pgs={i:round(calib_results[condition]["Densities_PGs"].loc[i,"PG_fraction"],6) for i in calib_results[condition]["Densities_PGs"].index}
+                spec_kapps={i:{"Kapp":calib_results[condition]["Specific_Kapps"].loc[calib_results[condition]["Specific_Kapps"]["Enzyme_ID"]==i,"Kapp"].values[0],"Flux":calib_results[condition]["Specific_Kapps"].loc[calib_results[condition]["Specific_Kapps"]["Enzyme_ID"]==i,"Flux"].values[0]} for i in calib_results[condition]["Specific_Kapps"]["Enzyme_ID"]}
+                process_effs={i:calib_results[condition]["Process_Efficiencies"].loc[calib_results[condition]["Process_Efficiencies"]['Process']==i,"Value"].values[0] for i in calib_results[condition]["Process_Efficiencies"]['Process']}
+                def_kapp={"default_efficiency":calib_results[condition]["Default_Kapps"]['default_efficiency']}
 
                 out[condition]={"proteome_input":proteome_input,
                                 "proteome_corrected":proteome_corrected,
@@ -75,7 +77,6 @@ def calibration(input_dict,print_outputs=True):
     Simulation.add_exchange_reactions()
     calib_results = calibration_workflow(proteome=input_dict["proteome"],
                                          condition=input_dict["condition"],
-                                         reference_condition=input_dict["reference_condition"],
                                          gene_ID_column='Gene',
                                          definition_file=input_dict["definition_file"],
                                          rba_session=Simulation,
@@ -251,8 +252,12 @@ def main(conditions,number_samples,n_parallel_processes=None):
 #
 
 if __name__ == "__main__":
+    warnings.simplefilter('ignore', UserWarning)
+    warnings.simplefilter('ignore', FutureWarning)
+    warnings.simplefilter('ignore', RuntimeWarning)
     t0=time.time()
-    main(conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
-         number_samples=3,
-         n_parallel_processes=4)
+    main(n_parallel_processes=4,
+         conditions = ['Hackett_C01'],
+         #conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
+         number_samples=3)
     print("Total time: {}".format(time.time()-t0))
