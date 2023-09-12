@@ -166,7 +166,10 @@ def main(conditions,number_samples,n_parallel_processes=None,number_chunks=1):
                                                                     target_size=number_samples,
                                                                     number_quantiles=12,
                                                                     transform_residuals=False,
-                                                                    regression_type="inverse_lin")
+                                                                    regression_type="inverse_lin",
+                                                                    start_run_id=0,
+                                                                    mean_no_noise=True,
+                                                                    sample_mean=True)
     
     sampled_runs=list(Sampled_Proteomes.columns)
     if number_chunks == 1:
