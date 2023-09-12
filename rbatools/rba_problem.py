@@ -198,6 +198,7 @@ class ProblemRBA(object):
     def rebuild_lp(self):
         self.LP.rebuild_lp()
 
+
     def solve_lp(self, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool =True):
         """
         Solves Linear RBA problem.
@@ -247,6 +248,7 @@ class ProblemRBA(object):
                         self.SolutionValues = self.LP.return_primal_values()
                         self.DualValues = self.LP.return_dual_values()
         self.SolutionType = 'Normal'
+
 
     def solve_lp_old(self, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool =True):
         """
