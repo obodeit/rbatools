@@ -281,7 +281,6 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session, pro
         machinery_size = 0
         for i in constituting_proteins.keys():
             if i in protein_data['ID']:
-                protein_data.loc[protein_data['ID'] == i, ]
                 n_AAs_in_machinery += protein_data.loc[protein_data['ID'] == i, condition].values[0] * \
                     protein_data.loc[protein_data['ID'] == i, 'AA_residues'].values[0]
                 machinery_size += constituting_proteins[i]
@@ -290,7 +289,6 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session, pro
             relative_Protein_fraction_of_machinery = n_AAs_in_machinery / proteome_summary.loc['Total', 'original_amino_acid_occupation']
             specific_capacity = growth_rate*Total_client_fraction/relative_Protein_fraction_of_machinery
             apparent_capacity = specific_capacity*machinery_size
-            # process_ID[process_name] = apparent_capacity
             process_efficiencies.loc[process_name, 'Process'] = process_ID
             process_efficiencies.loc[process_name, 'Parameter'] = str(process_ID+'_apparent_efficiency')
             process_efficiencies.loc[process_name, 'Value'] = apparent_capacity
@@ -4654,7 +4652,6 @@ def calibration_workflow(proteome,
         proteome.loc[proteome["Location"]==i,condition]*=abundance_coeff
         correction_results_compartement_sizes.loc[i,"copy_number_scaling"]=abundance_coeff
     ###
-
     correction_results_compartement_sizes.to_csv(str('Correction_overview_HackettNielsen_corrected_'+condition+'.csv'))
     if process_efficiencies is None:
         if process_efficiency_estimation_input is not None:
