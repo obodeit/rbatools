@@ -4706,6 +4706,7 @@ def calibration_workflow(proteome,
         Specific_Kapps_Results = estimate_specific_enzyme_efficiencies(rba_session=rba_session, 
                                                                        proteomicsData=build_input_proteome_for_specific_kapp_estimation(proteome, condition), 
                                                                        flux_bounds=flux_bounds_fba, 
+                                                                       compartment_densities_and_pg=compartment_densities_and_PGs,
                                                                                mu=growth_rate_from_input(input=definition_file, condition=condition), 
                                                                                biomass_function=enzyme_efficiency_estimation_settings['biomass_function_in_model'], 
                                                                                target_biomass_function=enzyme_efficiency_estimation_settings['use_target_biomass_function'],
@@ -6213,6 +6214,7 @@ def determine_calibration_flux_distribution_2(rba_session,
 def determine_calibration_flux_distribution(rba_session,
                                             mu,
                                             flux_bounds,
+                                            compartment_densities_and_pg,
                                             biomass_function,
                                             target_biomass_function,
                                             parsimonious_fba,
@@ -6220,10 +6222,30 @@ def determine_calibration_flux_distribution(rba_session,
                                             condition=None,
                                             use_bm_flux_of_one=False
                                             ):
+    for comp in list(compartment_densities_and_pg['Compartment_ID']):
+        rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_pg.loc[compartment_densities_and_pg['Compartment_ID'] == comp, 'Density'].values[0]
+
     rba_session.rebuild_from_model()
     rba_session.set_medium(rba_session.Medium)
     rba_session.add_exchange_reactions()
     rba_session.set_growth_rate(mu)
+
+    """
+    rxn_LBs = {}
+    rxn_UBs = {}
+    for rx in flux_bounds['Reaction_ID']:
+        lb = flux_bounds.loc[flux_bounds['Reaction_ID'] == rx, 'LB'].values[0]
+        ub = flux_bounds.loc[flux_bounds['Reaction_ID'] == rx, 'UB'].values[0]
+        if not pandas.isna(lb):
+            rxn_LBs.update({rx: lb})
+            #rba_session.FBA.set_lb({rx: lb})
+        if not pandas.isna(ub):
+            rxn_UBs.update({rx: ub})
+            #rba_session.FBA.set_ub({rx: ub})
+    rba_session.Problem.set_ub(rxn_UBs)
+    rba_session.Problem.set_lb(rxn_LBs)
+    """
+
     if target_biomass_function:
         derive_bm_from_rbasolution=False
         derive_bm_from_targets=True
@@ -6233,7 +6255,7 @@ def determine_calibration_flux_distribution(rba_session,
         rba_session.Problem.set_constraint_types({i:"E" for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names})
         solved=rba_session.solve()
         if solved:
-            #print("Solution with equality density successfully obtained")
+            print("Solution with equality density successfully obtained")
             derive_bm_from_rbasolution=True
             derive_bm_from_targets=False
             rba_session.Problem.set_constraint_types(original_density_constraint_signs)
@@ -6244,6 +6266,9 @@ def determine_calibration_flux_distribution(rba_session,
             if solved2:
                 derive_bm_from_rbasolution=True
                 derive_bm_from_targets=False
+            else:
+                print("{} - Solution with inequality density not obtained".format(condition))
+
         rba_session.set_medium(original_medium)
         rba_session.build_fba_model(rba_derived_biomass_function=True,
                                     from_rba_solution=derive_bm_from_rbasolution,
@@ -6431,6 +6456,7 @@ def determine_reactions_associated_with_measured_proto_protein(measured_proteins
 def estimate_specific_enzyme_efficiencies(rba_session, 
                                           proteomicsData, 
                                           flux_bounds, 
+                                          compartment_densities_and_pg,
                                           mu, 
                                           biomass_function=None, 
                                           target_biomass_function=True, 
@@ -6463,6 +6489,7 @@ def estimate_specific_enzyme_efficiencies(rba_session,
     FluxDistribution=determine_calibration_flux_distribution(rba_session=rba_session,
                                                              mu=mu,
                                                              flux_bounds=flux_bounds,
+                                                             compartment_densities_and_pg=compartment_densities_and_pg,
                                                              biomass_function=biomass_function,
                                                              target_biomass_function=target_biomass_function,
                                                              parsimonious_fba=parsimonious_fba,
