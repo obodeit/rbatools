@@ -2400,7 +2400,7 @@ class SessionRBA(object):
         
         return(out)
 
-    def build_fba_model(self,rba_derived_biomass_function=True,from_rba_solution=True,from_targets=False):
+    def build_fba_model_old(self,rba_derived_biomass_function=True,from_rba_solution=True,from_targets=False):
         """
         Derives and constructs FBA-problem from the RBA-problem and stores the 
         rbatools.fba_problem.ProblemFBA object as attribute 'FBA'. 
@@ -2462,6 +2462,77 @@ class SessionRBA(object):
         LP1.load_matrix(Matrix1)
         self.FBA = ProblemFBA(LP1)
  
+    def build_fba_model(self,rba_derived_biomass_function=True,from_rba_solution=True,from_targets=False):
+        """
+        Derives and constructs FBA-problem from the RBA-problem and stores the 
+        rbatools.fba_problem.ProblemFBA object as attribute 'FBA'. 
+        (By default non-parsimonious FBA-problem)
+
+        Parameters
+        ----------
+        rba_derived_biomass_function : bool
+            If True: A biomass function (named 'R_BIOMASS_targetsRBA'), specific to the current growth rate,
+            is added to the problem.
+            If False: It is assumed that there exists a biomass function, in the model.
+        from_rba_solution : bool
+            If True: The biomass-composition, specific to the current solution 
+            (growth-rate and decision-variable values) is determined.
+            If False: The biomass-composition, specific to the current growth-rate 
+            and the corresponding target-values is defined.
+         """
+
+        if rba_derived_biomass_function:
+            BMfunction=self.derive_current_biomass_function(from_rba_solution=from_rba_solution,from_targets=from_targets)
+
+        RBAproblem = copy.copy(self.Problem.LP)
+        A = RBAproblem.A.toarray()
+        non_duplicate_model_reactions=[i.id for i in self.model.metabolism.reactions if not '_duplicate_' in i.id]+list(self.ExchangeReactionMap.values())
+        model_metabolites=[i.id for i in self.model.metabolism.species]
+        Cols2remove =[RBAproblem.col_names.index(i) for i in RBAproblem.col_names if not i in non_duplicate_model_reactions]
+        Rows2remove = [RBAproblem.row_names.index(i) for i in RBAproblem.row_names if not i in model_metabolites]
+        for target in self.get_targets():
+            target_info=self.get_target_information(target=target)
+            if (target_info["Group"]=="maintenance_atp_target") and (target_info["Type"]=="reaction_fluxes"):
+                Cols2remove.append(RBAproblem.col_names.index(target_info["TargetEntity"]))
+
+        row_signsNew = list(numpy.delete(RBAproblem.row_signs, Rows2remove))
+
+        row_namesNew = list(numpy.delete(RBAproblem.row_names, Rows2remove))
+
+        Anew = numpy.delete(A, Cols2remove, axis=1)
+        Anew2 = numpy.delete(Anew, Rows2remove, axis=0)
+        BMrxnCol = numpy.zeros((len(row_namesNew), 1))
+        for metabolite in BMfunction.index:
+            if metabolite in row_namesNew:
+                if BMfunction.loc[metabolite,"Coefficient"]!=0:
+                    BMrxnCol[row_namesNew.index(metabolite), 0]=numpy.float64(BMfunction.loc[metabolite,"Coefficient"])
+        Anew3 = numpy.append(Anew2, BMrxnCol, axis=1)
+
+        col_namesNew = list(numpy.delete(RBAproblem.col_names, Cols2remove))
+        col_namesNew.append('R_BIOMASS_targetsRBA')
+
+        LBnew = numpy.delete(RBAproblem.LB, Cols2remove)
+        LBnew = numpy.append(LBnew, 0.0)
+
+        UBnew = numpy.delete(RBAproblem.UB, Cols2remove)
+        UBnew = numpy.append(UBnew, 10000.0)
+
+        fNew = numpy.delete(RBAproblem.f, Cols2remove)
+        fNew = numpy.append(fNew, 0.0)
+
+        Matrix1 = ProblemMatrix()
+        Matrix1.A = scipy.sparse.coo_matrix(Anew3)
+        Matrix1.LB = LBnew
+        Matrix1.UB = UBnew
+        Matrix1.row_signs = row_signsNew
+        Matrix1.row_names = row_namesNew
+        Matrix1.col_names = col_namesNew
+        Matrix1.f = fNew
+        Matrix1.b = numpy.array([0.0]*Anew3.shape[0])
+        LP1 = LinearProblem(lp_solver=self.lp_solver)
+        LP1.load_matrix(Matrix1)
+        self.FBA = ProblemFBA(LP1)
+
     def make_eukaryotic(self,
                         amino_acid_concentration_total,
                         pg_fractions={},
