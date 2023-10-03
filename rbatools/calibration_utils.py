@@ -281,7 +281,6 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session, pro
         machinery_size = 0
         for i in constituting_proteins.keys():
             if i in protein_data['ID']:
-                protein_data.loc[protein_data['ID'] == i, ]
                 n_AAs_in_machinery += protein_data.loc[protein_data['ID'] == i, condition].values[0] * \
                     protein_data.loc[protein_data['ID'] == i, 'AA_residues'].values[0]
                 machinery_size += constituting_proteins[i]
@@ -290,7 +289,6 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session, pro
             relative_Protein_fraction_of_machinery = n_AAs_in_machinery / proteome_summary.loc['Total', 'original_amino_acid_occupation']
             specific_capacity = growth_rate*Total_client_fraction/relative_Protein_fraction_of_machinery
             apparent_capacity = specific_capacity*machinery_size
-            # process_ID[process_name] = apparent_capacity
             process_efficiencies.loc[process_name, 'Process'] = process_ID
             process_efficiencies.loc[process_name, 'Parameter'] = str(process_ID+'_apparent_efficiency')
             process_efficiencies.loc[process_name, 'Value'] = apparent_capacity
@@ -4365,7 +4363,8 @@ def efficiency_correction(enzyme_efficiencies,
                                n_th_root_mispred=2,
                                process_efficiencies=None,
                                correct_default_kapp_enzymes=False,
-                               only_consider_misprediction_for_predicted_nonzero_enzymes=False):
+                               only_consider_misprediction_for_predicted_nonzero_enzymes=False,
+                               max_kapp=None):
     proto_protein_quantities={}
     for i in simulation_results["Proteins"].index:
         proto_protein_ID=rba_session.get_protein_information(protein=i)["ProtoID"]
@@ -4443,6 +4442,8 @@ def efficiency_correction(enzyme_efficiencies,
                     enzymes_already_handled.append(iso_enzyme_to_consider)
                     old_kapp=enzyme_efficiencies.loc[enzyme_efficiencies["Enzyme_ID"]==iso_enzyme_to_consider,"Kapp"].values[0]
                     new_kapp=old_kapp*correction_coeff
+                    if (max_kapp is not None) and (new_kapp > max_kapp):
+                        continue
                     if tolerance is None:
                         enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Enzyme_ID"]==iso_enzyme_to_consider,"Kapp"]=new_kapp
                     else:
@@ -4482,6 +4483,8 @@ def efficiency_correction(enzyme_efficiencies,
                         old_kapp=default_enzyme_efficiencies[efficiency_parameter]
                         new_kapp=old_kapp*correction_coeff
                         associated_reaction=rba_session.get_enzyme_information(iso_enzyme_to_consider)["Reaction"]
+                        if (max_kapp is not None) and (new_kapp > max_kapp):
+                            continue
                         if tolerance is None:
                             enzyme_efficiencies_out.loc[associated_reaction,"Kapp"]=new_kapp
                             enzyme_efficiencies_out.loc[associated_reaction,"Enzyme_ID"]=iso_enzyme_to_consider
@@ -4654,7 +4657,6 @@ def calibration_workflow(proteome,
         proteome.loc[proteome["Location"]==i,condition]*=abundance_coeff
         correction_results_compartement_sizes.loc[i,"copy_number_scaling"]=abundance_coeff
     ###
-
     correction_results_compartement_sizes.to_csv(str('Correction_overview_HackettNielsen_corrected_'+condition+'.csv'))
     if process_efficiencies is None:
         if process_efficiency_estimation_input is not None:
@@ -4704,6 +4706,7 @@ def calibration_workflow(proteome,
         Specific_Kapps_Results = estimate_specific_enzyme_efficiencies(rba_session=rba_session, 
                                                                        proteomicsData=build_input_proteome_for_specific_kapp_estimation(proteome, condition), 
                                                                        flux_bounds=flux_bounds_fba, 
+                                                                       compartment_densities_and_pg=compartment_densities_and_PGs,
                                                                                mu=growth_rate_from_input(input=definition_file, condition=condition), 
                                                                                biomass_function=enzyme_efficiency_estimation_settings['biomass_function_in_model'], 
                                                                                target_biomass_function=enzyme_efficiency_estimation_settings['use_target_biomass_function'],
@@ -4931,7 +4934,9 @@ def calibration_workflow(proteome,
                                                                 condition_to_look_up=condition_to_look_up,
                                                                 default_enzyme_efficiencies=Default_Kapps,
                                                                 tolerance=None,
-                                                                #tolerance=0.05,
+                                                                #tolerance=1.05,
+                                                                max_kapp=999999999,
+                                                                #max_kapp=None,
                                                                 n_th_root_mispred=1,
                                                                 process_efficiencies=process_efficiencies,
                                                                 correct_default_kapp_enzymes=True,
@@ -4944,7 +4949,6 @@ def calibration_workflow(proteome,
                 Specific_Kapps=KappCorrectionResults["Kapps"]
                 if min_kapp is not None:
                     Specific_Kapps.loc[(Specific_Kapps['Kapp']<min_kapp)&(Specific_Kapps['Kapp']!=0)&(pandas.isna(Specific_Kapps['Kapp'])==False),'Kapp']=min_kapp
-
                 process_efficiencies=KappCorrectionResults["ProcessEfficiencies"]
                 ###
                 spec_kapp_median=Specific_Kapps.loc[(Specific_Kapps['Kapp']!=0)&(pandas.isna(Specific_Kapps['Kapp'])==False),'Kapp'].median()
@@ -4965,16 +4969,23 @@ def calibration_workflow(proteome,
                                 #
                 if print_outputs:
                     print("{} - {} - RSS:{} - Relative change:{} - n_inc:{} - n_steady:{}".format(condition,iteration_count,current_RSS,current_RSS/previous_RSS,increasing_RSS_count,steady_count))
+                    #try:
+                    #    print([condition,Specific_Kapps.loc["R_ALCD2ir_duplicate_2",'Kapp']])
+                    #except:
+                    #    pass
                 previous_RSS=current_RSS
 
-            if current_RSS>rss_trajectory[0]:
-                continuation_criterion_correction=False
-            if steady_count>=steady_limit:
-                continuation_criterion_correction=False
-            elif iteration_count>=iteration_limit:
-                continuation_criterion_correction=False
-            elif increasing_RSS_count>=increasing_RSS_limit:
-                continuation_criterion_correction=False
+                if current_RSS>rss_trajectory[0]:
+                    continuation_criterion_correction=False
+                if steady_count>=steady_limit:
+                    continuation_criterion_correction=False
+                elif iteration_count>=iteration_limit:
+                    continuation_criterion_correction=False
+                elif increasing_RSS_count>=increasing_RSS_limit:
+                    continuation_criterion_correction=False
+            else:
+                if iteration_count>=iteration_limit:
+                    continuation_criterion_correction=False
         #
         if len(rss_trajectory)>0:
             ### add max condition here ###
@@ -5329,15 +5340,13 @@ def calibration_workflow_2(proteome,
 
                 rss_trajectory.append(current_RSS)
 
-                if correction_settings['correct_efficiencies']:
-                    Specific_Kapps=KappCorrectionResults["Kapps"]
-                    if min_kapp is not None:
-                        Specific_Kapps.loc[(Specific_Kapps['Kapp']<min_kapp)&(Specific_Kapps['Kapp']!=0)&(pandas.isna(Specific_Kapps['Kapp'])==False),'Kapp']=min_kapp
-
-                    process_efficiencies=KappCorrectionResults["ProcessEfficiencies"]
-                    ###
-                    spec_kapp_median=Specific_Kapps.loc[(Specific_Kapps['Kapp']!=0)&(pandas.isna(Specific_Kapps['Kapp'])==False),'Kapp'].median()
-                    Default_Kapps={"default_efficiency":spec_kapp_median,"default_transporter_efficiency":transporter_multiplier*spec_kapp_median}
+                Specific_Kapps=KappCorrectionResults["Kapps"]
+                if min_kapp is not None:
+                    Specific_Kapps.loc[(Specific_Kapps['Kapp']<min_kapp)&(Specific_Kapps['Kapp']!=0)&(pandas.isna(Specific_Kapps['Kapp'])==False),'Kapp']=min_kapp
+                process_efficiencies=KappCorrectionResults["ProcessEfficiencies"]
+                ###
+                spec_kapp_median=Specific_Kapps.loc[(Specific_Kapps['Kapp']!=0)&(pandas.isna(Specific_Kapps['Kapp'])==False),'Kapp'].median()
+                Default_Kapps={"default_efficiency":spec_kapp_median,"default_transporter_efficiency":transporter_multiplier*spec_kapp_median}
 
                 iteration_count+=1
                 if iteration_count>=minimum_iteration_number:
@@ -6143,8 +6152,8 @@ def determine_calibration_flux_distribution_2(rba_session,
         #copied_rba_session.add_exchange_reactions()
         rba_session.set_growth_rate(mu)
         rba_session.build_fba_model(rba_derived_biomass_function=True,
-                                           from_rba_solution=False,
-                                           from_targets=True)
+                                           from_rba_solution=True,
+                                           from_targets=False)
         BMfunction = 'R_BIOMASS_targetsRBA'
     else:
         rba_session.rebuild_from_model()
@@ -6207,6 +6216,7 @@ def determine_calibration_flux_distribution_2(rba_session,
 def determine_calibration_flux_distribution(rba_session,
                                             mu,
                                             flux_bounds,
+                                            compartment_densities_and_pg,
                                             biomass_function,
                                             target_biomass_function,
                                             parsimonious_fba,
@@ -6214,10 +6224,30 @@ def determine_calibration_flux_distribution(rba_session,
                                             condition=None,
                                             use_bm_flux_of_one=False
                                             ):
+    for comp in list(compartment_densities_and_pg['Compartment_ID']):
+        rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_pg.loc[compartment_densities_and_pg['Compartment_ID'] == comp, 'Density'].values[0]
+
     rba_session.rebuild_from_model()
     rba_session.set_medium(rba_session.Medium)
     rba_session.add_exchange_reactions()
     rba_session.set_growth_rate(mu)
+
+    """
+    rxn_LBs = {}
+    rxn_UBs = {}
+    for rx in flux_bounds['Reaction_ID']:
+        lb = flux_bounds.loc[flux_bounds['Reaction_ID'] == rx, 'LB'].values[0]
+        ub = flux_bounds.loc[flux_bounds['Reaction_ID'] == rx, 'UB'].values[0]
+        if not pandas.isna(lb):
+            rxn_LBs.update({rx: lb})
+            #rba_session.FBA.set_lb({rx: lb})
+        if not pandas.isna(ub):
+            rxn_UBs.update({rx: ub})
+            #rba_session.FBA.set_ub({rx: ub})
+    rba_session.Problem.set_ub(rxn_UBs)
+    rba_session.Problem.set_lb(rxn_LBs)
+    """
+
     if target_biomass_function:
         derive_bm_from_rbasolution=False
         derive_bm_from_targets=True
@@ -6227,7 +6257,7 @@ def determine_calibration_flux_distribution(rba_session,
         rba_session.Problem.set_constraint_types({i:"E" for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names})
         solved=rba_session.solve()
         if solved:
-            #print("Solution with equality density successfully obtained")
+            print("Solution with equality density successfully obtained")
             derive_bm_from_rbasolution=True
             derive_bm_from_targets=False
             rba_session.Problem.set_constraint_types(original_density_constraint_signs)
@@ -6238,6 +6268,9 @@ def determine_calibration_flux_distribution(rba_session,
             if solved2:
                 derive_bm_from_rbasolution=True
                 derive_bm_from_targets=False
+            else:
+                print("{} - Solution with inequality density not obtained".format(condition))
+
         rba_session.set_medium(original_medium)
         rba_session.build_fba_model(rba_derived_biomass_function=True,
                                     from_rba_solution=derive_bm_from_rbasolution,
@@ -6279,7 +6312,7 @@ def determine_calibration_flux_distribution(rba_session,
         rba_session.FBA.set_lb({BMfunction:0.0})
         rba_session.FBA.solve_lp()
         BMfluxOld = rba_session.FBA.SolutionValues[BMfunction]
-    #print("{} - BM-flux: {}".format(condition,BMfluxOld))
+    print("{} - BM-flux: {}".format(condition,BMfluxOld))
     if parsimonious_fba:
         rba_session.FBA.parsimonise(rxns_to_ignore_in_objective=rxns_to_ignore_when_parsimonious)
         rba_session.FBA.set_lb(rxn_LBs)
@@ -6425,6 +6458,7 @@ def determine_reactions_associated_with_measured_proto_protein(measured_proteins
 def estimate_specific_enzyme_efficiencies(rba_session, 
                                           proteomicsData, 
                                           flux_bounds, 
+                                          compartment_densities_and_pg,
                                           mu, 
                                           biomass_function=None, 
                                           target_biomass_function=True, 
@@ -6457,6 +6491,7 @@ def estimate_specific_enzyme_efficiencies(rba_session,
     FluxDistribution=determine_calibration_flux_distribution(rba_session=rba_session,
                                                              mu=mu,
                                                              flux_bounds=flux_bounds,
+                                                             compartment_densities_and_pg=compartment_densities_and_pg,
                                                              biomass_function=biomass_function,
                                                              target_biomass_function=target_biomass_function,
                                                              parsimonious_fba=parsimonious_fba,
