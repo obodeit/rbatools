@@ -157,6 +157,7 @@ def main(conditions,number_samples,n_parallel_processes=None,number_chunks=1):
                         Relative_Proteome=Hackett_Clim_FCs)
 
     ###sampling
+    """
     Sampled_Proteomes=sample_copy_numbers_from_residuals_quantiles(Input_data=Nielsen_01.copy(),
                                                                     replicate_cols=["Rep1_01","Rep2_01","Rep3_01"],
                                                                     mean_col='Mean_01',
@@ -169,8 +170,12 @@ def main(conditions,number_samples,n_parallel_processes=None,number_chunks=1):
                                                                     regression_type="inverse_lin",
                                                                     start_run_id=0,
                                                                     mean_no_noise=True,
-                                                                    sample_mean=True)
-    
+                                                                    sample_mean=True)    
+    """
+    Sampled_Proteomes=generate_multiple_input_proteomes_from_mean(Input_data=Nielsen_01.copy(),
+                                                                  mean_col='Mean_01',
+                                                                  n=number_samples)
+
     sampled_runs=list(Sampled_Proteomes.columns)
     if number_chunks == 1:
         list_of_runs_to_execute=[sampled_runs]
@@ -314,8 +319,8 @@ if __name__ == "__main__":
     warnings.simplefilter('ignore', RuntimeWarning)
     t0=time.time()
     main(n_parallel_processes=4,
-         conditions = ['Hackett_C01'],
-         #conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
-         number_samples=3,
+         #conditions = ['Hackett_C01'],
+         conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
+         number_samples=4,
          number_chunks=1)
     print("Total time: {}".format(time.time()-t0))
