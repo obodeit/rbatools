@@ -6274,7 +6274,8 @@ def determine_calibration_flux_distribution(rba_session,
         rba_session.set_medium(original_medium)
         rba_session.build_fba_model(rba_derived_biomass_function=True,
                                     from_rba_solution=derive_bm_from_rbasolution,
-                                    from_targets=derive_bm_from_targets)
+                                    from_targets=derive_bm_from_targets,
+                                    from_matrix=False)
         BMfunction = 'R_BIOMASS_targetsRBA'
     else:
         rba_session.build_fba_model(rba_derived_biomass_function=False)
@@ -6347,6 +6348,116 @@ def determine_calibration_flux_distribution(rba_session,
             FluxDistribution.loc[rxn.split("Backward_")[1],'FluxValues']=-rba_session.FBA.SolutionValues[rxn]
         else:
             FluxDistribution.loc[rxn,'FluxValues']=rba_session.FBA.SolutionValues[rxn]
+    return(FluxDistribution)
+
+
+def determine_calibration_flux_distribution_3(rba_session,
+                                            mu,
+                                            flux_bounds,
+                                            compartment_densities_and_pg,
+                                            biomass_function,
+                                            target_biomass_function,
+                                            parsimonious_fba,
+                                            rxns_to_ignore_when_parsimonious,
+                                            condition=None,
+                                            use_bm_flux_of_one=False
+                                            ):
+    if target_biomass_function:
+        for comp in list(compartment_densities_and_pg['Compartment_ID']):
+            rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_pg.loc[compartment_densities_and_pg['Compartment_ID'] == comp, 'Density'].values[0]
+            rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = 1.0
+        # add rRNA target
+        rRNA_target = rba.xml.targets.TargetSpecies("average_rRNA_c")
+        rRNA_target.value="average_rRNA_concentration_cytoplasm"
+        rba_session.model.targets.target_groups._elements_by_id['transcription_targets'].concentrations.append(rRNA_target)
+
+        rba_session.rebuild_from_model()
+        rba_session.set_medium(rba_session.Medium)
+        rba_session.add_exchange_reactions()
+        rba_session.set_growth_rate(mu)
+
+        rba_session.build_fba_model(rba_derived_biomass_function=True,
+                                    from_rba_solution=False,
+                                    from_targets=False,
+                                    from_matrix=True)
+        BMfunction = 'R_BIOMASS_targetsRBA'
+    else:
+        rba_session.build_fba_model(rba_derived_biomass_function=False)
+        BMfunction = biomass_function
+
+    for j in [i for i in rba_session.Medium.keys() if rba_session.Medium[i] == 0]:
+        Exrxn = 'R_EX_'+j.split('M_')[-1]+'_e'
+        if Exrxn in list(rba_session.FBA.LP.col_names):
+            rba_session.FBA.set_ub({Exrxn: 0})
+
+    rxn_LBs = {}
+    rxn_UBs = {}
+    for rx in flux_bounds['Reaction_ID']:
+        lb = flux_bounds.loc[flux_bounds['Reaction_ID'] == rx, 'LB'].values[0]
+        ub = flux_bounds.loc[flux_bounds['Reaction_ID'] == rx, 'UB'].values[0]
+        if not pandas.isna(lb):
+            rxn_LBs.update({rx: lb})
+            #rxn_LBs.update({rx: numpy.mean([lb,ub])})
+        if not pandas.isna(ub):
+            rxn_UBs.update({rx: ub})
+            #rxn_UBs.update({rx: numpy.mean([lb,ub])})
+    rba_session.FBA.set_ub(rxn_UBs)
+    rba_session.FBA.set_lb(rxn_LBs)
+
+    rba_session.FBA.clear_objective()
+
+    rba_session.FBA.set_objective({BMfunction: -1})
+
+    rba_session.FBA.solve_lp()
+    if rba_session.FBA.Solved:
+        BMfluxOld = rba_session.FBA.SolutionValues[BMfunction]
+    else:
+        rba_session.FBA.clear_objective()
+        rba_session.FBA.set_objective({BMfunction: -1.0})
+        rba_session.FBA.set_lb({BMfunction:0.0})
+        rba_session.FBA.solve_lp()
+        BMfluxOld = rba_session.FBA.SolutionValues[BMfunction]
+    print("{} - BM-flux: {}".format(condition,BMfluxOld))
+    if parsimonious_fba:
+        rba_session.FBA.parsimonise(rxns_to_ignore_in_objective=rxns_to_ignore_when_parsimonious)
+        rba_session.FBA.set_lb(rxn_LBs)
+        rba_session.FBA.set_ub(rxn_UBs)
+        if use_bm_flux_of_one:
+            if BMfluxOld >= 1.0:
+                rba_session.FBA.set_lb({BMfunction: 1.0})
+                rba_session.FBA.set_ub({BMfunction: 1.0})
+                rba_session.FBA.solve_lp()
+                if not rba_session.FBA.Solved:
+                    rba_session.FBA.set_lb({BMfunction: BMfluxOld})
+                    rba_session.FBA.set_ub({BMfunction: BMfluxOld})
+                    rba_session.FBA.solve_lp()
+                    #print("{} - Parsi BM-flux: {}".format(condition,BMfluxOld))
+                #else:
+                    #print("{} - Parsi BM-flux: {}".format(condition,1.0))
+            else:
+                rba_session.FBA.set_lb({BMfunction: BMfluxOld})
+                rba_session.FBA.set_ub({BMfunction: BMfluxOld})
+                rba_session.FBA.solve_lp()
+                #print("{} - Parsi BM-flux: {}".format(condition,BMfluxOld))
+        else:
+            rba_session.FBA.set_lb({BMfunction: BMfluxOld})
+            rba_session.FBA.set_ub({BMfunction: BMfluxOld})
+            rba_session.FBA.solve_lp()
+            #print("{} - Parsi BM-flux: {}".format(condition,BMfluxOld))
+
+    fba_solution=rba_session.FBA.SolutionValues
+    FluxDistribution = pandas.DataFrame()
+    for rxn in fba_solution.keys():
+        if rxn.startswith("Backward_"):
+            FluxDistribution.loc[rxn.split("Backward_")[1],'FluxValues']=-rba_session.FBA.SolutionValues[rxn]
+        else:
+            FluxDistribution.loc[rxn,'FluxValues']=rba_session.FBA.SolutionValues[rxn]
+
+    if target_biomass_function:
+        for comp in list(compartment_densities_and_pg['Compartment_ID']):
+            rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_pg.loc[compartment_densities_and_pg['Compartment_ID'] == comp, 'PG_fraction'].values[0]
+        rba_session.model.targets.target_groups._elements_by_id['transcription_targets'].concentrations.remove(rRNA_target)
+
     return(FluxDistribution)
 
 

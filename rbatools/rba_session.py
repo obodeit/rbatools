@@ -2227,7 +2227,7 @@ class SessionRBA(object):
         if rebuild_model:
             self.rebuild_from_model()
 
-    def derive_current_biomass_function(self,from_rba_solution=False,from_targets=True) -> pandas.core.frame.DataFrame:
+    def derive_current_biomass_function(self,from_rba_solution=False,from_targets=True,from_matrix=True) -> pandas.core.frame.DataFrame:
         """
         Returns a biomass-function, corresponding to the currently imposed biomass composition in the RBA-model.
         (Since biomass composition is growth-rate dependent, it changes when other growth-rates are set.)
@@ -2296,6 +2296,36 @@ class SessionRBA(object):
                             out.loc[product,"Coefficient"] += reaction_products[product]*flux_value
                         else:
                             out.loc[product,"Coefficient"] += reaction_products[product]*flux_value
+        elif from_matrix:
+            metabolite_constraints=[self.get_metabolite_constraint_information(metabolite_constraint=i)['AssociatedMetabolite'] for i in self.get_metabolite_constraints()]
+            metabolite_rhs=self.Problem.get_right_hand_side(constraints = metabolite_constraints)
+            out=pandas.DataFrame()
+            for metabolite in metabolite_rhs.keys():
+                if metabolite_rhs[metabolite]!=0:
+                    out.loc[metabolite,"Metabolite"] = metabolite
+                    out.loc[metabolite,"Coefficient"] = -metabolite_rhs[metabolite]
+            for target in self.get_targets():
+                target_info=self.get_target_information(target=target)
+                if (target_info["Group"]=="maintenance_atp_target") and (target_info["Type"]=="reaction_fluxes"):
+                    reaction=target_info["TargetEntity"]
+                    bound_type=target_info["TargetConstraint"]
+                    if bound_type=="LowerBound":
+                        target_value=self.Problem.get_lb(variables = reaction)[reaction]
+                    elif bound_type=="Value":
+                        target_value=self.Problem.get_lb(variables = reaction)[reaction]
+                    reaction_reactants=self.get_reaction_information(reaction=reaction)["Reactants"]
+                    reaction_products=self.get_reaction_information(reaction=reaction)["Products"]
+                    for reactant in reaction_reactants.keys():
+                        if reactant in out["Metabolite"]:
+                            out.loc[reactant,"Coefficient"] -= reaction_reactants[reactant]*target_value
+                        else:
+                            out.loc[reactant,"Coefficient"] = reaction_reactants[reactant]*target_value
+                    for product in reaction_products.keys():
+                        if product in out["Metabolite"]:
+                            out.loc[product,"Coefficient"] += reaction_products[product]*target_value
+                        else:
+                            out.loc[product,"Coefficient"] += reaction_products[product]*target_value
+
         else:
             metabolite_constraints=[self.get_metabolite_constraint_information(metabolite_constraint=i)['AssociatedMetabolite'] for i in self.get_metabolite_constraints()]
             metabolite_rhs=self.Problem.get_right_hand_side(constraints = metabolite_constraints)
@@ -2462,7 +2492,7 @@ class SessionRBA(object):
         LP1.load_matrix(Matrix1)
         self.FBA = ProblemFBA(LP1)
  
-    def build_fba_model(self,rba_derived_biomass_function=True,from_rba_solution=True,from_targets=False):
+    def build_fba_model(self,rba_derived_biomass_function=True,from_rba_solution=True,from_targets=False,from_matrix=False):
         """
         Derives and constructs FBA-problem from the RBA-problem and stores the 
         rbatools.fba_problem.ProblemFBA object as attribute 'FBA'. 
@@ -2482,7 +2512,7 @@ class SessionRBA(object):
          """
 
         if rba_derived_biomass_function:
-            BMfunction=self.derive_current_biomass_function(from_rba_solution=from_rba_solution,from_targets=from_targets)
+            BMfunction=self.derive_current_biomass_function(from_rba_solution=from_rba_solution,from_targets=from_targets,from_matrix=from_matrix)
 
         RBAproblem = copy.copy(self.Problem.LP)
         A = RBAproblem.A.toarray()
