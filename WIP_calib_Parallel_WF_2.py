@@ -148,8 +148,10 @@ def main(conditions,n_parallel_processes=None):
     Uniprot = pandas.read_csv('../Yeast_iMM904_RBA_model/uniprot.csv', sep='\t')
     Compartment_Annotations_external = pandas.read_csv('../DataSetsYeastRBACalibration/Manually_curated_Protein_Locations_for_Calibration.csv', index_col=None, sep=';')
     Ribosomal_Proteins_Uniprot = pandas.read_csv('../DataSetsYeastRBACalibration/uniprot_ribosomal_proteins.csv', index_col=None, sep=';')
+
     Hackett_Clim_FCs = pandas.read_csv('../DataSetsYeastRBACalibration/Hacket_ProteinFCs.csv',sep=";")
     Nielsen_01 = pandas.read_csv('../DataSetsYeastRBACalibration/Nielsen01_ProteomicsData.csv',sep=";",index_col=0)
+
     Simulation = SessionRBA('../Yeast_iMM904_RBA_model')
 
     picogram_togram_coefficient = 1e12
@@ -193,8 +195,9 @@ if __name__ == "__main__":
     warnings.simplefilter('ignore', RuntimeWarning)
     #warnings.simplefilter('ignore', SettingWithCopyWarning)
     main(n_parallel_processes=4,
-        #conditions = ['Hackett_C01']
+        #conditions = ['Hackett_C03']
         conditions = ['Hackett_C03','Hackett_C005', 'Hackett_C022', 'Hackett_C016', 'Hackett_C01']
+        #conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03']
         #conditions = ['Hackett_N005', 'Hackett_N01', 'Hackett_N016', 'Hackett_N03']
         #conditions = ['Hackett_P005', 'Hackett_P01', 'Hackett_P016', 'Hackett_P022']
         )
