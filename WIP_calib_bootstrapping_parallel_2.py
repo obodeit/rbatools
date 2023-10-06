@@ -132,7 +132,8 @@ def build_full_annotations(rba_session,
 
 def main(conditions,number_samples,n_parallel_processes=None,number_chunks=1):
     ###prep
-    Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim.csv', sep=';', decimal=',', index_col=0)
+    #Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim.csv', sep=';', decimal=',', index_col=0)
+    Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim_Frick_fluxes.csv', sep=';', decimal=',', index_col=0)
     Process_Efficiency_Estimation_Input = pandas.read_csv('../DataSetsYeastRBACalibration/Process_Efficiency_Estimation_Input.csv', sep=';', decimal=',')
     Uniprot = pandas.read_csv('../Yeast_iMM904_RBA_model/uniprot.csv', sep='\t')
     Compartment_Annotations_external = pandas.read_csv('../DataSetsYeastRBACalibration/Manually_curated_Protein_Locations_for_Calibration.csv', index_col=None, sep=';')
@@ -207,6 +208,7 @@ def main(conditions,number_samples,n_parallel_processes=None,number_chunks=1):
                                     }})
 
         ###calibrate each run
+        print(1)
         if n_parallel_processes!=1:
             if n_parallel_processes is None:
                 num_cores=cpu_count()
@@ -215,11 +217,14 @@ def main(conditions,number_samples,n_parallel_processes=None,number_chunks=1):
                 n_jobs=min(n_parallel_processes,len(input_dicts))            
             pool=Pool(n_jobs)
             bootstrapping_runs=pool.imap_unordered(run_calibration_over_conditions_for_bootstrapping_run,input_dicts)
+            #bootstrapping_runs=pool.map(run_calibration_over_conditions_for_bootstrapping_run,input_dicts)
         else:
             bootstrapping_runs=[run_calibration_over_conditions_for_bootstrapping_run(input_dict) for input_dict in input_dicts]
-
+        print(2)
+        print(bootstrapping_runs)
         ###generate output
         if count==0:
+            print("03")
             Reconstructed_Proteomes={condition:pandas.DataFrame() for condition in conditions}
             Corrected_Proteomes={condition:pandas.DataFrame() for condition in conditions}
             Compartment_sizes={condition:pandas.DataFrame() for condition in conditions}
@@ -228,8 +233,9 @@ def main(conditions,number_samples,n_parallel_processes=None,number_chunks=1):
             Specific_Kapps={condition:pandas.DataFrame() for condition in conditions}
             Specific_Kapps_directions={condition:pandas.DataFrame() for condition in conditions}
             Default_Kapps={condition:pandas.DataFrame() for condition in conditions}
-
+            print("Count: {}".format(count))
             for run in bootstrapping_runs:
+                print("--------{}".formt(run))
                 run_ID=list(run.keys())[0]
                 for condition in run[run_ID].keys():
                     for i in run[run_ID][condition]["proteome_input"].keys():
