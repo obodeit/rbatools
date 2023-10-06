@@ -6028,7 +6028,6 @@ def check_quantile(val,quantiles):
 
 def generate_multiple_input_proteomes_from_mean(Input_data,mean_col,n):
     out=pandas.DataFrame(index=list(Input_data.index))
-    out["Gene"]=Input_data["Gene"]
     for i in range(n):
         out["run_{}_mean".format(i+1)]=Input_data[mean_col].copy()
     return(out)
