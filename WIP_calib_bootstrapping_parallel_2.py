@@ -130,7 +130,7 @@ def build_full_annotations(rba_session,
     full_annotations = build_full_annotations_from_dataset_annotations(annotations_list=[annotations_Absolute, annotations_Relative])
     return(full_annotations)
 
-def main(conditions,number_samples,n_parallel_processes=None):
+def main(conditions,number_samples,n_parallel_processes=None,number_chunks=1):
     ###prep
     Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim.csv', sep=';', decimal=',', index_col=0)
     Process_Efficiency_Estimation_Input = pandas.read_csv('../DataSetsYeastRBACalibration/Process_Efficiency_Estimation_Input.csv', sep=';', decimal=',')
@@ -166,89 +166,146 @@ def main(conditions,number_samples,n_parallel_processes=None):
                                                                     target_size=number_samples,
                                                                     number_quantiles=12,
                                                                     transform_residuals=False,
-                                                                    regression_type="inverse_lin")
+                                                                    regression_type="inverse_lin",
+                                                                    start_run_id=0,
+                                                                    mean_no_noise=True,
+                                                                    sample_mean=True)
     
-    runs_to_execute=Sampled_Proteomes.columns
-
-    ###generate list of input dicts over runs
-    input_dicts=[]
-    for run in runs_to_execute:
-        df=pandas.DataFrame(index=list(Sampled_Proteomes.index))
-        df["Gene"]=list(df.index)
-        df[run]=Sampled_Proteomes[run]
-        restored_proteome_for_run=generate_input_proteome(fold_changes=Hackett_Clim_FCs,
-                                                    absolute_data=df.loc[pandas.isna(df[run]) == False],
-                                                    matching_column_in_absolute_data=run,
-                                                    matching_column_in_fold_change_data='Hackett_C01',
-                                                    conditions_in_fold_change_data_to_restore=['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
-                                                    ID_column_in_restored_data='ID',
-                                                    full_annotations=full_annotations)
-        input_dicts.append({run:{"xml_dir":'../Yeast_iMM904_RBA_model',
-                                 "definition_file":Input_Data,
-                                 "proteome":restored_proteome_for_run,
-                                 "process_efficiency_estimation_input":Process_Efficiency_Estimation_Input,
-                                 "Compartment_sizes":None,
-                                 "PG_fractions":None,
-                                 "conditions":conditions
-                                }})
-
-    ###calibrate each run
-    if n_parallel_processes!=1:
-        if n_parallel_processes is None:
-            num_cores=cpu_count()
-            n_jobs=min(num_cores,len(input_dicts))
-        else:
-            n_jobs=min(n_parallel_processes,len(input_dicts))            
-        pool=Pool(n_jobs)
-        bootstrapping_runs=pool.imap_unordered(run_calibration_over_conditions_for_bootstrapping_run,input_dicts)
+    sampled_runs=list(Sampled_Proteomes.columns)
+    if number_chunks == 1:
+        list_of_runs_to_execute=[sampled_runs]
     else:
-        bootstrapping_runs=[run_calibration_over_conditions_for_bootstrapping_run(input_dict) for input_dict in input_dicts]
+        list_of_runs_to_execute=[sampled_runs[i * number_chunks:(i + 1) * number_chunks] for i in range((len(sampled_runs) + number_chunks - 1) // number_chunks )]
 
-    ###generate output
-    Reconstructed_Proteomes={condition:pandas.DataFrame() for condition in conditions}
-    Corrected_Proteomes={condition:pandas.DataFrame() for condition in conditions}
-    Compartment_sizes={condition:pandas.DataFrame() for condition in conditions}
-    PG_fractions={condition:pandas.DataFrame() for condition in conditions}
-    Process_efficiencies={condition:pandas.DataFrame() for condition in conditions}
-    Specific_Kapps={condition:pandas.DataFrame() for condition in conditions}
-    Specific_Kapps_directions={condition:pandas.DataFrame() for condition in conditions}
-    Default_Kapps={condition:pandas.DataFrame() for condition in conditions}
+    count=0
+    for runs_to_execute in list_of_runs_to_execute:
+        ###generate list of input dicts over runs
+        input_dicts=[]
+        for run_ID in runs_to_execute:
+            df=pandas.DataFrame(index=list(Sampled_Proteomes.index))
+            df["Gene"]=list(df.index)
+            df[run_ID]=Sampled_Proteomes[run_ID]
+            restored_proteome_for_run=generate_input_proteome(fold_changes=Hackett_Clim_FCs,
+                                                        absolute_data=df.loc[pandas.isna(df[run_ID]) == False],
+                                                        matching_column_in_absolute_data=run_ID,
+                                                        matching_column_in_fold_change_data='Hackett_C01',
+                                                        conditions_in_fold_change_data_to_restore=conditions,
+                                                        ID_column_in_restored_data='ID',
+                                                        full_annotations=full_annotations)
+            input_dicts.append({run_ID:{"xml_dir":'../Yeast_iMM904_RBA_model',
+                                    "definition_file":Input_Data,
+                                    "proteome":restored_proteome_for_run,
+                                    "process_efficiency_estimation_input":Process_Efficiency_Estimation_Input,
+                                    "Compartment_sizes":None,
+                                    "PG_fractions":None,
+                                    "conditions":conditions
+                                    }})
 
-    for run in bootstrapping_runs:
-        run_ID=list(run.keys())[0]
-        for condition in run[run_ID].keys():
-            for i in run[run_ID][condition]["proteome_input"].keys():
-                Reconstructed_Proteomes[condition].loc[i,run_ID]=run[run_ID][condition]["proteome_input"][i]
-            for i in run[run_ID][condition]["proteome_corrected"].keys():
-                Corrected_Proteomes[condition].loc[i,run_ID]=run[run_ID][condition]["proteome_corrected"][i]
-            for i in run[run_ID][condition]["densities"].keys():
-                Compartment_sizes[condition].loc[i,run_ID]=run[run_ID][condition]["densities"][i]
-            for i in run[run_ID][condition]["pgs"].keys():
-                PG_fractions[condition].loc[i,run_ID]=run[run_ID][condition]["pgs"][i]
-            for i in run[run_ID][condition]["process_effs"].keys():
-                Process_efficiencies[condition].loc[i,run_ID]=run[run_ID][condition]["process_effs"][i]
-            for i in run[run_ID][condition]["spec_kapps"].keys():
-                Specific_Kapps[condition].loc[i,run_ID]=run[run_ID][condition]["spec_kapps"][i]["Kapp"]
-                Specific_Kapps_directions[condition].loc[i,run_ID]=run[run_ID][condition]["spec_kapps"][i]["Flux"]
-            Default_Kapps[condition].loc["Default_Kapp",run_ID]=run[run_ID][condition]["def_kapp"]["default_efficiency"]
+        ###calibrate each run
+        if n_parallel_processes!=1:
+            if n_parallel_processes is None:
+                num_cores=cpu_count()
+                n_jobs=min(num_cores,len(input_dicts))
+            else:
+                n_jobs=min(n_parallel_processes,len(input_dicts))            
+            pool=Pool(n_jobs)
+            bootstrapping_runs=pool.imap_unordered(run_calibration_over_conditions_for_bootstrapping_run,input_dicts)
+        else:
+            bootstrapping_runs=[run_calibration_over_conditions_for_bootstrapping_run(input_dict) for input_dict in input_dicts]
 
-    if number_samples>1:
+        ###generate output
+        if count==0:
+            Reconstructed_Proteomes={condition:pandas.DataFrame() for condition in conditions}
+            Corrected_Proteomes={condition:pandas.DataFrame() for condition in conditions}
+            Compartment_sizes={condition:pandas.DataFrame() for condition in conditions}
+            Pg_fractions={condition:pandas.DataFrame() for condition in conditions}
+            Process_efficiencies={condition:pandas.DataFrame() for condition in conditions}
+            Specific_Kapps={condition:pandas.DataFrame() for condition in conditions}
+            Specific_Kapps_directions={condition:pandas.DataFrame() for condition in conditions}
+            Default_Kapps={condition:pandas.DataFrame() for condition in conditions}
+
+            for run in bootstrapping_runs:
+                run_ID=list(run.keys())[0]
+                for condition in run[run_ID].keys():
+                    for i in run[run_ID][condition]["proteome_input"].keys():
+                        Reconstructed_Proteomes[condition].loc[i,run_ID]=run[run_ID][condition]["proteome_input"][i]
+                    for i in run[run_ID][condition]["proteome_corrected"].keys():
+                        Corrected_Proteomes[condition].loc[i,run_ID]=run[run_ID][condition]["proteome_corrected"][i]
+                    for i in run[run_ID][condition]["densities"].keys():
+                        Compartment_sizes[condition].loc[i,run_ID]=run[run_ID][condition]["densities"][i]
+                    for i in run[run_ID][condition]["pgs"].keys():
+                        Pg_fractions[condition].loc[i,run_ID]=run[run_ID][condition]["pgs"][i]
+                    for i in run[run_ID][condition]["process_effs"].keys():
+                        Process_efficiencies[condition].loc[i,run_ID]=run[run_ID][condition]["process_effs"][i]
+                    for i in run[run_ID][condition]["spec_kapps"].keys():
+                        Specific_Kapps[condition].loc[i,run_ID]=run[run_ID][condition]["spec_kapps"][i]["Kapp"]
+                        Specific_Kapps_directions[condition].loc[i,run_ID]=run[run_ID][condition]["spec_kapps"][i]["Flux"]
+                    Default_Kapps[condition].loc["Default_Kapp",run_ID]=run[run_ID][condition]["def_kapp"]["default_efficiency"]
+
+            #if number_samples>1:
+            #    for condition in conditions:
+            #        for params in [Reconstructed_Proteomes,Corrected_Proteomes,Compartment_sizes,Pg_fractions,Specific_Kapps,Process_efficiencies,Default_Kapps]:
+            #            df=params[condition]
+            #            df["mean_run_param"]=[numpy.nanmean([df.loc[i,j] for j in df.columns if j.startswith("run_")]) for i in df.index]
+            #        Specific_Kapps_directions[condition]["mean_run_param"]=Specific_Kapps_directions[condition]["mean_noNoise"]
+
+        else:
+            #load stored thing from csv
+            Reconstructed_Proteomes={}
+            Corrected_Proteomes={}
+            Compartment_sizes={}
+            Pg_fractions={}
+            Process_efficiencies={}
+            Specific_Kapps={}
+            Specific_Kapps_directions={}
+            Default_Kapps={}
+            for condition in conditions:
+                Reconstructed_Proteomes[condition]=pandas.read_csv("../Bootstrapping_Results/ReconstructedProteomes_{}.csv".format(condition),index_col=0)
+                Corrected_Proteomes[condition]=pandas.read_csv("../Bootstrapping_Results/CorrectedProteomes_{}.csv".format(condition),index_col=0)
+                Compartment_sizes[condition]=pandas.read_csv("../Bootstrapping_Results/CompartmentSizes_{}.csv".format(condition),index_col=0)
+                Pg_fractions[condition]=pandas.read_csv("../Bootstrapping_Results/PgFractions_{}.csv".format(condition),index_col=0)
+                Process_efficiencies[condition]=pandas.read_csv("../Bootstrapping_Results/ProcessEfficiencies_{}.csv".format(condition),index_col=0)
+                Specific_Kapps[condition]=pandas.read_csv("../Bootstrapping_Results/SpecificKapps_{}.csv".format(condition),index_col=0)
+                Specific_Kapps_directions[condition]=pandas.read_csv("../Bootstrapping_Results/SpecificKappDirections_{}.csv".format(condition),index_col=0)
+                Default_Kapps[condition]=pandas.read_csv("../Bootstrapping_Results/DefaultKapps_{}.csv".format(condition),index_col=0)
+
+            #add genereated cols to loaded ones
+            for run in bootstrapping_runs:
+                run_ID=list(run.keys())[0]
+                for condition in run[run_ID].keys():
+                    for i in run[run_ID][condition]["proteome_input"].keys():
+                        Reconstructed_Proteomes[condition].loc[i,run_ID]=run[run_ID][condition]["proteome_input"][i]
+                    for i in run[run_ID][condition]["proteome_corrected"].keys():
+                        Corrected_Proteomes[condition].loc[i,run_ID]=run[run_ID][condition]["proteome_corrected"][i]
+                    for i in run[run_ID][condition]["densities"].keys():
+                        Compartment_sizes[condition].loc[i,run_ID]=run[run_ID][condition]["densities"][i]
+                    for i in run[run_ID][condition]["pgs"].keys():
+                        Pg_fractions[condition].loc[i,run_ID]=run[run_ID][condition]["pgs"][i]
+                    for i in run[run_ID][condition]["process_effs"].keys():
+                        Process_efficiencies[condition].loc[i,run_ID]=run[run_ID][condition]["process_effs"][i]
+                    for i in run[run_ID][condition]["spec_kapps"].keys():
+                        Specific_Kapps[condition].loc[i,run_ID]=run[run_ID][condition]["spec_kapps"][i]["Kapp"]
+                        Specific_Kapps_directions[condition].loc[i,run_ID]=run[run_ID][condition]["spec_kapps"][i]["Flux"]
+                    Default_Kapps[condition].loc["Default_Kapp",run_ID]=run[run_ID][condition]["def_kapp"]["default_efficiency"]
+
+        #store 
+        if (count+1)==len(list_of_runs_to_execute):
+            for condition in conditions:
+                for params in [Reconstructed_Proteomes,Corrected_Proteomes,Compartment_sizes,Pg_fractions,Specific_Kapps,Process_efficiencies,Default_Kapps]:
+                    df=params[condition]
+                    df["mean_run_param"]=[numpy.nanmean([df.loc[i,j] for j in df.columns if j.startswith("run_")]) for i in df.index]
+                Specific_Kapps_directions[condition]["mean_run_param"]=Specific_Kapps_directions[condition]["mean_noNoise"]
         for condition in conditions:
-            for params in [Reconstructed_Proteomes,Corrected_Proteomes,Compartment_sizes,PG_fractions,Specific_Kapps,Process_efficiencies,Default_Kapps]:
-                df=params[condition]
-                df["mean_run_param"]=[numpy.nanmean([df.loc[i,j] for j in df.columns if j.startswith("run_")]) for i in df.index]
-            Specific_Kapps_directions[condition]["mean_run_param"]=Specific_Kapps_directions[condition]["mean_noNoise"]
+            Reconstructed_Proteomes[condition].to_csv("../Bootstrapping_Results/ReconstructedProteomes_{}.csv".format(condition))
+            Corrected_Proteomes[condition].to_csv("../Bootstrapping_Results/CorrectedProteomes_{}.csv".format(condition))
+            Compartment_sizes[condition].to_csv("../Bootstrapping_Results/CompartmentSizes_{}.csv".format(condition))
+            Pg_fractions[condition].to_csv("../Bootstrapping_Results/PgFractions_{}.csv".format(condition))
+            Specific_Kapps[condition].to_csv("../Bootstrapping_Results/SpecificKapps_{}.csv".format(condition))
+            Specific_Kapps_directions[condition].to_csv("../Bootstrapping_Results/SpecificKappDirections_{}.csv".format(condition))
+            Process_efficiencies[condition].to_csv("../Bootstrapping_Results/ProcessEfficiencies_{}.csv".format(condition))
+            Default_Kapps[condition].to_csv("../Bootstrapping_Results/DefaultKapps_{}.csv".format(condition))
 
-    for condition in conditions:
-        Reconstructed_Proteomes[condition].to_csv("../Bootstrapping_Results/ReconstructedProteomes_{}.csv".format(condition))
-        Corrected_Proteomes[condition].to_csv("../Bootstrapping_Results/CorrectedProteomes_{}.csv".format(condition))
-        Compartment_sizes[condition].to_csv("../Bootstrapping_Results/CompartmentSizes_{}.csv".format(condition))
-        PG_fractions[condition].to_csv("../Bootstrapping_Results/PgFractions_{}.csv".format(condition))
-        Specific_Kapps[condition].to_csv("../Bootstrapping_Results/SpecificKapps_{}.csv".format(condition))
-        Specific_Kapps_directions[condition].to_csv("../Bootstrapping_Results/SpecificKappDirections_{}.csv".format(condition))
-        Process_efficiencies[condition].to_csv("../Bootstrapping_Results/ProcessEfficiencies_{}.csv".format(condition))
-        Default_Kapps[condition].to_csv("../Bootstrapping_Results/DefaultKapps_{}.csv".format(condition))
-
+        count+=1
 #
 
 if __name__ == "__main__":
@@ -259,5 +316,6 @@ if __name__ == "__main__":
     main(n_parallel_processes=4,
          conditions = ['Hackett_C01'],
          #conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
-         number_samples=3)
+         number_samples=3,
+         number_chunks=1)
     print("Total time: {}".format(time.time()-t0))

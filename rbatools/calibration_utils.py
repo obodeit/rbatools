@@ -6027,7 +6027,7 @@ def check_quantile(val,quantiles):
         return(numpy.nan)
 
 
-def sample_copy_numbers_from_residuals_quantiles(Input_data,replicate_cols,mean_col,replicate_threshold=1,filter_list=[],target_size=1,reps_to_sample=3,number_quantiles=1,transform_residuals=False,regression_type="lin"):
+def sample_copy_numbers_from_residuals_quantiles(Input_data,replicate_cols,mean_col,replicate_threshold=1,filter_list=[],target_size=1,reps_to_sample=3,number_quantiles=1,transform_residuals=False,regression_type="lin",start_run_id=0,mean_no_noise=True,sample_mean=True):
     dimension_too_draw=Input_data.shape[0]
     out=pandas.DataFrame(index=list(Input_data.index))
     df_intermediate=pandas.DataFrame(index=list(Input_data.index))
@@ -6104,13 +6104,14 @@ def sample_copy_numbers_from_residuals_quantiles(Input_data,replicate_cols,mean_
                     data_to_use.loc[data_to_use["Quantile"]==quantile,"Residual_empirical__{}".format(i)]/=data_to_use.loc[data_to_use["Quantile"]==quantile,"Fitted_Stdev"]
                 all_residuals[quantile]+=list([j for j in list(data_to_use.loc[data_to_use["Quantile"]==quantile,"Residual_empirical__{}".format(i)]) if not pandas.isna(j)])
 
-    count=0
-    for i in replicate_cols:
-        for  j in data_to_use.index:
-            out.loc[j,"Residual_empirical__{}".format(i)]=data_to_use.loc[j,"Residual_empirical__{}".format(i)]
-    out2=pandas.DataFrame(index=list(out.index))
-    #out2["mean_noNoise"]=out["mean_noNoise"]
-    out2["mean_noNoise"]=out[mean_col]
+    count=start_run_id
+    if mean_no_noise:
+        for i in replicate_cols:
+            for  j in data_to_use.index:
+                out.loc[j,"Residual_empirical__{}".format(i)]=data_to_use.loc[j,"Residual_empirical__{}".format(i)]
+        out2=pandas.DataFrame(index=list(out.index))
+        #out2["mean_noNoise"]=out["mean_noNoise"]
+        out2["mean_noNoise"]=out[mean_col]
     for run in list(range(target_size)):
         count+=1
         dummyDF_residual=pandas.DataFrame(index=list(Input_data.index))
@@ -6130,7 +6131,8 @@ def sample_copy_numbers_from_residuals_quantiles(Input_data,replicate_cols,mean_
         out["MeanSampleLog__run_{}".format(count)]=dummyDF_sample.mean(axis=1,skipna=True)
         out["run_{}".format(count)]=[10**i for i in out["MeanSampleLog__run_{}".format(count)]]
         out2["run_{}".format(count)]=out["run_{}".format(count)]
-    out["Mean_of_log_samples"]=out.loc[:,[col for col in out.columns if col.startswith("MeanSampleLog__run_")]].mean(axis=1)
+    if sample_mean:
+        out["Mean_of_log_samples"]=out.loc[:,[col for col in out.columns if col.startswith("MeanSampleLog__run_")]].mean(axis=1)
     return(out2)
 
 def determine_calibration_flux_distribution_2(rba_session,

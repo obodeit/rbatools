@@ -100,6 +100,7 @@ class ProblemFBA(object):
         self.LP.build_lp()
         self.parsimonious = True
 
+
     def solve_lp(self, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool =True):
         """
         Solves Linear fBA problem.
@@ -158,6 +159,7 @@ class ProblemFBA(object):
             self.SolutionValues = None
             self.DualValues = None
         self.SolutionType = 'Normal'
+
 
     def get_constraint_types(self, constraints: Union[list,str] = []) -> dict:
         """
