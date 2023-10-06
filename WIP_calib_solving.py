@@ -68,8 +68,8 @@ for condition in conditions:
                                                   Specific_Kapps=specific_kapps_from_calibration,
                                                   #Specific_Kapps=regressed_specific_kapps,
                                                   Exchanges_to_impose=Exchanges_to_impose,
-                                                  sims_to_perform=["Prokaryotic","Eukaryotic",'Eukaryotic_fixed_sizes','Fixed_PG_Eukaryotic','Fixed_PG_Eukaryotic_fixed_sizes'],
-                                                  #sims_to_perform=["Prokaryotic"],
+                                                  #sims_to_perform=["Prokaryotic","Eukaryotic",'Eukaryotic_fixed_sizes','Fixed_PG_Eukaryotic','Fixed_PG_Eukaryotic_fixed_sizes'],
+                                                  sims_to_perform=["Prokaryotic"],
                                                   #feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
                                                   feasible_stati=["optimal","feasible"],
                                                   try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
@@ -109,8 +109,8 @@ for condition in conditions:
                                                   Specific_Kapps=specific_kapps_from_calibration,
                                                   #Specific_Kapps=regressed_specific_kapps,
                                                   Exchanges_to_impose=Exchanges_to_impose,
-                                                  sims_to_perform=["Prokaryotic","Eukaryotic",'Eukaryotic_fixed_sizes','Fixed_PG_Eukaryotic','Fixed_PG_Eukaryotic_fixed_sizes'],
-                                                  #sims_to_perform=["Prokaryotic"],
+                                                  #sims_to_perform=["Prokaryotic","Eukaryotic",'Eukaryotic_fixed_sizes','Fixed_PG_Eukaryotic','Fixed_PG_Eukaryotic_fixed_sizes'],
+                                                  sims_to_perform=["Prokaryotic"],
                                                   #feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
                                                   feasible_stati=["optimal","feasible"],
                                                   try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
@@ -174,6 +174,7 @@ predicted_succinate_exchanges.to_csv("../Mean_predicted_succinate_exchanges.csv"
 pred_prot=extract_proteomes_from_simulation_results(simulation_outputs=simulation_results_Js_not_imposed,type="Prokaryotic")
 pred_prot_fixed=extract_proteomes_from_simulation_results(simulation_outputs=simulation_results_Js_imposed,type="Prokaryotic")
 pred_prot.to_csv("../Predicted_proteomes.csv")
+pred_prot_fixed.to_csv("../Predicted_proteomes_fixed_exchanges.csv")
 measured_proteomes=pandas.read_csv("../Corrected_calibration_proteomes.csv",index_col=0)
 
 plot_predicted_fluxes(simulation_outputs=simulation_results_Js_not_imposed,types=["Prokaryotic"],input_definition=Input_Data)
