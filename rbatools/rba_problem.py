@@ -123,7 +123,8 @@ class ProblemRBA(object):
         self.SolutionType = ''
 
     def build_lp(self):
-        self.LP.build_lp()
+         lp_built=self.LP.build_lp()
+         return(lp_built)
 
     def extract_constraint_types(self,ModelStructure):
         """
@@ -339,6 +340,7 @@ class ProblemRBA(object):
                                  Ainds=self.MuDependencies['FromMatrix']['A'],
                                  Binds=self.MuDependencies['FromMatrix']['b'],
                                  CTinds=[],
+                                 VTinds=[],
                                  LBinds=self.MuDependencies['FromMatrix']['LB'],
                                  UBinds=self.MuDependencies['FromMatrix']['UB'],
                                  ModifiedProblem=False)
@@ -357,6 +359,7 @@ class ProblemRBA(object):
                                  Ainds=A_idxs,
                                  Binds=B_idxs,
                                  CTinds=[],
+                                 VTinds=[],
                                  LBinds=LB_idxs,
                                  UBinds=UB_idxs,
                                  ModifiedProblem=True)

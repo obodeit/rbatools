@@ -101,7 +101,7 @@ class LinearProblem(ProblemMatrix):
             else:
                 raise DependencyError(str("Solver {} not found, make sure package swiglpk is working".format(self.lp_solver)))
 
-    def update_matrix(self, matrix, Ainds=None, Binds=None, CTinds=None, LBinds=None, UBinds=None, ModifiedProblem=True):
+    def update_matrix(self, matrix, Ainds=None, Binds=None, CTinds=None, LBinds=None, UBinds=None, VTinds=None, ModifiedProblem=True):
         """
         Overwrites coefficients with new values from argument 'matrix'.
 
