@@ -53,6 +53,8 @@ class LinearProblem(ProblemMatrix):
         Names of constraints
     col_names : list
         Names of decision-variables
+    var_types : list
+        Types of decision-variables ('R':continious, 'I':integer)
     row_indices_map : dict
         Dictionary mapping constraint names to their numeric index (generated automatically)
     col_indices_map : dict
@@ -118,6 +120,9 @@ class LinearProblem(ProblemMatrix):
         CTinds : list
             List of constraint-IDs, specifying which row_signs are updated.
             Default is None (then all constraint types (present in both matrices) are taken to update)
+        VTinds : list
+            List of variable-IDs, specifying which var_types are updated.
+            Default is None (then all variable types (present in both matrices) are taken to update)
         LBinds : list
             List of variable-IDs, specifying which lower-bounds values are updated.
             Default is None (then all variables (present in both matrices) are taken to update)
@@ -139,6 +144,8 @@ class LinearProblem(ProblemMatrix):
             LBinds = matrix.col_names
         if UBinds is None:
             UBinds = matrix.col_names
+        if VTinds is None:
+            VTinds = matrix.var_types
 
         ####### Update constraint-matrix LHS (A) #######
         if matrix.row_names == self.row_names and matrix.col_names == self.col_names and not ModifiedProblem:
@@ -147,6 +154,7 @@ class LinearProblem(ProblemMatrix):
             self.LB=matrix.LB
             self.UB=matrix.UB
             self.row_signs=matrix.row_signs
+            self.var_types=matrix.var_types
         else:
             ### If old and new matrix do not have same elements and order of indices ###
             ## Find elements (index pairs) which are in the old, as well in th new matrix. ##
@@ -188,6 +196,15 @@ class LinearProblem(ProblemMatrix):
                 else:
                     for row in CTinds:
                         self.row_signs[self.row_indices_map[row]] = matrix.row_signs[matrix.row_indices_map[row]]
+
+            ## Update Variable type ##
+            if len(VTinds) > 0:
+                if matrix.col_names == self.col_names:
+                    colsNew = [matrix.col_indices_map[i] for i in VTinds]
+                    self.var_types = matrix.var_types
+                else:
+                    for col in VTinds:
+                        self.var_types[self.col_indices_map[col]] = matrix.var_types[matrix.col_indices_map[col]]
 
             ## Update LB##
             if len(LBinds) > 0:
@@ -253,6 +270,7 @@ class LinearProblem(ProblemMatrix):
         compoundProblem.f = numpy.zeros(len(compoundProblem.col_names))
         compoundProblem.LB = numpy.zeros(len(compoundProblem.col_names))
         compoundProblem.UB = numpy.zeros(len(compoundProblem.col_names))
+        compoundProblem.var_types = ['R']*len(compoundProblem.col_names)
         compoundProblem.map_indices()
 
         ## Since it has been made sure that the indices present in the original problem, ##
@@ -263,6 +281,7 @@ class LinearProblem(ProblemMatrix):
         compoundProblem.f[0:oldA.shape[1]] = copy.deepcopy(self.f)
         compoundProblem.LB[0:oldA.shape[1]] = copy.deepcopy(self.LB)
         compoundProblem.UB[0:oldA.shape[1]] = copy.deepcopy(self.UB)
+        compoundProblem.var_types[0:oldA.shape[1]] = copy.deepcopy(self.var_types)
         compoundProblem.row_signs[0:oldA.shape[0]] = copy.deepcopy(self.row_signs)
         for i in matrix.row_names:
             for j in matrix.col_names:
@@ -291,6 +310,8 @@ class LinearProblem(ProblemMatrix):
 
         for i in range(len(NewMatrixRowIndices)):
             compoundProblem.row_signs[CompoundMatrixRowIndices[i]] = matrix.row_signs[NewMatrixRowIndices[i]]
+        for i in range(len(NewMatrixColIndices)):
+            compoundProblem.var_types[CompoundMatrixColIndices[i]] = matrix.var_types[NewMatrixColIndices[i]]
 
         ## Overwrite old matrix with compound problem. And rebuild CPLEX-LP if there was one before##
         self.load_matrix(compoundProblem)
@@ -369,6 +390,11 @@ class LinearProblem(ProblemMatrix):
                 raise InputError('Column names list must be of type list')
                 #warnings.warn('Column names list must be of type list')
                 #return
+            if hasattr(matrix, 'var_types'):
+                if type(matrix.var_types) is list:
+                    self.var_types = matrix.var_types
+            else:
+                self.var_types=['R']*len(self.col_names)
         else:
             raise InputError('Input does not have all necessary elements')
             #warnings.warn('Input does not have all necessary elements')
@@ -468,6 +494,36 @@ class LinearProblem(ProblemMatrix):
             type identification-characters as values.
         """
         return(self._lp_solver.get_constraint_types(constraints=constraints))
+
+    def get_variable_types(self, variables: list = []) -> dict:
+        """
+        Returns variable types for specified columns.
+        (R: continous ; I: integer)
+
+        Parameters
+        ----------
+        variables : list of column names.
+
+        Returns
+        ----------
+        dict
+            Dictionary with variable-IDs as keys and
+            type identification-characters as values.
+        """
+        return(self._lp_solver.get_variable_types(variables=variables))
+
+    def set_variable_types(self, inputDict: dict):
+        """
+        Sets the type of specified variables.
+        (R: continous ; I: integer)
+
+        Parameters
+        ----------
+        inputDict : dict
+            Variable IDs as keys and variable type as values
+        """
+        self._lp_solver.set_variable_types(inputDict=inputDict)
+        self.var_types=self._lp_solver.var_types
 
     def set_constraint_types(self, inputDict: dict):
         """
@@ -637,6 +693,7 @@ class _Solver(abc.ABC):
         self.row_signs = []
         self.row_names = []
         self.col_names = []
+        self.var_types = []
 
     @property
     @abc.abstractmethod
@@ -652,6 +709,7 @@ class _Solver(abc.ABC):
         self.f=input_lp.f
         self.row_names=list(input_lp.row_names)
         self.col_names=list(input_lp.col_names)
+        self.var_types=list(input_lp.var_types)
 
 
     @abc.abstractmethod
@@ -753,6 +811,37 @@ class _Solver(abc.ABC):
         ----------
         inputDict : dict
             Constraint IDs as keys and constraint type as values
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_variable_types(self, variables: list = []) -> dict:
+        """
+        Returns variable types for specified columns.
+        (R: continous ; I: integer)
+
+        Parameters
+        ----------
+        variables : list of column names.
+
+        Returns
+        ----------
+        dict
+            Dictionary with variable-IDs as keys and
+            type identification-characters as values.
+        """
+        pass
+
+    @abc.abstractmethod
+    def set_variable_types(self, inputDict: dict):
+        """
+        Sets the type of specified variables.
+        (R: continous ; I: integer)
+
+        Parameters
+        ----------
+        inputDict : dict
+            Variable IDs as keys and variable type as values
         """
         pass
 
@@ -973,6 +1062,35 @@ class _SolverGLPK(_Solver):
             glp_set_row_bnds(self.glpkLP, row_index+1, row_sign_mapping[inputDict[row]], self.b[row_index], self.b[row_index]) #bounds the first row between lb 0 and ub 100
             self.row_signs[row_index]=inputDict[row]
 
+    def get_variable_types(self, variables: list = []) -> dict:
+        """
+        Returns variable types for specified columns.
+        (R: continous ; I: integer)
+
+        Parameters
+        ----------
+        variables : list of column names.
+
+        Returns
+        ----------
+        dict
+            Dictionary with variable-IDs as keys and
+            type identification-characters as values.
+        """
+        return({col:self.var_types[self.col_names.index(col)] for col in variables})
+
+    def set_variable_types(self, inputDict: dict):
+        """
+        Sets the type of specified variables.
+        (R: continous ; I: integer)
+
+        Parameters
+        ----------
+        inputDict : dict
+            Variable IDs as keys and variable type as values
+        """
+        pass
+
     def set_objective(self, inputDict: dict):
         """
         Sets coefficients in objective function to specified values.
@@ -1172,6 +1290,35 @@ class _SolverCPLEX(_Solver):
         self.cplexLP.linear_constraints.set_senses(list(zip(inputDict.keys(), inputDict.values())))
         ##Transfer changes to rbatools.LP object##
         self.row_signs = self.cplexLP.linear_constraints.get_senses()
+
+    def get_variable_types(self, variables: list = []) -> dict:
+        """
+        Returns variable types for specified columns.
+        (R: continous ; I: integer)
+
+        Parameters
+        ----------
+        variables : list of column names.
+
+        Returns
+        ----------
+        dict
+            Dictionary with variable-IDs as keys and
+            type identification-characters as values.
+        """
+        pass
+
+    def set_variable_types(self, inputDict: dict):
+        """
+        Sets the type of specified variables.
+        (R: continous ; I: integer)
+
+        Parameters
+        ----------
+        inputDict : dict
+            Variable IDs as keys and variable type as values
+        """
+        pass
 
     def set_objective(self, inputDict: dict):
         """
