@@ -39,7 +39,7 @@ class ProblemMatrix(object):
     col_names : list
         Names of decision-variables
     var_types : list
-        Types of decision-variables ('R':continious, 'I':integer)
+        Types of decision-variables ('C':continious, 'I':integer)
     row_indices_map : dict
         Dictionary mapping constraint names to their numeric index (generated automatically)
     col_indices_map : dict
@@ -139,7 +139,7 @@ class ProblemMatrix(object):
                 if type(matrix.var_types) is list:
                     self.var_types = matrix.var_types
             else:
-                self.var_types=['R']*len(self.col_names)
+                self.var_types=['C']*len(self.col_names)
         else:
             raise InputError('Input does not have all necessary elements')
             #warnings.warn('Input does not have all necessary elements')
