@@ -39,7 +39,7 @@ class ProblemFBA(object):
     """
     def __init__(self, FBA):
         self.LP = FBA
-        self.LP.build_lp()
+        self.build_lp()
         self.parsimonious = False
 
     def parsimonise(self,rxns_to_ignore_in_objective=[]):
@@ -97,9 +97,11 @@ class ProblemFBA(object):
                     self.LP.f[i] = 0
             else:
                 self.LP.f[i] = 0
-        self.LP.build_lp()
+        self.build_lp()
         self.parsimonious = True
 
+    def build_lp(self):
+        self.LP.build_lp()
 
     def solve_lp(self, feasible_stati: list = ["optimal","feasible"], try_unscaling_if_sol_status_is_feasible_only_before_unscaling: bool =True):
         """
@@ -159,7 +161,6 @@ class ProblemFBA(object):
             self.SolutionValues = None
             self.DualValues = None
         self.SolutionType = 'Normal'
-
 
     def get_constraint_types(self, constraints: Union[list,str] = []) -> dict:
         """
