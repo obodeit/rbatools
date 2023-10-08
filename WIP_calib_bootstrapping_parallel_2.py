@@ -158,7 +158,6 @@ def main(conditions,number_samples,n_parallel_processes=None,number_chunks=1):
                         Relative_Proteome=Hackett_Clim_FCs)
 
     ###sampling
-    """
     Sampled_Proteomes=sample_copy_numbers_from_residuals_quantiles(Input_data=Nielsen_01.copy(),
                                                                     replicate_cols=["Rep1_01","Rep2_01","Rep3_01"],
                                                                     mean_col='Mean_01',
@@ -176,6 +175,7 @@ def main(conditions,number_samples,n_parallel_processes=None,number_chunks=1):
     Sampled_Proteomes=generate_multiple_input_proteomes_from_mean(Input_data=Nielsen_01.copy(),
                                                                   mean_col='Mean_01',
                                                                   n=number_samples)
+    """
 
     sampled_runs=list(Sampled_Proteomes.columns)
     if number_chunks == 1:
@@ -235,7 +235,6 @@ def main(conditions,number_samples,n_parallel_processes=None,number_chunks=1):
             Default_Kapps={condition:pandas.DataFrame() for condition in conditions}
             print("Count: {}".format(count))
             for run in bootstrapping_runs:
-                print("--------{}".formt(run))
                 run_ID=list(run.keys())[0]
                 for condition in run[run_ID].keys():
                     for i in run[run_ID][condition]["proteome_input"].keys():
@@ -305,7 +304,10 @@ def main(conditions,number_samples,n_parallel_processes=None,number_chunks=1):
                 for params in [Reconstructed_Proteomes,Corrected_Proteomes,Compartment_sizes,Pg_fractions,Specific_Kapps,Process_efficiencies,Default_Kapps]:
                     df=params[condition]
                     df["mean_run_param"]=[numpy.nanmean([df.loc[i,j] for j in df.columns if j.startswith("run_")]) for i in df.index]
-                Specific_Kapps_directions[condition]["mean_run_param"]=Specific_Kapps_directions[condition]["mean_noNoise"]
+                try:
+                    Specific_Kapps_directions[condition]["mean_run_param"]=Specific_Kapps_directions[condition]["mean_noNoise"]
+                except:
+                    pass
         for condition in conditions:
             Reconstructed_Proteomes[condition].to_csv("../Bootstrapping_Results/ReconstructedProteomes_{}.csv".format(condition))
             Corrected_Proteomes[condition].to_csv("../Bootstrapping_Results/CorrectedProteomes_{}.csv".format(condition))
