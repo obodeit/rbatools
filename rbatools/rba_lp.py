@@ -410,6 +410,8 @@ class LinearProblem(ProblemMatrix):
         ----------
         bool : Boolean, indicating whether LP-object could be constructed
         """
+        if not hasattr(self, 'var_types'):
+            self.var_types=['C']*len(self.col_names)
         self._lp_solver.build_lp()
         return(True)
 
