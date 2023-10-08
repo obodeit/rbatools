@@ -54,7 +54,7 @@ class LinearProblem(ProblemMatrix):
     col_names : list
         Names of decision-variables
     var_types : list
-        Types of decision-variables ('R':continious, 'I':integer)
+        Types of decision-variables ('C':continious, 'I':integer)
     row_indices_map : dict
         Dictionary mapping constraint names to their numeric index (generated automatically)
     col_indices_map : dict
@@ -270,7 +270,7 @@ class LinearProblem(ProblemMatrix):
         compoundProblem.f = numpy.zeros(len(compoundProblem.col_names))
         compoundProblem.LB = numpy.zeros(len(compoundProblem.col_names))
         compoundProblem.UB = numpy.zeros(len(compoundProblem.col_names))
-        compoundProblem.var_types = ['R']*len(compoundProblem.col_names)
+        compoundProblem.var_types = ['C']*len(compoundProblem.col_names)
         compoundProblem.map_indices()
 
         ## Since it has been made sure that the indices present in the original problem, ##
@@ -394,7 +394,7 @@ class LinearProblem(ProblemMatrix):
                 if type(matrix.var_types) is list:
                     self.var_types = matrix.var_types
             else:
-                self.var_types=['R']*len(self.col_names)
+                self.var_types=['C']*len(self.col_names)
         else:
             raise InputError('Input does not have all necessary elements')
             #warnings.warn('Input does not have all necessary elements')
@@ -498,7 +498,7 @@ class LinearProblem(ProblemMatrix):
     def get_variable_types(self, variables: list = []) -> dict:
         """
         Returns variable types for specified columns.
-        (R: continous ; I: integer)
+        (C: continous ; I: integer)
 
         Parameters
         ----------
@@ -515,7 +515,7 @@ class LinearProblem(ProblemMatrix):
     def set_variable_types(self, inputDict: dict):
         """
         Sets the type of specified variables.
-        (R: continous ; I: integer)
+        (C: continous ; I: integer)
 
         Parameters
         ----------
@@ -711,7 +711,6 @@ class _Solver(abc.ABC):
         self.col_names=list(input_lp.col_names)
         self.var_types=list(input_lp.var_types)
 
-
     @abc.abstractmethod
     def build_lp(self):
         pass
@@ -818,7 +817,7 @@ class _Solver(abc.ABC):
     def get_variable_types(self, variables: list = []) -> dict:
         """
         Returns variable types for specified columns.
-        (R: continous ; I: integer)
+        (C: continous ; I: integer)
 
         Parameters
         ----------
@@ -836,7 +835,7 @@ class _Solver(abc.ABC):
     def set_variable_types(self, inputDict: dict):
         """
         Sets the type of specified variables.
-        (R: continous ; I: integer)
+        (C: continous ; I: integer)
 
         Parameters
         ----------
@@ -1065,7 +1064,7 @@ class _SolverGLPK(_Solver):
     def get_variable_types(self, variables: list = []) -> dict:
         """
         Returns variable types for specified columns.
-        (R: continous ; I: integer)
+        (C: continous ; I: integer)
 
         Parameters
         ----------
@@ -1082,7 +1081,7 @@ class _SolverGLPK(_Solver):
     def set_variable_types(self, inputDict: dict):
         """
         Sets the type of specified variables.
-        (R: continous ; I: integer)
+        (C: continous ; I: integer)
 
         Parameters
         ----------
@@ -1175,8 +1174,12 @@ class _SolverCPLEX(_Solver):
         #print("LP UB")
         #print([list(self.col_names)[i] for i in range(len(list(self.UB))) if not numpy.isfinite(list(self.UB)[i])])
         cpxLP = Cplex()
-        cpxLP.variables.add(obj=list(self.f), ub=list(self.UB),
-                            lb=list(self.LB), names=list(self.col_names))
+        if 'I' in self.var_types:
+            cpxLP.variables.add(obj=list(self.f), ub=list(self.UB),
+                                lb=list(self.LB), names=list(self.col_names),types=list(self.var_types))
+        else:
+            cpxLP.variables.add(obj=list(self.f), ub=list(self.UB),
+                                lb=list(self.LB), names=list(self.col_names))
         cpxLP.linear_constraints.add(lin_expr=rows,
                                      rhs=self.b,
                                      senses=self.row_signs,
@@ -1294,7 +1297,7 @@ class _SolverCPLEX(_Solver):
     def get_variable_types(self, variables: list = []) -> dict:
         """
         Returns variable types for specified columns.
-        (R: continous ; I: integer)
+        (C: continous ; I: integer)
 
         Parameters
         ----------
@@ -1311,7 +1314,7 @@ class _SolverCPLEX(_Solver):
     def set_variable_types(self, inputDict: dict):
         """
         Sets the type of specified variables.
-        (R: continous ; I: integer)
+        (C: continous ; I: integer)
 
         Parameters
         ----------
