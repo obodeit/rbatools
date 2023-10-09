@@ -6513,6 +6513,21 @@ def estimate_specific_enzyme_efficiencies(rba_session,
                     if respective_enzyme not in pre_selected_enzymes:
                         pre_selected_enzymes.append(respective_enzyme)
 
+        input_to_fd={}
+        for gene in measured_proteins_reaction_map.keys():
+            rxn_list_intermediate=measured_proteins_reaction_map[gene]
+            rxns_to_append=[]
+            for rxn in rxn_list_intermediate:
+                if rba_session.get_reaction_information(rxn) is not None:
+                    if '_duplicate_' in rxn:
+                        proto_rxn=rxn.split('_duplicate_')[0]
+                    else:
+                        proto_rxn=rxn
+                    rxns_to_append.append(proto_rxn)
+            if len(rxns_to_append)!=0:
+                input_to_fd[gene]=list(set(rxns_to_append))
+
+
     else:
         # 2: Determine list of all nonzero/quantified model enzymes from proteomics data --> "pre_selected_enzymes"#
         pre_selected_enzymes=[]
@@ -6526,7 +6541,6 @@ def estimate_specific_enzyme_efficiencies(rba_session,
                 if model_enzyme_concentration!=0:
                     pre_selected_enzymes.append(model_enzyme)
 
-    print(pre_selected_enzymes)
     # 1: Determine Flux Distribution from parsimonious FBA#
     FluxDistribution=determine_calibration_flux_distribution(rba_session=rba_session,
                                                              mu=mu,
