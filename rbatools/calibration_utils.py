@@ -6490,29 +6490,6 @@ def estimate_specific_enzyme_efficiencies(rba_session,
     """
 
     #####
-    # 1: Determine Flux Distribution from parsimonious FBA#
-
-    FluxDistribution=determine_calibration_flux_distribution(rba_session=rba_session,
-                                                             mu=mu,
-                                                             flux_bounds=flux_bounds,
-                                                             compartment_densities_and_pg=compartment_densities_and_pg,
-                                                             biomass_function=biomass_function,
-                                                             target_biomass_function=target_biomass_function,
-                                                             parsimonious_fba=parsimonious_fba,
-                                                             rxns_to_ignore_when_parsimonious=rxns_to_ignore_when_parsimonious,
-                                                             condition=condition,
-                                                             use_bm_flux_of_one=use_bm_flux_of_one
-                                                             )
-    #FluxDistribution=determine_calibration_flux_distribution_2(rba_session=rba_session,
-    #                                                         mu=mu,
-    #                                                         flux_bounds=flux_bounds,
-     #                                                        biomass_function=biomass_function,
-      #                                                       target_biomass_function=target_biomass_function,
-       #                                                      #rRNA_target_rna_weight_ratio=rRNA_target_rna_weight_ratio,
-        #                                                     parsimonious_fba=parsimonious_fba,
-         #                                                    rxns_to_ignore_when_parsimonious=rxns_to_ignore_when_parsimonious
-          #                                                   )
-    FluxDistribution.to_csv('Calib_FluxDist_'+condition+'_.csv', sep=';')
 
     if chose_most_likely_isoreactions:
         ### INCORPORATE ANA´s REMARK ON NOT ELIMINATING ISOENZYMES WITH SUs ONLY PRESENT IN THIS ISOENZYMES ###
@@ -6548,6 +6525,21 @@ def estimate_specific_enzyme_efficiencies(rba_session,
                                                                              proto_proteins=False)
                 if model_enzyme_concentration!=0:
                     pre_selected_enzymes.append(model_enzyme)
+
+    print(pre_selected_enzymes)
+    # 1: Determine Flux Distribution from parsimonious FBA#
+    FluxDistribution=determine_calibration_flux_distribution(rba_session=rba_session,
+                                                             mu=mu,
+                                                             flux_bounds=flux_bounds,
+                                                             compartment_densities_and_pg=compartment_densities_and_pg,
+                                                             biomass_function=biomass_function,
+                                                             target_biomass_function=target_biomass_function,
+                                                             parsimonious_fba=parsimonious_fba,
+                                                             rxns_to_ignore_when_parsimonious=rxns_to_ignore_when_parsimonious,
+                                                             condition=condition,
+                                                             use_bm_flux_of_one=use_bm_flux_of_one
+                                                             )
+    FluxDistribution.to_csv('Calib_FluxDist_'+condition+'_.csv', sep=';')
 
     # 3: Determine list of all reactions with nonzero/quantified flux in FBA --> "nonzero_reactions"#
     nonzero_flux_reactions=[]
