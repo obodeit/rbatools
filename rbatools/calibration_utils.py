@@ -4736,14 +4736,20 @@ def calibration_workflow(proteome,
                     flux_value=Spec_Kapp_estim_FD.loc[fba_rxn,'FluxValues']
                     if fba_rxn in list(rba_session.get_reactions()):
                         if flux_value<0:
-                            direction_rxn={"LB":numpy.nan,"UB":0}
+                            #direction_rxn={"LB":numpy.nan,"UB":0}
+                            fba_flux_directions.update({fba_rxn:{"LB":numpy.nan,"UB":0}})
                         elif flux_value>0:
-                            direction_rxn={"LB":0,"UB":numpy.nan}
+                            #direction_rxn={"LB":0,"UB":numpy.nan}
+                            fba_flux_directions.update({fba_rxn:{"LB":0,"UB":numpy.nan}})
                         #elif flux_value==0:
                         #    direction_rxn={"LB":0,"UB":0}
-                        fba_flux_directions.update({fba_rxn:direction_rxn})
+                        #fba_flux_directions.update({fba_rxn:direction_rxn})
                         for iso_rxn in rba_session.get_reaction_information(fba_rxn)['Twins']:
-                            fba_flux_directions.update({iso_rxn:direction_rxn})
+                            #fba_flux_directions.update({iso_rxn:direction_rxn})
+                            if flux_value<0:
+                                fba_flux_directions.update({iso_rxn:{"LB":numpy.nan,"UB":0}})
+                            elif flux_value>0:
+                                fba_flux_directions.update({iso_rxn:{"LB":0,"UB":numpy.nan}})
 
         Specific_Kapps.to_csv("Specific_Kapps_Hackett__{}.csv".format(condition), sep=";", decimal=",")
 
@@ -5098,7 +5104,7 @@ def calibration_workflow(proteome,
             'Default_Kapps_original': Default_Kapps_original,
             'Specific_Kapps_original': Specific_Kapps_original,
             'Process_Efficiencies_original': process_efficiencies_original})
-
+"""
 def calibration_workflow_2(proteome,
                          condition,
                          gene_ID_column,
@@ -5432,7 +5438,7 @@ def calibration_workflow_2(proteome,
             'Default_Kapps_original': Default_Kapps_original,
             'Specific_Kapps_original': Specific_Kapps_original,
             'Process_Efficiencies_original': process_efficiencies_original})
-
+"""
 def machinery_efficiency_correction_settings_from_input(input, condition):
     out={}
     out['tolerance_global_scaling']=0.1
@@ -6896,7 +6902,7 @@ def estimate_specific_enzyme_efficiencies(rba_session,
                                                              use_bm_flux_of_one=use_bm_flux_of_one)
     
     """
-    FluxDistribution=determine_calibration_flux_distribution_new(rba_session=rba_session,
+    FluxDistribution=determine_calibration_flux_distribution(rba_session=rba_session,
                                                              mu=mu,
                                                              flux_bounds=flux_bounds,
                                                              compartment_densities_and_pg=compartment_densities_and_pg,
@@ -6906,7 +6912,7 @@ def estimate_specific_enzyme_efficiencies(rba_session,
                                                              rxns_to_ignore_when_parsimonious=rxns_to_ignore_when_parsimonious,
                                                              condition=condition,
                                                              use_bm_flux_of_one=use_bm_flux_of_one,
-                                                             protein_milp_input={}
+#                                                             protein_milp_input={}
 #                                                             protein_milp_input=input_to_fd
                                                              )
     FluxDistribution.to_csv('Calib_FluxDist_'+condition+'_.csv', sep=';')
