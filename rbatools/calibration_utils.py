@@ -920,7 +920,7 @@ def perform_simulations(condition,
         rba_session.make_eukaryotic(amino_acid_concentration_total='amino_acid_concentration',
                                 pg_fractions=pg_fractions_for_euk,
                                 compartment_fractions=compartment_fractions_for_euk,
-                                compartments_with_imposed_sizes=[],
+                                    compartments_with_imposed_sizes=[],
                                 normalise_global_fraction=True,
                                 compartment_bound_tolerance=0.0)
 
@@ -4737,11 +4737,15 @@ def calibration_workflow(proteome,
                             fba_flux_directions.update({fba_rxn:{"LB":numpy.nan,"UB":0}})
                         elif flux_value>0:
                             fba_flux_directions.update({fba_rxn:{"LB":0,"UB":numpy.nan}})
+                        #elif flux_value==0:
+                        #    fba_flux_directions.update({fba_rxn:{"LB":0,"UB":0}})
                         for iso_rxn in rba_session.get_reaction_information(fba_rxn)['Twins']:
                             if flux_value<0:
                                 fba_flux_directions.update({iso_rxn:{"LB":numpy.nan,"UB":0}})
                             elif flux_value>0:
                                 fba_flux_directions.update({iso_rxn:{"LB":0,"UB":numpy.nan}})
+                            #elif flux_value==0:
+                            #    fba_flux_directions.update({fba_rxn:{"LB":0,"UB":0}})
 
         Specific_Kapps.to_csv("Specific_Kapps_Hackett__{}.csv".format(condition), sep=";", decimal=",")
 
@@ -4915,7 +4919,7 @@ def calibration_workflow(proteome,
                                                                 results_to_look_up=results_to_look_up,
                                                                 fixed_mu_when_above_target_mu_in_correction=correction_settings['fixed_growth_rate_global_scaling'],
                                                                 n_th_root_mispred=1,
-                                                                print_outputs=False,
+                                                                print_outputs=True,
                                                                 adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'])
 
                 
