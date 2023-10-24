@@ -2624,7 +2624,8 @@ class SessionRBA(object):
         matrix_to_add.row_names=list(list(density_constraints)+['global_density'])
         matrix_to_add.col_names=['f_{}'.format(i) for i in compartments]
         matrix_to_add.b=numpy.array(list(list([0.0]*(len(compartments)))+[1.0])).astype('float64')
-        matrix_to_add.row_signs=list([row_signs_densities[i] for i in list(density_constraints)]+['E'])
+        #matrix_to_add.row_signs=list([row_signs_densities[i] for i in list(density_constraints)]+['E'])
+        matrix_to_add.row_signs=list(['E' for i in list(density_constraints)]+['E'])
         matrix_to_add.LB=numpy.array(list([0.0]*len(compartments))).astype('float64')
         matrix_to_add.UB=numpy.array(list([1.0]*len(compartments))).astype('float64')
         matrix_to_add.f=numpy.array(list([0.0]*len(compartments))).astype('float64')
@@ -2730,7 +2731,8 @@ class SessionRBA(object):
         matrix_to_add.row_names=list(list(density_constraints)+['global_density'])
         matrix_to_add.col_names=['f_{}'.format(i) for i in compartments]
         matrix_to_add.b=numpy.array(list(list([0.0]*(len(compartments)))+[1.0])).astype('float64')
-        matrix_to_add.row_signs=list([row_signs_densities[i] for i in list(density_constraints)]+['E'])
+        #matrix_to_add.row_signs=list([row_signs_densities[i] for i in list(density_constraints)]+['E'])
+        matrix_to_add.row_signs=list(['E' for i in list(density_constraints)]+['E'])
         matrix_to_add.LB=numpy.array(list([0.0]*len(compartments))).astype('float64')
         matrix_to_add.UB=numpy.array(list([1.0]*len(compartments))).astype('float64')
         matrix_to_add.f=numpy.array(list([0.0]*len(compartments))).astype('float64')
