@@ -3,7 +3,7 @@ from rbatools.rba_session import SessionRBA
 from rbatools.calibration_utils import *
 
 conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03']
-#conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C03']
+#conditions = ['Hackett_C005','Hackett_C03']
 #conditions = ['Hackett_N005', 'Hackett_N01', 'Hackett_N016', 'Hackett_N03']
 #conditions = ['Hackett_P005', 'Hackett_P01', 'Hackett_P016', 'Hackett_P022']
 #conditions = ['0102_mean', '0152_mean', '0214_mean', '0254_mean', '0284_mean', '0334_mean', '0379_mean']
@@ -69,7 +69,8 @@ for condition in conditions:
                                                   #Specific_Kapps=regressed_specific_kapps,
                                                   Exchanges_to_impose=Exchanges_to_impose,
                                                   #sims_to_perform=["Prokaryotic","Eukaryotic",'Eukaryotic_fixed_sizes','Fixed_PG_Eukaryotic','Fixed_PG_Eukaryotic_fixed_sizes'],
-                                                  sims_to_perform=["Prokaryotic"],
+                                                  sims_to_perform=["Prokaryotic","Eukaryotic",'Fixed_PG_Eukaryotic'],
+                                                  #sims_to_perform=["Prokaryotic"],
                                                   #feasible_stati=["optimal","feasible","feasible_only_before_unscaling"],
                                                   feasible_stati=["optimal","feasible"],
                                                   try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
@@ -85,6 +86,20 @@ for condition in conditions:
                                                   Mu_approx_precision= 0.00001
                                                   )
     simulation_results_Js_not_imposed.append(simulation_result)
+
+out=pandas.DataFrame()
+for i in simulation_results_Js_not_imposed:
+    out.loc["Mu",i["Condition"]]=i["Mu_euk"]
+    for comp in i['Euk_CompSizes'].keys():
+        out.loc[comp,i["Condition"]]=i['Euk_CompSizes'][comp]
+out.to_csv("../CompSizesPredicted_Euk.csv")
+
+out=pandas.DataFrame()
+for i in simulation_results_Js_not_imposed:
+    out.loc["Mu",i["Condition"]]=i["Mu_fixed_pg_euk"]
+    for comp in i['Fixed_pg_Euk_CompSizes'].keys():
+        out.loc[comp,i["Condition"]]=i['Fixed_pg_Euk_CompSizes'][comp]
+out.to_csv("../CompSizesPredicted_Euk_fixedPG.csv")
 
 simulation_results_Js_imposed=[]
 for condition in conditions:
