@@ -2867,6 +2867,11 @@ class SessionRBA(object):
  
 
         ### with adapted xml ###
+
+
+### add protein-usage constraints ###
+
+
 #        Requirements:
 #            - total density parameter in parameters.xml
 #            - PG-fraction parameter in parameters.xml
