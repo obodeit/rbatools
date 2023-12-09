@@ -38,6 +38,8 @@ class ProblemMatrix(object):
         Names of constraints
     col_names : list
         Names of decision-variables
+    var_types : list
+        Types of decision-variables ('C':continious, 'I':integer)
     row_indices_map : dict
         Dictionary mapping constraint names to their numeric index (generated automatically)
     col_indices_map : dict
@@ -57,6 +59,7 @@ class ProblemMatrix(object):
         self.row_signs = []
         self.row_names = []
         self.col_names = []
+        self.var_types = []
         self.map_indices()
 
     def load_matrix(self, matrix):
@@ -67,7 +70,8 @@ class ProblemMatrix(object):
         with the respectively named fields, required.
         Required fields are:
         'A','b','row_signs','f','LB','UB','row_names' and 'col_names'.
-
+        Optional fields are:
+        'var_types' (if not provided contious variables are assumed)
         Parameters
         ----------
         matrix : any LP-object holding the required fields
@@ -131,6 +135,11 @@ class ProblemMatrix(object):
                 raise InputError('Column names list must be of type list')
                 #warnings.warn('Column names list must be of type list')
                 #return
+            if hasattr(matrix, 'var_types'):
+                if type(matrix.var_types) is list:
+                    self.var_types = matrix.var_types
+            else:
+                self.var_types=['C']*len(self.col_names)
         else:
             raise InputError('Input does not have all necessary elements')
             #warnings.warn('Input does not have all necessary elements')
