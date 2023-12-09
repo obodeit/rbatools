@@ -444,6 +444,15 @@ class LinearProblem(ProblemMatrix):
         """
         return(self._lp_solver.return_solution_status())
 
+    def return_solver_specific_solution_status(self):
+        """
+        Returns solver specific solution status, after solving the problem.
+
+        Returns
+        ----------
+        """
+        return(self._lp_solver.return_solver_specific_solution_status())
+
     def return_primal_values(self) -> dict:
         """
         Returns (primal)solution vector.
@@ -745,6 +754,16 @@ class _Solver(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def return_solver_specific_solution_status(self):
+        """
+        Returns solver specific solution status, after solving the problem.
+
+        Returns
+        ----------
+        """
+        pass
+
+    @abc.abstractmethod
     def return_primal_values(self) -> dict:
         """
         Returns (primal)solution vector.
@@ -994,6 +1013,16 @@ class _SolverGLPK(_Solver):
         else:
             return("infeasible")
 
+    def return_solver_specific_solution_status(self):
+        """
+        Returns solver specific solution status, after solving the problem.
+
+        Returns
+        ----------
+        """
+        status=glp_get_status(self.glpkLP)
+        return(status)
+
     def return_primal_values(self) -> dict:
         """
         Returns (primal)solution vector.
@@ -1227,6 +1256,16 @@ class _SolverCPLEX(_Solver):
             return("feasible_only_before_unscaling")
         else:
             return("infeasible")
+
+    def return_solver_specific_solution_status(self):
+        """
+        Returns solver specific solution status, after solving the problem.
+
+        Returns
+        ----------
+        """
+        status=self.cplexLP.solution.get_status()
+        return(status)
 
     def return_primal_values(self) -> dict:
         """
