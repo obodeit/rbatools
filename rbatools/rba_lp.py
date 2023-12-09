@@ -25,7 +25,7 @@ except ModuleNotFoundError:
 
 SOLVER_MAP={"cplex":{},"swiglpk":{}}
 if cplex_available:
-    SOLVER_MAP.update({"cplex":{"feasible":[],"feasible_only_before_unscaling":[5],"optimal":[1]}})
+    SOLVER_MAP.update({"cplex":{"feasible":[],"feasible_only_before_unscaling":[5],"optimal":[1,101,102]}})
 if swiglpk_available:
     SOLVER_MAP.update({"swiglpk":{"feasible":[swiglpk.GLP_FEAS],"feasible_only_before_unscaling":[],"optimal":[swiglpk.GLP_OPT]}})
 
@@ -1248,6 +1248,7 @@ class _SolverCPLEX(_Solver):
                     cplex ->  5
         """
         status=self.cplexLP.solution.get_status()
+        #print("CPLEX-status: {}".format(status))
         if status in SOLVER_MAP["cplex"]["optimal"]:
             return("optimal")
         elif status in SOLVER_MAP["cplex"]["feasible"]:

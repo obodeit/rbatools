@@ -124,7 +124,8 @@ class ProblemFBA(object):
         """
 
         self.Solved = False
-        try:
+        #try:
+        if not self.Solved:
             ## Solve cplex LP ##
             self.LP.solve_lp()
             ## Determin solution-status ##
@@ -135,7 +136,10 @@ class ProblemFBA(object):
                 self.Solved = True
                 self.ObjectiveValue = self.LP.return_objective_value()
                 self.SolutionValues = self.LP.return_primal_values()
-                self.DualValues = self.LP.return_dual_values()
+                try:
+                    self.DualValues = self.LP.return_dual_values()
+                except:
+                    self.DualValues = None
             else:
                 if try_unscaling_if_sol_status_is_feasible_only_before_unscaling:
                     if self.SolutionStatus in ["feasible_only_before_unscaling"]:
@@ -156,11 +160,15 @@ class ProblemFBA(object):
                                         self.SolutionValues[rxn]=solution_values[rxn]
                             else:
                                 self.SolutionValues = self.LP.return_primal_values()
-                            self.DualValues = self.LP.return_dual_values()
-        except:
-            self.ObjectiveValue = None
-            self.SolutionValues = None
-            self.DualValues = None
+                            try:
+                                self.DualValues = self.LP.return_dual_values()
+                            except:
+                                self.DualValues = None
+
+        #except:
+        #    self.ObjectiveValue = None
+        #    self.SolutionValues = None
+        #    self.DualValues = None
         self.SolutionType = 'Normal'
 
     def get_constraint_types(self, constraints: Union[list,str] = []) -> dict:

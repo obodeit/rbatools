@@ -4736,10 +4736,16 @@ def calibration_workflow(proteome,
                     flux_value=Spec_Kapp_estim_FD.loc[fba_rxn,'FluxValues']
                     if fba_rxn in list(rba_session.get_reactions()):
                         if flux_value<0:
+                            #direction_rxn={"LB":numpy.nan,"UB":0}
                             fba_flux_directions.update({fba_rxn:{"LB":numpy.nan,"UB":0}})
                         elif flux_value>0:
+                            #direction_rxn={"LB":0,"UB":numpy.nan}
                             fba_flux_directions.update({fba_rxn:{"LB":0,"UB":numpy.nan}})
+                        #elif flux_value==0:
+                        #    direction_rxn={"LB":0,"UB":0}
+                        #fba_flux_directions.update({fba_rxn:direction_rxn})
                         for iso_rxn in rba_session.get_reaction_information(fba_rxn)['Twins']:
+                            #fba_flux_directions.update({iso_rxn:direction_rxn})
                             if flux_value<0:
                                 fba_flux_directions.update({iso_rxn:{"LB":numpy.nan,"UB":0}})
                             elif flux_value>0:
@@ -5098,7 +5104,7 @@ def calibration_workflow(proteome,
             'Default_Kapps_original': Default_Kapps_original,
             'Specific_Kapps_original': Specific_Kapps_original,
             'Process_Efficiencies_original': process_efficiencies_original})
-
+"""
 def calibration_workflow_2(proteome,
                          condition,
                          gene_ID_column,
@@ -5315,7 +5321,7 @@ def calibration_workflow_2(proteome,
                                                             results_to_look_up=results_to_look_up,
                                                             fixed_mu_when_above_target_mu_in_correction=correction_settings['fixed_growth_rate_global_scaling'],
                                                             n_th_root_mispred=1,
-                                                            print_outputs=True,
+                                                            print_outputs=False,
                                                             adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'])
 
             Simulation_results=results_global_scaling["simulation_results"]
@@ -5432,7 +5438,7 @@ def calibration_workflow_2(proteome,
             'Default_Kapps_original': Default_Kapps_original,
             'Specific_Kapps_original': Specific_Kapps_original,
             'Process_Efficiencies_original': process_efficiencies_original})
-
+"""
 def machinery_efficiency_correction_settings_from_input(input, condition):
     out={}
     out['tolerance_global_scaling']=0.1
@@ -5619,7 +5625,7 @@ def global_efficiency_scaling(condition,
                                              print_output=print_outputs,
                                              apply_model=False,
                                              transporter_multiplier=transporter_multiplier,
-                                             start_val=0,
+                                             #start_val=0,
                                              #start_val=mu_measured,
                                              Mu_approx_precision=mu_approx_precision,
                                              max_mu_in_dichotomy=4.0)
@@ -5672,7 +5678,7 @@ def global_efficiency_scaling(condition,
                                                     print_output=print_outputs,
                                                     apply_model=False,
                                                     transporter_multiplier=transporter_multiplier,
-                                                    start_val=0,
+                                                    #start_val=0,
                                                     #start_val=mu_measured,
                                                     Mu_approx_precision=mu_approx_precision,
                                                     max_mu_in_dichotomy=2*mu_measured)
@@ -5773,7 +5779,7 @@ def global_efficiency_scaling(condition,
                                                     print_output=print_outputs,
                                                     apply_model=False,
                                                     transporter_multiplier=transporter_multiplier,
-                                                    start_val=0,
+                                                    #start_val=0,
                                                     #start_val=mu_measured,
                                                     Mu_approx_precision=mu_approx_precision,
                                                     max_mu_in_dichotomy=2*mu_measured)
@@ -6153,7 +6159,7 @@ def determine_calibration_flux_distribution_new(rba_session,
                                                 condition=None,
                                                 use_bm_flux_of_one=False,
                                                 protein_milp_input={},
-                                                epsilon=3
+                                                epsilon=10**-20
                                                ):
     for comp in list(compartment_densities_and_pg['Compartment_ID']):
         rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_pg.loc[compartment_densities_and_pg['Compartment_ID'] == comp, 'Density'].values[0]
@@ -6231,156 +6237,6 @@ def determine_calibration_flux_distribution_new(rba_session,
     if parsimonious_fba:
         rba_session.FBA.parsimonise(rxns_to_ignore_in_objective=rxns_to_ignore_when_parsimonious)
 
-        ### protein stuff here ###
-        if len(list(protein_milp_input.keys()))!=0:
-            fw_rxns_for_milp=[]
-            fw_milp_constraint_ids=[]
-            fw_milp_score_ids=[]
-            bw_rxns_for_milp=[]
-            bw_milp_constraint_ids=[]
-            bw_milp_score_ids=[]
-            
-            gene_associated_scores={}
-            gene_associated_rxns={}
-            for gene in protein_milp_input.keys():
-                gene_associated_rxns[gene]=[]
-                gene_associated_scores[gene]=[]
-                for rxn in protein_milp_input[gene]:
-                    fw_rxns_for_milp.append(rxn)
-                    fw_milp_constraint_ids.append('FW_{}__{}'.format(gene,rxn))
-                    fw_milp_score_ids.append('Score_FW_{}__{}'.format(gene,rxn))
-                    gene_associated_scores[gene].append('Score_FW_{}__{}'.format(gene,rxn))
-                    gene_associated_rxns[gene].append(rxn)
-                    if str('Backward_'+rxn) in rba_session.FBA.LP.col_names:
-                        bw_rxns_for_milp.append(str('Backward_'+rxn))
-                        bw_milp_constraint_ids.append('BW_{}__{}'.format(gene,rxn))
-                        bw_milp_score_ids.append('Score_BW_{}__{}'.format(gene,rxn))
-                        gene_associated_scores[gene].append('Score_BW_{}__{}'.format(gene,rxn))
-                        gene_associated_rxns[gene].append(str('Backward_'+rxn))
-
-            # Matrix mapping FW-reactions to their respective enzymatic-activity score
-            fw_milp_rxn_ids=list(set(fw_rxns_for_milp))
-            fw_matrix=numpy.zeros((len(fw_milp_constraint_ids),len(fw_milp_rxn_ids)))
-            score_fw_matrix=numpy.zeros((len(fw_milp_constraint_ids),len(fw_milp_score_ids)))
-            for i in range(len(fw_milp_constraint_ids)):
-                fw_matrix[i,fw_milp_rxn_ids.index(fw_rxns_for_milp[i])] = -1
-                score_fw_matrix[i,i] = epsilon
-
-            # Matrix mapping BW-reactions to their respective enzymatic-activity score
-            bw_milp_rxn_ids=list(set(bw_rxns_for_milp))
-            bw_matrix=numpy.zeros((len(bw_milp_constraint_ids),len(bw_milp_rxn_ids)))
-            score_bw_matrix=numpy.zeros((len(bw_milp_constraint_ids),len(bw_milp_score_ids)))
-            for i in range(len(bw_milp_constraint_ids)):
-                bw_matrix[i,bw_milp_rxn_ids.index(bw_rxns_for_milp[i])] = -1
-                score_bw_matrix[i,i] = epsilon
-
-            # Matrix preventing double scoring by reversible reactions (both directions can not score at the same time)
-            anti_double_score_matrix_col_ids=bw_milp_score_ids+["Score_FW_"+bw_score.split("Score_BW_")[1] for bw_score in bw_milp_score_ids]
-            anti_double_score_matrix_row_ids=["Anti_double_score__"+bw_score.split("Score_BW_")[1] for bw_score in bw_milp_score_ids]
-            anti_double_score_matrix=numpy.zeros((len(anti_double_score_matrix_row_ids),len(anti_double_score_matrix_col_ids)))
-            for bw_score in bw_milp_score_ids:
-                respective_fw_score="Score_FW_"+bw_score.split("Score_BW_")[1]
-                respective_row=anti_double_score_matrix_row_ids.index("Anti_double_score__"+bw_score.split("Score_BW_")[1])
-                anti_double_score_matrix[respective_row,anti_double_score_matrix_col_ids.index(bw_score)]=1
-                anti_double_score_matrix[respective_row,anti_double_score_matrix_col_ids.index(respective_fw_score)]=1
-
-            # Matrix mapping enzymatic-activity score to gene activity score
-            gene_activity_matrix_col_ids=fw_milp_score_ids+bw_milp_score_ids+['Activity__{}'.format(i) for i in list(gene_associated_scores.keys())]
-            gene_activity_matrix_row_ids=['Activity_constraint__{}'.format(i) for i in list(gene_associated_scores.keys())]
-            gene_activity_matrix=numpy.zeros((len(gene_activity_matrix_row_ids),len(gene_activity_matrix_col_ids)))
-            for gene in gene_associated_scores.keys():
-                for score_id in gene_associated_scores[gene]:
-                    gene_activity_matrix[gene_activity_matrix_row_ids.index('Activity_constraint__{}'.format(gene)),gene_activity_matrix_col_ids.index(score_id)] = -1
-                gene_activity_matrix[gene_activity_matrix_row_ids.index('Activity_constraint__{}'.format(gene)),gene_activity_matrix_col_ids.index('Activity__{}'.format(gene))] = 1
-
-            # Assemble all matrices into one
-            assembled_matrix_col_ids=list(fw_milp_rxn_ids+bw_milp_rxn_ids+gene_activity_matrix_col_ids+list(['Global_activity_score']))
-            assembled_matrix_row_ids=list(fw_milp_constraint_ids+bw_milp_constraint_ids+anti_double_score_matrix_row_ids+gene_activity_matrix_row_ids+list(['Global_activity_constraint']))
-            assembled_matrix=numpy.zeros((len(assembled_matrix_row_ids),len(assembled_matrix_col_ids)))
-            for i in fw_milp_constraint_ids:
-                for j in fw_milp_rxn_ids:
-                    assembled_matrix[assembled_matrix_row_ids.index(i),assembled_matrix_col_ids.index(j)] = fw_matrix[fw_milp_constraint_ids.index(i),fw_milp_rxn_ids.index(j)]
-                for j in fw_milp_score_ids:
-                    if str('Score_'+i)==j:
-                        assembled_matrix[assembled_matrix_row_ids.index(i),assembled_matrix_col_ids.index(j)] = score_fw_matrix[fw_milp_score_ids.index(j),fw_milp_score_ids.index(j)]
-            for i in bw_milp_constraint_ids:
-                for j in bw_milp_rxn_ids:
-                    assembled_matrix[assembled_matrix_row_ids.index(i),assembled_matrix_col_ids.index(j)] = bw_matrix[bw_milp_constraint_ids.index(i),bw_milp_rxn_ids.index(j)]
-                for j in bw_milp_score_ids:
-                    if str('Score_'+i)==j:
-                        assembled_matrix[assembled_matrix_row_ids.index(i),assembled_matrix_col_ids.index(j)] = score_bw_matrix[bw_milp_score_ids.index(j),bw_milp_score_ids.index(j)]
-            for i in anti_double_score_matrix_row_ids:
-#                for j in list(fw_milp_score_ids+bw_milp_score_ids):
-                for j in anti_double_score_matrix_col_ids:
-                    assembled_matrix[assembled_matrix_row_ids.index(i),assembled_matrix_col_ids.index(j)] = anti_double_score_matrix[anti_double_score_matrix_row_ids.index(i),anti_double_score_matrix_col_ids.index(j)]
-            for i in gene_activity_matrix_row_ids:
-                for j in gene_activity_matrix_col_ids:
-                    assembled_matrix[assembled_matrix_row_ids.index(i),assembled_matrix_col_ids.index(j)] = gene_activity_matrix[gene_activity_matrix_row_ids.index(i),gene_activity_matrix_col_ids.index(j)]
-            for j in gene_activity_matrix_col_ids:
-                if j.startswith('Activity__'):
-                    assembled_matrix[assembled_matrix_row_ids.index('Global_activity_constraint'),assembled_matrix_col_ids.index(j)] = 1
-            assembled_matrix[assembled_matrix_row_ids.index('Global_activity_constraint'),assembled_matrix_col_ids.index('Global_activity_score')] = -1
-            
-            ### objective coeff 1 or -1 (maximisation)###
-            assembled_matrix_objective=list([0.0]*len(list(fw_milp_rxn_ids+bw_milp_rxn_ids+gene_activity_matrix_col_ids))+[-1.0])
-            assembled_matrix_lb=list([rba_session.FBA.get_lb(i)[i] for i in list(fw_milp_rxn_ids+bw_milp_rxn_ids)]+[0.0]*len(list(gene_activity_matrix_col_ids))+[0])
-            assembled_matrix_ub=list([rba_session.FBA.get_ub(i)[i] for i in list(fw_milp_rxn_ids+bw_milp_rxn_ids)]+[1.0]*len(list(gene_activity_matrix_col_ids))+ [len([i for i in gene_activity_matrix_col_ids if i.startswith('Activity__')])])
-            assembled_matrix_var_types=list(list(['C']*len(list(fw_milp_rxn_ids+bw_milp_rxn_ids)))+list(['I']*len(list(gene_activity_matrix_col_ids)))+list(['I']))
-            assembled_matrix_constraint_types=list(list(['L']*(len(assembled_matrix_row_ids)-1))+['E'])
-            assembled_matrix_rhs=list(list([0.0]*len(list(fw_milp_constraint_ids+bw_milp_constraint_ids)))+list([1.0]*len(anti_double_score_matrix_row_ids))+list([0.0]*len(gene_activity_matrix_row_ids))+[0.0])
-
-            matrix_to_add = ProblemMatrix()
-            matrix_to_add.A = scipy.sparse.coo_matrix(assembled_matrix)
-            matrix_to_add.b = numpy.array(assembled_matrix_rhs)
-            matrix_to_add.f = numpy.array(assembled_matrix_objective)
-            matrix_to_add.LB = numpy.array(assembled_matrix_lb)
-            matrix_to_add.UB = numpy.array(assembled_matrix_ub)
-            matrix_to_add.row_signs = assembled_matrix_constraint_types
-            matrix_to_add.row_names = assembled_matrix_row_ids
-            matrix_to_add.col_names = assembled_matrix_col_ids
-            matrix_to_add.var_types = assembled_matrix_var_types
-
-            matrix_to_add.map_indices()
-            print('-----------------------------------------')
-            print('-----------------------------------------')
-            print(gene_activity_matrix_col_ids)
-            print(gene_activity_matrix)
-            print('-----------------------------------------')
-            print('-----------------------------------------')
-            print('')
-            print('Col IDs:')
-            print(assembled_matrix_col_ids)
-            print('')
-            print('F:')
-            print(assembled_matrix_objective)
-            print('')
-            print('LB:')
-            print(assembled_matrix_lb)
-            print('')
-            print('UB:')
-            print(assembled_matrix_ub)
-            print('')
-            print('VT:')
-            print(assembled_matrix_var_types)
-            print('')
-            print('A:')
-            print(assembled_matrix)
-            print('')
-            print('CT:')
-            print(assembled_matrix_constraint_types)
-            print('')
-            print('B:')
-            print(assembled_matrix_rhs)
-            print('')
-            print('Row IDs:')
-            print(assembled_matrix_row_ids)
-            print('')
-            print('-----------------------------------------')
-            print('-----------------------------------------')
-            #rba_session.FBA.LP.add_matrix(matrix=matrix_to_add)
-
-        ##########################
-
         rba_session.FBA.set_lb(rxn_LBs)
         rba_session.FBA.set_ub(rxn_UBs)
         if use_bm_flux_of_one:
@@ -6392,27 +6248,240 @@ def determine_calibration_flux_distribution_new(rba_session,
                     rba_session.FBA.set_lb({BMfunction: BMfluxOld})
                     rba_session.FBA.set_ub({BMfunction: BMfluxOld})
                     rba_session.FBA.solve_lp()
-                    #print("{} - Parsi BM-flux: {}".format(condition,BMfluxOld))
-                #else:
-                    #print("{} - Parsi BM-flux: {}".format(condition,1.0))
+                    print("{} - Parsi BM-flux: {}".format(condition,BMfluxOld))
+                    bm_flux_to_impose=BMfluxOld
+                else:
+                    print("{} - Parsi BM-flux: {}".format(condition,1.0))
+                    bm_flux_to_impose=1.0
             else:
                 rba_session.FBA.set_lb({BMfunction: BMfluxOld})
                 rba_session.FBA.set_ub({BMfunction: BMfluxOld})
                 rba_session.FBA.solve_lp()
-                #print("{} - Parsi BM-flux: {}".format(condition,BMfluxOld))
+                print("{} - Parsi BM-flux: {}".format(condition,BMfluxOld))
+                bm_flux_to_impose=BMfluxOld
         else:
             rba_session.FBA.set_lb({BMfunction: BMfluxOld})
             rba_session.FBA.set_ub({BMfunction: BMfluxOld})
             rba_session.FBA.solve_lp()
-            #print("{} - Parsi BM-flux: {}".format(condition,BMfluxOld))
+            print("{} - Parsi BM-flux: {}".format(condition,BMfluxOld))
+            bm_flux_to_impose=BMfluxOld
+
+        print("{} - Parsi Objective value 1: {}".format(condition,rba_session.FBA.ObjectiveValue))
+        if len(list(protein_milp_input.keys()))!=0:
+            old_parsi_objective=rba_session.FBA.get_objective()
+
+            FluxSumMatrix=numpy.ones((1,len(list(old_parsi_objective.keys()))+1))
+            FluxSumMatrix[0,-1]=-1.0
+            FluxSum_col_names=list(list(old_parsi_objective.keys())+['FluxSum'])
+            FluxSum_row_names=['FluxSum_constraint']
+
+            LBorig=rba_session.FBA.get_lb()
+            UBorig=rba_session.FBA.get_ub()
+            matrix_to_add = ProblemMatrix()
+            matrix_to_add.A = scipy.sparse.coo_matrix(FluxSumMatrix)
+            matrix_to_add.b = numpy.array([0.0])
+            matrix_to_add.f = numpy.array([0.0]*len(FluxSum_col_names))
+            matrix_to_add.LB = numpy.array([LBorig[i] for i in list(old_parsi_objective.keys())]+[0.0])
+            matrix_to_add.UB = numpy.array([UBorig[i] for i in list(old_parsi_objective.keys())]+[10000000000000.0])
+            matrix_to_add.row_signs = ['E']
+            matrix_to_add.row_names = FluxSum_row_names
+            matrix_to_add.col_names = FluxSum_col_names
+            matrix_to_add.var_types = ['C']*len(FluxSum_col_names)
+
+            matrix_to_add.map_indices()
+            rba_session.FBA.LP.add_matrix(matrix=matrix_to_add)
+
+            rba_session.FBA.clear_objective()
+            rba_session.FBA.set_objective({'FluxSum':1.0})
+            rba_session.FBA.set_lb(rxn_LBs)
+            rba_session.FBA.set_ub(rxn_UBs)
+            rba_session.FBA.set_lb({BMfunction: bm_flux_to_impose})
+            rba_session.FBA.set_ub({BMfunction: bm_flux_to_impose})
+            if rba_session.FBA.Solved:
+                print("{} - Parsi Objective value 1.2: {}".format(condition,rba_session.FBA.ObjectiveValue))
+            else:
+                print("FSerror")
+            ### protein stuff here ###
+            if len(list(protein_milp_input.keys()))!=0:
+                fw_rxns_for_milp=[]
+                fw_milp_constraint_ids=[]
+                fw_milp_score_ids=[]
+                bw_rxns_for_milp=[]
+                bw_milp_constraint_ids=[]
+                bw_milp_score_ids=[]
+                
+                gene_associated_scores={}
+                gene_associated_rxns={}
+                for gene in protein_milp_input.keys():
+                    gene_associated_rxns[gene]=[]
+                    gene_associated_scores[gene]=[]
+                    for rxn in protein_milp_input[gene]:
+                        fw_rxns_for_milp.append(rxn)
+                        fw_milp_constraint_ids.append('FW_{}__{}'.format(gene,rxn))
+                        fw_milp_score_ids.append('Score_FW_{}__{}'.format(gene,rxn))
+                        gene_associated_scores[gene].append('Score_FW_{}__{}'.format(gene,rxn))
+                        gene_associated_rxns[gene].append(rxn)
+                        if str('Backward_'+rxn) in rba_session.FBA.LP.col_names:
+                            bw_rxns_for_milp.append(str('Backward_'+rxn))
+                            bw_milp_constraint_ids.append('BW_{}__{}'.format(gene,rxn))
+                            bw_milp_score_ids.append('Score_BW_{}__{}'.format(gene,rxn))
+                            gene_associated_scores[gene].append('Score_BW_{}__{}'.format(gene,rxn))
+                            gene_associated_rxns[gene].append(str('Backward_'+rxn))
+
+                # Matrix mapping FW-reactions to their respective enzymatic-activity score
+                fw_milp_rxn_ids=list(set(fw_rxns_for_milp))
+                fw_matrix=numpy.zeros((len(fw_milp_constraint_ids),len(fw_milp_rxn_ids)))
+                score_fw_matrix=numpy.zeros((len(fw_milp_constraint_ids),len(fw_milp_score_ids)))
+                for i in range(len(fw_milp_constraint_ids)):
+                    fw_matrix[i,fw_milp_rxn_ids.index(fw_rxns_for_milp[i])] = -1
+                    score_fw_matrix[i,i] = epsilon
+
+                # Matrix mapping BW-reactions to their respective enzymatic-activity score
+                bw_milp_rxn_ids=list(set(bw_rxns_for_milp))
+                bw_matrix=numpy.zeros((len(bw_milp_constraint_ids),len(bw_milp_rxn_ids)))
+                score_bw_matrix=numpy.zeros((len(bw_milp_constraint_ids),len(bw_milp_score_ids)))
+                for i in range(len(bw_milp_constraint_ids)):
+                    bw_matrix[i,bw_milp_rxn_ids.index(bw_rxns_for_milp[i])] = -1
+                    score_bw_matrix[i,i] = epsilon
+
+                # Matrix preventing double scoring by reversible reactions (both directions can not score at the same time)
+                anti_double_score_matrix_col_ids=bw_milp_score_ids+["Score_FW_"+bw_score.split("Score_BW_")[1] for bw_score in bw_milp_score_ids]
+                anti_double_score_matrix_row_ids=["Anti_double_score__"+bw_score.split("Score_BW_")[1] for bw_score in bw_milp_score_ids]
+                anti_double_score_matrix=numpy.zeros((len(anti_double_score_matrix_row_ids),len(anti_double_score_matrix_col_ids)))
+                for bw_score in bw_milp_score_ids:
+                    respective_fw_score="Score_FW_"+bw_score.split("Score_BW_")[1]
+                    respective_row=anti_double_score_matrix_row_ids.index("Anti_double_score__"+bw_score.split("Score_BW_")[1])
+                    anti_double_score_matrix[respective_row,anti_double_score_matrix_col_ids.index(bw_score)]=1
+                    anti_double_score_matrix[respective_row,anti_double_score_matrix_col_ids.index(respective_fw_score)]=1
+
+                # Matrix mapping enzymatic-activity score to gene activity score
+                gene_activity_matrix_col_ids=fw_milp_score_ids+bw_milp_score_ids+['Activity__{}'.format(i) for i in list(gene_associated_scores.keys())]
+                gene_activity_matrix_row_ids=['Activity_constraint__{}'.format(i) for i in list(gene_associated_scores.keys())]
+                gene_activity_matrix=numpy.zeros((len(gene_activity_matrix_row_ids),len(gene_activity_matrix_col_ids)))
+                for gene in gene_associated_scores.keys():
+                    for score_id in gene_associated_scores[gene]:
+                        gene_activity_matrix[gene_activity_matrix_row_ids.index('Activity_constraint__{}'.format(gene)),gene_activity_matrix_col_ids.index(score_id)] = -1
+                    gene_activity_matrix[gene_activity_matrix_row_ids.index('Activity_constraint__{}'.format(gene)),gene_activity_matrix_col_ids.index('Activity__{}'.format(gene))] = 1
+
+                # Assemble all matrices into one
+                assembled_matrix_col_ids=list(fw_milp_rxn_ids+bw_milp_rxn_ids+gene_activity_matrix_col_ids+list(['Global_activity_score']))
+                assembled_matrix_row_ids=list(fw_milp_constraint_ids+bw_milp_constraint_ids+anti_double_score_matrix_row_ids+gene_activity_matrix_row_ids+list(['Global_activity_constraint']))
+                assembled_matrix=numpy.zeros((len(assembled_matrix_row_ids),len(assembled_matrix_col_ids)))
+                for i in fw_milp_constraint_ids:
+                    for j in fw_milp_rxn_ids:
+                        assembled_matrix[assembled_matrix_row_ids.index(i),assembled_matrix_col_ids.index(j)] = fw_matrix[fw_milp_constraint_ids.index(i),fw_milp_rxn_ids.index(j)]
+                    for j in fw_milp_score_ids:
+                        if str('Score_'+i)==j:
+                            assembled_matrix[assembled_matrix_row_ids.index(i),assembled_matrix_col_ids.index(j)] = score_fw_matrix[fw_milp_score_ids.index(j),fw_milp_score_ids.index(j)]
+                for i in bw_milp_constraint_ids:
+                    for j in bw_milp_rxn_ids:
+                        assembled_matrix[assembled_matrix_row_ids.index(i),assembled_matrix_col_ids.index(j)] = bw_matrix[bw_milp_constraint_ids.index(i),bw_milp_rxn_ids.index(j)]
+                    for j in bw_milp_score_ids:
+                        if str('Score_'+i)==j:
+                            assembled_matrix[assembled_matrix_row_ids.index(i),assembled_matrix_col_ids.index(j)] = score_bw_matrix[bw_milp_score_ids.index(j),bw_milp_score_ids.index(j)]
+                for i in anti_double_score_matrix_row_ids:
+    #                for j in list(fw_milp_score_ids+bw_milp_score_ids):
+                    for j in anti_double_score_matrix_col_ids:
+                        assembled_matrix[assembled_matrix_row_ids.index(i),assembled_matrix_col_ids.index(j)] = anti_double_score_matrix[anti_double_score_matrix_row_ids.index(i),anti_double_score_matrix_col_ids.index(j)]
+                for i in gene_activity_matrix_row_ids:
+                    for j in gene_activity_matrix_col_ids:
+                        assembled_matrix[assembled_matrix_row_ids.index(i),assembled_matrix_col_ids.index(j)] = gene_activity_matrix[gene_activity_matrix_row_ids.index(i),gene_activity_matrix_col_ids.index(j)]
+                for j in gene_activity_matrix_col_ids:
+                    if j.startswith('Activity__'):
+                        assembled_matrix[assembled_matrix_row_ids.index('Global_activity_constraint'),assembled_matrix_col_ids.index(j)] = 1
+                assembled_matrix[assembled_matrix_row_ids.index('Global_activity_constraint'),assembled_matrix_col_ids.index('Global_activity_score')] = -1
+                
+                ### objective coeff 1 or -1 (maximisation)###
+                assembled_matrix_objective=list([0.0]*len(list(fw_milp_rxn_ids+bw_milp_rxn_ids+gene_activity_matrix_col_ids))+[0.0])
+                assembled_matrix_lb=list([rba_session.FBA.get_lb(i)[i] for i in list(fw_milp_rxn_ids+bw_milp_rxn_ids)]+[0.0]*len(list(gene_activity_matrix_col_ids))+[0])
+                assembled_matrix_ub=list([rba_session.FBA.get_ub(i)[i] for i in list(fw_milp_rxn_ids+bw_milp_rxn_ids)]+[1.0]*len(list(gene_activity_matrix_col_ids))+ [len([i for i in gene_activity_matrix_col_ids if i.startswith('Activity__')])])
+                assembled_matrix_var_types=list(list(['C']*len(list(fw_milp_rxn_ids+bw_milp_rxn_ids)))+list(['I']*len(list(gene_activity_matrix_col_ids)))+list(['I']))
+                assembled_matrix_constraint_types=list(list(['L']*(len(assembled_matrix_row_ids)-1))+['E'])
+                assembled_matrix_rhs=list(list([0.0]*len(list(fw_milp_constraint_ids+bw_milp_constraint_ids)))+list([1.0]*len(anti_double_score_matrix_row_ids))+list([0.0]*len(gene_activity_matrix_row_ids))+[0.0])
+
+                matrix_to_add = ProblemMatrix()
+                matrix_to_add.A = scipy.sparse.coo_matrix(assembled_matrix)
+                matrix_to_add.b = numpy.array(assembled_matrix_rhs)
+                matrix_to_add.f = numpy.array(assembled_matrix_objective)
+                matrix_to_add.LB = numpy.array(assembled_matrix_lb)
+                matrix_to_add.UB = numpy.array(assembled_matrix_ub)
+                matrix_to_add.row_signs = assembled_matrix_constraint_types
+                matrix_to_add.row_names = assembled_matrix_row_ids
+                matrix_to_add.col_names = assembled_matrix_col_ids
+                matrix_to_add.var_types = assembled_matrix_var_types
+
+                matrix_to_add.map_indices()
+
+                rba_session.FBA.LP.add_matrix(matrix=matrix_to_add)
+            ##########################
+    #
+            rba_session.FBA.clear_objective()
+            rba_session.FBA.set_objective({'FluxSum':1.0})
+            rba_session.FBA.set_lb(rxn_LBs)
+            rba_session.FBA.set_ub(rxn_UBs)
+            rba_session.FBA.set_lb({BMfunction: bm_flux_to_impose})
+            rba_session.FBA.set_ub({BMfunction: bm_flux_to_impose})
+            rba_session.FBA.solve_lp()
+            if rba_session.FBA.Solved:
+                print("{} - Parsi Objective value 2: {}".format(condition,rba_session.FBA.ObjectiveValue))
+            else:
+                print("MILP dysfunctional - 1")
+            original_flux_sum=rba_session.FBA.ObjectiveValue
+
+            rba_session.FBA.clear_objective()
+            rba_session.FBA.set_objective({'Global_activity_score':-1})
+            rba_session.FBA.set_lb(rxn_LBs)
+            rba_session.FBA.set_ub(rxn_UBs)
+            rba_session.FBA.set_lb({BMfunction: bm_flux_to_impose})
+            rba_session.FBA.set_ub({BMfunction: bm_flux_to_impose})
+            rba_session.FBA.solve_lp()
+            activity_score = rba_session.FBA.SolutionValues['Global_activity_score']
+
+            if rba_session.FBA.Solved:
+                print("{} - Activity score - 1: {} / {}".format(condition,activity_score,rba_session.FBA.get_ub('Global_activity_score')['Global_activity_score']))
+            else:
+                print("MILP dysfunctional - 2")
+
+            rba_session.FBA.clear_objective()
+            rba_session.FBA.set_objective({'Global_activity_score':-1})
+            rba_session.FBA.set_lb(rxn_LBs)
+            rba_session.FBA.set_ub(rxn_UBs)
+            rba_session.FBA.set_lb({BMfunction: bm_flux_to_impose})
+            rba_session.FBA.set_ub({BMfunction: bm_flux_to_impose})
+            rba_session.FBA.set_ub({'FluxSum': original_flux_sum})
+            rba_session.FBA.solve_lp()
+            activity_score = rba_session.FBA.SolutionValues['Global_activity_score']
+
+            if rba_session.FBA.Solved:
+                print("{} - Activity score - 2: {} / {}".format(condition,activity_score,rba_session.FBA.get_ub('Global_activity_score')['Global_activity_score']))
+            else:
+                print("MILP dysfunctional - 2.2")
+
+            #rba_session.FBA.clear_objective()
+            #rba_session.FBA.set_objective({'FluxSum':1.0})
+            #rba_session.FBA.set_lb({'Global_activity_score':activity_score})
+            #rba_session.FBA.set_ub({'Global_activity_score':activity_score})
+            #rba_session.FBA.set_lb(rxn_LBs)
+            #rba_session.FBA.set_ub(rxn_UBs)
+            #rba_session.FBA.set_lb({BMfunction: bm_flux_to_impose})
+            #rba_session.FBA.set_ub({BMfunction: bm_flux_to_impose})
+            #rba_session.FBA.solve_lp()
+
+            #if rba_session.FBA.Solved:
+            #    print("{} - Parsi Objective value 3: {}".format(condition,rba_session.FBA.ObjectiveValue))
+            #else:
+            #    print("MILP dysfunctional - 3")
 
     fba_solution=rba_session.FBA.SolutionValues
     FluxDistribution = pandas.DataFrame()
     for rxn in fba_solution.keys():
-        if rxn.startswith("Backward_"):
-            FluxDistribution.loc[rxn.split("Backward_")[1],'FluxValues']=-rba_session.FBA.SolutionValues[rxn]
-        else:
+        if rxn in rba_session.get_reactions():
             FluxDistribution.loc[rxn,'FluxValues']=rba_session.FBA.SolutionValues[rxn]
+        elif rxn.startswith("Backward_"):
+            FluxDistribution.loc[rxn.split("Backward_")[1],'FluxValues']=-rba_session.FBA.SolutionValues[rxn]
+        #else:
+        #    FluxDistribution.loc[rxn,'FluxValues']=rba_session.FBA.SolutionValues[rxn]
+    print(FluxDistribution)
     return(FluxDistribution)
 
 
@@ -6820,12 +6889,20 @@ def estimate_specific_enzyme_efficiencies(rba_session,
         input_to_fd={}
 
     # 1: Determine Flux Distribution from parsimonious FBA#
-
-    #input_to_fd_reduced={'YHR018C':input_to_fd['YHR018C']}
-    #input_to_fd_reduced={'YGL202W':input_to_fd['YGL202W']}
-    input_to_fd_reduced={'YGL202W':input_to_fd['YGL202W'],'YHR018C':input_to_fd['YHR018C']}
-
-    FluxDistribution=determine_calibration_flux_distribution_new(rba_session=rba_session,
+    """
+    FluxDistribution=determine_calibration_flux_distribution(rba_session=rba_session,
+                                                             mu=mu,
+                                                             flux_bounds=flux_bounds,
+                                                             compartment_densities_and_pg=compartment_densities_and_pg,
+                                                             biomass_function=biomass_function,
+                                                             target_biomass_function=target_biomass_function,
+                                                             parsimonious_fba=parsimonious_fba,
+                                                             rxns_to_ignore_when_parsimonious=rxns_to_ignore_when_parsimonious,
+                                                             condition=condition,
+                                                             use_bm_flux_of_one=use_bm_flux_of_one)
+    
+    """
+    FluxDistribution=determine_calibration_flux_distribution(rba_session=rba_session,
                                                              mu=mu,
                                                              flux_bounds=flux_bounds,
                                                              compartment_densities_and_pg=compartment_densities_and_pg,
@@ -6835,7 +6912,8 @@ def estimate_specific_enzyme_efficiencies(rba_session,
                                                              rxns_to_ignore_when_parsimonious=rxns_to_ignore_when_parsimonious,
                                                              condition=condition,
                                                              use_bm_flux_of_one=use_bm_flux_of_one,
-                                                             protein_milp_input=input_to_fd_reduced
+#                                                             protein_milp_input={}
+#                                                             protein_milp_input=input_to_fd
                                                              )
     FluxDistribution.to_csv('Calib_FluxDist_'+condition+'_.csv', sep=';')
 
