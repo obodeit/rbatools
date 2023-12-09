@@ -105,7 +105,7 @@ class ProblemRBA(object):
         ## Transfer ClassicRBAmatrix information to LP-object ##
         self.LP.load_matrix(matrix=self.ClassicRBAmatrix)
         # Build solver object
-        lp_built=self.LP.build_lp() 
+        lp_built=self.build_lp() 
         if not lp_built:
             raise LinearProblemError('Unable to build LP-solver object')
 
@@ -121,6 +121,10 @@ class ProblemRBA(object):
         self.extract_constraint_types(ModelStructure=ModelStructure)
         self.extract_variable_types(ModelStructure=ModelStructure)
         self.SolutionType = ''
+
+    def build_lp(self):
+         lp_built=self.LP.build_lp()
+         return(lp_built)
 
     def extract_constraint_types(self,ModelStructure):
         """
@@ -336,6 +340,7 @@ class ProblemRBA(object):
                                  Ainds=self.MuDependencies['FromMatrix']['A'],
                                  Binds=self.MuDependencies['FromMatrix']['b'],
                                  CTinds=[],
+                                 VTinds=[],
                                  LBinds=self.MuDependencies['FromMatrix']['LB'],
                                  UBinds=self.MuDependencies['FromMatrix']['UB'],
                                  ModifiedProblem=False)
@@ -354,6 +359,7 @@ class ProblemRBA(object):
                                  Ainds=A_idxs,
                                  Binds=B_idxs,
                                  CTinds=[],
+                                 VTinds=[],
                                  LBinds=LB_idxs,
                                  UBinds=UB_idxs,
                                  ModifiedProblem=True)
