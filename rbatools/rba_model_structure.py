@@ -1033,7 +1033,7 @@ def _import_model_info(xml_dir,verbose=True):
     if os.path.isfile(str(xml_dir+'/ModelInformation.csv')):
         out = pandas.read_csv(str(xml_dir+'/ModelInformation.csv'),sep=',', header=0)
         out.index = list(out['Key'])
-        if list(out):
+        if not list(out):
             if verbose:
                 print('WARNING: File "ModelInformation.csv" seems to be empty or has the wrong delimiter (comma required).')
             return(pandas.DataFrame([['Name', 'ModelName'], ['Author', 'J. Doe'], ['Organism', 'Life'], ['Reconstruction', 'GSMM'], ['SBML-file', 'Not Provided']], index=['Name', 'Author', 'Organism', 'Reconstruction', 'SBML-file'], columns=['Key', 'Value']))
@@ -1041,7 +1041,7 @@ def _import_model_info(xml_dir,verbose=True):
     elif os.path.isfile(str(xml_dir+'/data/ModelInformation.csv')):
         out = pandas.read_csv(str(xml_dir+'/data/ModelInformation.csv'),sep=',', header=0)
         out.index = list(out['Key'])
-        if list(out):
+        if not list(out):
             if verbose:
                 print('WARNING: File "ModelInformation.csv" seems to be empty or has the wrong delimiter (comma required).')
             return(pandas.DataFrame([['Name', 'ModelName'], ['Author', 'J. Doe'], ['Organism', 'Life'], ['Reconstruction', 'GSMM'], ['SBML-file', 'Not Provided']], index=['Name', 'Author', 'Organism', 'Reconstruction', 'SBML-file'], columns=['Key', 'Value']))
