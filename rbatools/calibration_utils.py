@@ -562,7 +562,8 @@ def perform_simulations(condition,
                         transporter_multiplier=3,
                         start_val=numpy.nan,
                         Mu_approx_precision=0.000001,
-                        max_mu_in_dichotomy=1):
+                        max_mu_in_dichotomy=1,
+                        proteomics_constraints_input={}):
     out={'SolutionStatus_def':None,
         'SolutionStatus_prok':None,
         'SolutionStatus_euk':None,
@@ -796,6 +797,8 @@ def perform_simulations(condition,
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]['LB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['LB'])})
             rba_session.Problem.set_ub({exrx: Exchanges_to_impose[exrx]['UB'] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]['UB'])})
+        if len(list(proteomics_constraints_input.keys()))!=0:
+            rba_session.build_protein_usage_constraints(input_proteome=proteomics_constraints_input)
         out['Mu_prok'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=start_val, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
 #        out['Mu_prok'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
         out['SolutionStatus_prok']=rba_session.Problem.SolutionStatus
@@ -2198,7 +2201,8 @@ def perform_simulations_fixed_Mu(condition,
                                  mu_factor_for_variability=1,
                                  apply_model=False,
                                  functions_to_include_list=[],
-                                 transporter_multiplier=3):
+                                 transporter_multiplier=3,
+                                 proteomics_constraints_input={}):
 
     def_Feasible_Ranges={}
     prok_Feasible_Ranges={}
@@ -2415,6 +2419,9 @@ def perform_simulations_fixed_Mu(condition,
         rba_session.rebuild_from_model()
         # Medium
         rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
+
+        if len(list(proteomics_constraints_input.keys()))!=0:
+            rba_session.build_protein_usage_constraints(input_proteome=proteomics_constraints_input)
 
         if Exchanges_to_impose is not None:
             rba_session.Problem.set_lb({exrx: Exchanges_to_impose[exrx]["LB"] for exrx in list(Exchanges_to_impose.keys()) if not pandas.isna(Exchanges_to_impose[exrx]["LB"])})
@@ -4802,6 +4809,10 @@ def calibration_workflow(proteome,
         rss_tolerance=correction_settings['rss_tolerance']
         increasing_RSS_factor=correction_settings['increasing_rss_factor']
 
+        #proteomics_data_df=build_input_proteome_for_specific_kapp_estimation(proteome, condition)
+        #proteomics_data={i:proteomics_data_df.loc[i,'copy_number'] for i in proteomics_data_df.index}
+        proteomics_data={}
+
         while continuation_criterion_correction:
             iteration_count+=1
             """
@@ -4902,6 +4913,7 @@ def calibration_workflow(proteome,
                 continuation_criterion_correction=False
             """
             ### GLOBAL SCALING
+            
             results_global_scaling=global_efficiency_scaling(condition=condition,
                                                                 definition_file=definition_file,
                                                                 rba_session=rba_session,
@@ -4919,10 +4931,12 @@ def calibration_workflow(proteome,
                                                                 results_to_look_up=results_to_look_up,
                                                                 fixed_mu_when_above_target_mu_in_correction=correction_settings['fixed_growth_rate_global_scaling'],
                                                                 n_th_root_mispred=1,
-                                                                print_outputs=True,
-                                                                adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'])
+                                                                print_outputs=False,
+                                                                adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'],
+                                                                proteomics_constraints_input=proteomics_data)
 
-                
+            if results_global_scaling is None:
+                break
             Simulation_results=results_global_scaling["simulation_results"]
             Specific_Kapps=results_global_scaling["specific_kapps"]
             Default_Kapps=results_global_scaling["default_kapps"]
@@ -5011,6 +5025,7 @@ def calibration_workflow(proteome,
             Default_Kapps_to_return=Default_Kapps
             Specific_Kapps_to_return=Specific_Kapps
             process_efficiencies_to_return=process_efficiencies
+
         if correction_settings['final_global_scaling_after_correction']:
             if correction_settings['final_global_scaling_without_imposed_exchanges']:
                 Exchanges_to_impose_here=None
@@ -5101,6 +5116,7 @@ def calibration_workflow(proteome,
             'Specific_Kapps_original': Specific_Kapps_original,
             'Process_Efficiencies_original': process_efficiencies_original})
 
+"""
 def calibration_workflow_2(proteome,
                          condition,
                          gene_ID_column,
@@ -5435,6 +5451,8 @@ def calibration_workflow_2(proteome,
             'Specific_Kapps_original': Specific_Kapps_original,
             'Process_Efficiencies_original': process_efficiencies_original})
 
+"""
+
 def machinery_efficiency_correction_settings_from_input(input, condition):
     out={}
     out['tolerance_global_scaling']=0.1
@@ -5595,7 +5613,8 @@ def global_efficiency_scaling(condition,
                               fixed_mu_when_above_target_mu_in_correction,
                               n_th_root_mispred=1,
                               print_outputs=False,
-                              adjust_root=True):
+                              adjust_root=True,
+                              proteomics_constraints_input={}):
     
     mu_measured=growth_rate_from_input(input=definition_file, condition=condition)
 
@@ -5706,7 +5725,8 @@ def global_efficiency_scaling(condition,
 
             if print_outputs:
                 print("Measured: {} - Predicted: {} - mispred coeff: {} - root: {} - runs_of_sign: {}".format(mu_measured,mumax_predicted,mu_misprediction_factor,n_th_root_mispred,runs_of_sign))
-
+        if mumax_predicted==0:
+            return(None)
         prediction_residulas_growth_rates=[mu_measured-mu_pred for mu_pred in predicted_growth_rates]
         minimum_prediction_residual=min([abs(i) for i in prediction_residulas_growth_rates])
         list_with_minimal_residuals=[]
@@ -5739,7 +5759,8 @@ def global_efficiency_scaling(condition,
                                                                 try_unscaling_if_sol_status_is_feasible_only_before_unscaling=True,
                                                                 print_output=print_outputs,
                                                                 apply_model=False,
-                                                                transporter_multiplier=transporter_multiplier)
+                                                                transporter_multiplier=transporter_multiplier,
+                                                                proteomics_constraints_input=proteomics_constraints_input)
         if len(list(simulation_results_fixed[results_to_look_up].keys()))>0:
             simulation_results=simulation_results_fixed
 
@@ -5844,8 +5865,11 @@ def global_efficiency_scaling(condition,
                                                 #start_val=mu_measured,
                                                 start_val=0,
                                                 Mu_approx_precision=mu_approx_precision,
-                                                max_mu_in_dichotomy=2*mu_measured)
+                                                max_mu_in_dichotomy=2*mu_measured,
+                                                proteomics_constraints_input=proteomics_constraints_input)
 
+        if simulation_results[growth_rate_to_look_up] == 0:
+            return(None)
     return({"specific_kapps":specific_kapps_out,"default_kapps":default_kapps_out,"process_efficiencies":process_efficiencies_out,"correction_factor":best_cumulative_correction_factor,"simulation_results":simulation_results})
 
 
@@ -5885,7 +5909,7 @@ def extract_proteomes_from_simulation_results(simulation_outputs,type="Prokaryot
             for i in proto_proteome.index:
                 out.loc[i,condition]=proto_proteome.loc[i,df_col]
         except:
-            x=1
+            pass
     return(out)
 
 
@@ -6265,7 +6289,7 @@ def determine_calibration_flux_distribution(rba_session,
         rba_session.Problem.set_constraint_types({i:"E" for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names})
         solved=rba_session.solve()
         if solved:
-            print("Solution with equality density successfully obtained")
+            #print("Solution with equality density successfully obtained")
             derive_bm_from_rbasolution=True
             derive_bm_from_targets=False
             rba_session.Problem.set_constraint_types(original_density_constraint_signs)
@@ -6320,7 +6344,7 @@ def determine_calibration_flux_distribution(rba_session,
         rba_session.FBA.set_lb({BMfunction:0.0})
         rba_session.FBA.solve_lp()
         BMfluxOld = rba_session.FBA.SolutionValues[BMfunction]
-    print("{} - BM-flux: {}".format(condition,BMfluxOld))
+    #print("{} - BM-flux: {}".format(condition,BMfluxOld))
     if parsimonious_fba:
         rba_session.FBA.parsimonise(rxns_to_ignore_in_objective=rxns_to_ignore_when_parsimonious)
         rba_session.FBA.set_lb(rxn_LBs)
