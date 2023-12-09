@@ -5057,7 +5057,16 @@ def calibration_workflow(proteome,
 
             if len(list(Simulation_results[results_to_look_up].keys()))!=0:
                 efficiencies_over_correction_iterations.append({"Specific_Kapps":Specific_Kapps.copy(),"Default_Kapps":Default_Kapps.copy(),"Process_Efficiencies":process_efficiencies.copy()})
-
+                KappCorrectionResults=module_based_efficiency_correction(enzyme_efficiencies=Specific_Kapps,
+                                                                         simulation_results=Simulation_results[results_to_look_up],
+                                                                         protein_data=build_input_proteome_for_specific_kapp_estimation(proteome, condition),
+                                                                         rba_session=rba_session,
+                                                                         condition_to_look_up=condition_to_look_up,
+                                                                         tolerance=None,
+                                                                         n_th_root_mispred=1,
+                                                                         process_efficiencies=process_efficiencies,
+                                                                         max_kapp=999999999)
+                """
                 KappCorrectionResults=efficiency_correction(enzyme_efficiencies=Specific_Kapps,
                                                                 simulation_results=Simulation_results[results_to_look_up],
                                                                 protein_data=build_input_proteome_for_specific_kapp_estimation(proteome, condition),
@@ -5072,7 +5081,7 @@ def calibration_workflow(proteome,
                                                                 process_efficiencies=process_efficiencies,
                                                                 correct_default_kapp_enzymes=True,
                                                                 only_consider_misprediction_for_predicted_nonzero_enzymes=True)
-                    
+                """
                 current_RSS=KappCorrectionResults["Sum_of_squared_residuals"]
 
                 rss_trajectory.append(current_RSS)
