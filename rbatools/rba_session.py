@@ -2868,6 +2868,69 @@ class SessionRBA(object):
 
         ### with adapted xml ###
 
+    def build_protein_usage_constraints(self,input_proteome):
+        input_proteins=list(input_proteome.keys())
+        proto_protein_map={}
+        for p in self.get_proteins():
+            protoID=self.get_protein_information(p)['ProtoID']
+            if not protoID in proto_protein_map:
+                proto_protein_map[protoID]=[p]
+            else:
+                proto_protein_map[protoID].append(p)
+
+        consumers=[]
+        protein_consumer_map={}
+        for p in input_proteins:
+            if p not in list(proto_protein_map.keys()):
+                continue
+            protein_consumer_map[p]={}
+            for isoprotein in proto_protein_map[p]:
+                enzyme_clients=self.get_protein_information(isoprotein)['associatedEnzymes']
+                #process_clients=self.get_protein_information(isoprotein)['SupportsProcess']
+                if len(enzyme_clients)>0:
+                    for e_c in enzyme_clients:
+                        if e_c not in consumers:
+                            consumers.append(e_c)
+                        if e_c not in protein_consumer_map[p]:
+                            protein_consumer_map[p][e_c]=self.get_enzyme_information(e_c)['Subunits'][isoprotein]
+                        else:
+                            protein_consumer_map[p][e_c]+=self.get_enzyme_information(e_c)['Subunits'][isoprotein]
+                #if len(process_clients)>0:
+                #    for p_c in process_clients:
+                #        if p_c not in consumers:
+                #            consumers.append(p_c)
+                #        if p_c not in protein_consumer_map[p]:
+                #            protein_consumer_map[p][p_c]=self.get_process_information(p_c)['Composition'][isoprotein]
+                #        else:
+                #            protein_consumer_map[p][p_c]+=self.get_process_information(p_c)['Composition'][isoprotein]
+        proteins_for_constraints=[i for i in [j for j in input_proteins if j in list(protein_consumer_map.keys())] if len(list(protein_consumer_map[i].keys())) != 0]
+        protein_error_variables=list(["{}__plus".format(p) for p in proteins_for_constraints]+["{}__minus".format(p) for p in proteins_for_constraints])
+        cols=list(consumers+protein_error_variables)
+        constraint_matrix=numpy.zeros((len(proteins_for_constraints),len(cols)))
+        for p in proteins_for_constraints:
+            if p not in list(proto_protein_map.keys()):
+                continue
+            row_index=proteins_for_constraints.index(p)
+            for c in protein_consumer_map[p]:
+                col_index=cols.index(c)
+                constraint_matrix[row_index,col_index]=protein_consumer_map[p][c]
+            constraint_matrix[row_index,cols.index("{}__plus".format(p))]=-1
+            constraint_matrix[row_index,cols.index("{}__minus".format(p))]=1
+
+        matrix_to_add=ProblemMatrix()
+        matrix_to_add.A=scipy.sparse.coo_matrix(constraint_matrix)
+        matrix_to_add.row_signs=['E']*len(proteins_for_constraints)
+        matrix_to_add.row_names=proteins_for_constraints
+        matrix_to_add.col_names=cols
+        matrix_to_add.f=numpy.array(list(list([0]*len(consumers))+list([1]*len(protein_error_variables))))
+        matrix_to_add.LB=numpy.array([0]*len(cols))
+        matrix_to_add.UB=numpy.array([self.Problem.get_ub(i)[i] for i in cols if i in consumers]+[100000 for i in cols if i not in consumers])
+        matrix_to_add.b=numpy.array([input_proteome[i] for i in proteins_for_constraints])
+        self.Problem.clear_objective()
+        self.Problem.LP.add_matrix(matrix=matrix_to_add)
+
+
+
 
 ### add protein-usage constraints ###
 
