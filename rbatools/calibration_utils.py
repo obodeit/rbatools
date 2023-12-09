@@ -12,6 +12,7 @@ from scipy.optimize import curve_fit
 from matplotlib.backends.backend_pdf import PdfPages
 from scipy.stats.mstats import gmean
 from sklearn.linear_model import LinearRegression
+import rbatools._auxiliary_functions as _auxiliary_functions
 
 # import matplotlib.pyplot as plt
 
@@ -4359,6 +4360,118 @@ def efficiency_correction_2(enzyme_efficiencies,
             "Enzyme_MispredictionFactors":{i:enzyme_regression_results[i]['Regression_coefficient'] for i in enzyme_regression_results.keys()}})
 
 
+def module_based_efficiency_correction(enzyme_efficiencies,
+                                simulation_results,
+                               protein_data,
+                               rba_session,
+                               condition_to_look_up,
+                               tolerance=2,
+                               n_th_root_mispred=2,
+                               process_efficiencies=None,
+                               max_kapp=None):
+
+    proto_protein_quantities={}
+    for i in simulation_results["Proteins"].index:
+        proto_protein_ID=rba_session.get_protein_information(protein=i)["ProtoID"]
+        if proto_protein_ID in proto_protein_quantities:
+            proto_protein_quantities[proto_protein_ID]+=simulation_results["Proteins"].loc[i,condition_to_look_up]
+        else:
+            proto_protein_quantities[proto_protein_ID]=simulation_results["Proteins"].loc[i,condition_to_look_up]
+    
+    proto_protein_isoform_map={} 
+    for i in rba_session.get_proteins():
+        proto_protein_ID=rba_session.get_protein_information(protein=i)["ProtoID"]
+        if proto_protein_ID in proto_protein_isoform_map:
+            proto_protein_isoform_map[proto_protein_ID].append(i)
+        else:
+            proto_protein_isoform_map[proto_protein_ID]=[i]
+
+    enzyme_efficiencies_out=enzyme_efficiencies.copy() 
+    process_efficiencies_out=process_efficiencies.copy()
+    subunit_misprediction_factors_processes={}
+    squared_residuals=[]
+    for proto_protein_ID in proto_protein_quantities:
+        if proto_protein_ID in proto_protein_isoform_map:
+            if proto_protein_ID in protein_data["ID"]:
+                predicted_protein=proto_protein_quantities[proto_protein_ID]
+                measured_protein=protein_data.loc[proto_protein_ID,"copy_number"]
+                if (predicted_protein>0) & (measured_protein>0):
+                    misprediction_coeff=predicted_protein/measured_protein
+                    if (numpy.isfinite(misprediction_coeff)) and (misprediction_coeff!=0):
+                        squared_residuals.append((numpy.log(predicted_protein)-numpy.log(measured_protein))**2)
+                        #squared_residuals.append((predicted_protein-measured_protein)**2)
+                        #squared_residuals.append(((predicted_protein-measured_protein)*rba_session.get_protein_information(protein=proto_protein_isoform_map[proto_protein_ID][0])["AAnumber"])**2)
+                        for protein in proto_protein_isoform_map[proto_protein_ID]:
+                            for process in rba_session.get_protein_information(protein=protein)["SupportsProcess"]:
+                                if process in process_efficiencies.index:
+                                    if process not in subunit_misprediction_factors_processes.keys():
+                                        subunit_misprediction_factors_processes[process]=[misprediction_coeff]
+                                    else:
+                                        subunit_misprediction_factors_processes[process].append(misprediction_coeff)
+
+    protein_data_for_occupation=protein_data.copy()
+    protein_data_for_occupation.index=protein_data_for_occupation['ID']
+    # calculate reference module occupation
+    reference_module_occupation=pandas.DataFrame(index=simulation_results['ModuleCost'].index)
+    reference_module_occupation["Measured"]=[_auxiliary_functions.get_module_aa_occupation(RBA_Session=rba_session,module=i,proteome=protein_data_for_occupation,run_name='copy_number') for i in reference_module_occupation.index]
+    #get module_association_for_each_enzyme 
+    module_misprediction_factors={i:reference_module_occupation.loc[i,"Measured"].values[0]/simulation_results['ModuleCost'].loc[i,condition_to_look_up].values[0] for i in rba_session.get_modules()}
+
+    reaction_module_map={}
+    for i in list(simulation_results['ModuleCost'].index):
+        for j in _auxiliary_functions.get_module_reactions(RBA_Session=rba_session,module=i):
+            if j not in reaction_module_map.keys():
+                reaction_module_map[j]=[i]
+            else:
+                reaction_module_map[j].append(i)
+
+    reaction_correction_coefficients={}
+    for rxn in list(reaction_module_map.keys()):
+        if len(reaction_module_map[rxn]) == 1:
+            reaction_correction_coefficients[rxn]=module_misprediction_factors[reaction_module_map[rxn][0]]
+        elif len(reaction_module_map[rxn]) > 1:
+            reaction_correction_coefficients[rxn]=numpy.median(numpy.array([module_misprediction_factors[i] for i in reaction_module_map[rxn]]))
+        else:
+            reaction_correction_coefficients[rxn]=1.0
+
+    enzyme_correction_coefficients={rba_session.get_enzyme_information(rxn)["Enzyme"]:numpy.power(reaction_correction_coefficients[rxn],1/n_th_root_mispred) for rxn in reaction_correction_coefficients.keys()}
+
+    for enzyme in enzyme_correction_coefficients.keys():
+        if enzyme in list(enzyme_efficiencies["Enzyme_ID"]):
+            old_kapp=enzyme_efficiencies.loc[enzyme_efficiencies["Enzyme_ID"]==enzyme,"Kapp"].values[0]
+            new_kapp=old_kapp*correction_coeff
+            if (max_kapp is not None) and (new_kapp > max_kapp):
+                continue
+            if tolerance is None:
+                enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Enzyme_ID"]==enzyme,"Kapp"]=new_kapp
+            else:
+                if abs(numpy.log(tolerance)) <= abs(numpy.log(correction_coeff)):
+                    enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Enzyme_ID"]==enzyme,"Kapp"]=new_kapp
+        #else:
+        #    if correct_default_kapp_enzymes:
+        #        old_kapp=default_enzyme_efficiencies[efficiency_parameter]
+        #        new_kapp=old_kapp*correction_coeff
+        #        if (max_kapp is not None) and (new_kapp > max_kapp):
+        #            continue
+
+    process_correction_coefficients={}
+    for process in subunit_misprediction_factors_processes.keys():
+        if process in list(process_efficiencies.index):
+            process_correction_coefficients[process]=numpy.power(numpy.median(subunit_misprediction_factors_processes[process]),1/n_th_root_mispred)
+    for process in process_correction_coefficients.keys():
+        correction_coeff=process_correction_coefficients[process]
+        old_efficiency=process_efficiencies.loc[process,"Value"]
+        new_efficiency=old_efficiency*correction_coeff
+        if tolerance is None:
+            process_efficiencies_out.loc[process,"Value"]=new_efficiency
+        else:
+            if abs(numpy.log(tolerance)) <= abs(numpy.log(correction_coeff)):
+                process_efficiencies_out.loc[process,"Value"]=new_efficiency
+    return({"Sum_of_squared_residuals":sum(squared_residuals),
+            "Kapps":enzyme_efficiencies_out,
+            "ProcessEfficiencies":process_efficiencies_out,
+            "Process_MispredictionFactors":process_correction_coefficients,
+            "Enzyme_MispredictionFactors":enzyme_correction_coefficients})
 
 def efficiency_correction(enzyme_efficiencies,
                                simulation_results,

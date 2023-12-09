@@ -189,7 +189,8 @@ class SessionRBA(object):
                             'ObjectiveFunction': pandas.DataFrame(index=self.Problem.LP.col_names),
                             'Mu': pandas.DataFrame(index=['Mu']),
                             'ObjectiveValue': pandas.DataFrame(index=['ObjectiveValue']),
-                            'ExchangeFluxes': pandas.DataFrame(index=list(self.ExchangeMap.keys()))}
+                            'ExchangeFluxes': pandas.DataFrame(index=list(self.ExchangeMap.keys())),
+                            'ModuleCost':pandas.DataFrame(index=list(self.get_modules()))}
 
         Exchanges = self.return_exchange_fluxes()
         for i in Exchanges.keys():
@@ -212,6 +213,7 @@ class SessionRBA(object):
         objective_function=self.Problem.get_objective()
         for i in objective_function.keys():
             self.Results['ObjectiveFunction'].loc[i,run_name]=objective_function[i]
+        self.Results['ModuleCost'][run_name] = [_auxiliary_functions.get_module_aa_occupation(RBA_Session=self,module=i,proteome=self.Results['ProtoProteins'],run_name=run_name) for i in self.Results['ModuleCost'].index]
 
     def record_parameters(self, run_name: str):
         """
