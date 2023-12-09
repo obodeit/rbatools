@@ -25,7 +25,7 @@ except ModuleNotFoundError:
 
 SOLVER_MAP={"cplex":{},"swiglpk":{}}
 if cplex_available:
-    SOLVER_MAP.update({"cplex":{"feasible":[],"feasible_only_before_unscaling":[5],"optimal":[1]}})
+    SOLVER_MAP.update({"cplex":{"feasible":[],"feasible_only_before_unscaling":[5],"optimal":[1,101,102]}})
 if swiglpk_available:
     SOLVER_MAP.update({"swiglpk":{"feasible":[swiglpk.GLP_FEAS],"feasible_only_before_unscaling":[],"optimal":[swiglpk.GLP_OPT]}})
 
@@ -53,6 +53,8 @@ class LinearProblem(ProblemMatrix):
         Names of constraints
     col_names : list
         Names of decision-variables
+    var_types : list
+        Types of decision-variables ('C':continious, 'I':integer)
     row_indices_map : dict
         Dictionary mapping constraint names to their numeric index (generated automatically)
     col_indices_map : dict
@@ -99,7 +101,7 @@ class LinearProblem(ProblemMatrix):
             else:
                 raise DependencyError(str("Solver {} not found, make sure package swiglpk is working".format(self.lp_solver)))
 
-    def update_matrix(self, matrix, Ainds=None, Binds=None, CTinds=None, LBinds=None, UBinds=None, ModifiedProblem=True):
+    def update_matrix(self, matrix, Ainds=None, Binds=None, CTinds=None, LBinds=None, UBinds=None, VTinds=None, ModifiedProblem=True):
         """
         Overwrites coefficients with new values from argument 'matrix'.
 
@@ -118,6 +120,9 @@ class LinearProblem(ProblemMatrix):
         CTinds : list
             List of constraint-IDs, specifying which row_signs are updated.
             Default is None (then all constraint types (present in both matrices) are taken to update)
+        VTinds : list
+            List of variable-IDs, specifying which var_types are updated.
+            Default is None (then all variable types (present in both matrices) are taken to update)
         LBinds : list
             List of variable-IDs, specifying which lower-bounds values are updated.
             Default is None (then all variables (present in both matrices) are taken to update)
@@ -139,6 +144,8 @@ class LinearProblem(ProblemMatrix):
             LBinds = matrix.col_names
         if UBinds is None:
             UBinds = matrix.col_names
+        if VTinds is None:
+            VTinds = matrix.var_types
 
         ####### Update constraint-matrix LHS (A) #######
         if matrix.row_names == self.row_names and matrix.col_names == self.col_names and not ModifiedProblem:
@@ -147,6 +154,7 @@ class LinearProblem(ProblemMatrix):
             self.LB=matrix.LB
             self.UB=matrix.UB
             self.row_signs=matrix.row_signs
+            self.var_types=matrix.var_types
         else:
             ### If old and new matrix do not have same elements and order of indices ###
             ## Find elements (index pairs) which are in the old, as well in th new matrix. ##
@@ -188,6 +196,15 @@ class LinearProblem(ProblemMatrix):
                 else:
                     for row in CTinds:
                         self.row_signs[self.row_indices_map[row]] = matrix.row_signs[matrix.row_indices_map[row]]
+
+            ## Update Variable type ##
+            if len(VTinds) > 0:
+                if matrix.col_names == self.col_names:
+                    colsNew = [matrix.col_indices_map[i] for i in VTinds]
+                    self.var_types = matrix.var_types
+                else:
+                    for col in VTinds:
+                        self.var_types[self.col_indices_map[col]] = matrix.var_types[matrix.col_indices_map[col]]
 
             ## Update LB##
             if len(LBinds) > 0:
@@ -253,6 +270,7 @@ class LinearProblem(ProblemMatrix):
         compoundProblem.f = numpy.zeros(len(compoundProblem.col_names))
         compoundProblem.LB = numpy.zeros(len(compoundProblem.col_names))
         compoundProblem.UB = numpy.zeros(len(compoundProblem.col_names))
+        compoundProblem.var_types = ['C']*len(compoundProblem.col_names)
         compoundProblem.map_indices()
 
         ## Since it has been made sure that the indices present in the original problem, ##
@@ -263,6 +281,7 @@ class LinearProblem(ProblemMatrix):
         compoundProblem.f[0:oldA.shape[1]] = copy.deepcopy(self.f)
         compoundProblem.LB[0:oldA.shape[1]] = copy.deepcopy(self.LB)
         compoundProblem.UB[0:oldA.shape[1]] = copy.deepcopy(self.UB)
+        compoundProblem.var_types[0:oldA.shape[1]] = copy.deepcopy(self.var_types)
         compoundProblem.row_signs[0:oldA.shape[0]] = copy.deepcopy(self.row_signs)
         for i in matrix.row_names:
             for j in matrix.col_names:
@@ -291,6 +310,8 @@ class LinearProblem(ProblemMatrix):
 
         for i in range(len(NewMatrixRowIndices)):
             compoundProblem.row_signs[CompoundMatrixRowIndices[i]] = matrix.row_signs[NewMatrixRowIndices[i]]
+        for i in range(len(NewMatrixColIndices)):
+            compoundProblem.var_types[CompoundMatrixColIndices[i]] = matrix.var_types[NewMatrixColIndices[i]]
 
         ## Overwrite old matrix with compound problem. And rebuild CPLEX-LP if there was one before##
         self.load_matrix(compoundProblem)
@@ -369,6 +390,11 @@ class LinearProblem(ProblemMatrix):
                 raise InputError('Column names list must be of type list')
                 #warnings.warn('Column names list must be of type list')
                 #return
+            if hasattr(matrix, 'var_types'):
+                if type(matrix.var_types) is list:
+                    self.var_types = matrix.var_types
+            else:
+                self.var_types=['C']*len(self.col_names)
         else:
             raise InputError('Input does not have all necessary elements')
             #warnings.warn('Input does not have all necessary elements')
@@ -384,6 +410,8 @@ class LinearProblem(ProblemMatrix):
         ----------
         bool : Boolean, indicating whether LP-object could be constructed
         """
+        if not hasattr(self, 'var_types'):
+            self.var_types=['C']*len(self.col_names)
         self._lp_solver.build_lp()
         return(True)
 
@@ -415,6 +443,15 @@ class LinearProblem(ProblemMatrix):
                     cplex ->  5
         """
         return(self._lp_solver.return_solution_status())
+
+    def return_solver_specific_solution_status(self):
+        """
+        Returns solver specific solution status, after solving the problem.
+
+        Returns
+        ----------
+        """
+        return(self._lp_solver.return_solver_specific_solution_status())
 
     def return_primal_values(self) -> dict:
         """
@@ -468,6 +505,36 @@ class LinearProblem(ProblemMatrix):
             type identification-characters as values.
         """
         return(self._lp_solver.get_constraint_types(constraints=constraints))
+
+    def get_variable_types(self, variables: list = []) -> dict:
+        """
+        Returns variable types for specified columns.
+        (C: continous ; I: integer)
+
+        Parameters
+        ----------
+        variables : list of column names.
+
+        Returns
+        ----------
+        dict
+            Dictionary with variable-IDs as keys and
+            type identification-characters as values.
+        """
+        return(self._lp_solver.get_variable_types(variables=variables))
+
+    def set_variable_types(self, inputDict: dict):
+        """
+        Sets the type of specified variables.
+        (C: continous ; I: integer)
+
+        Parameters
+        ----------
+        inputDict : dict
+            Variable IDs as keys and variable type as values
+        """
+        self._lp_solver.set_variable_types(inputDict=inputDict)
+        self.var_types=self._lp_solver.var_types
 
     def set_constraint_types(self, inputDict: dict):
         """
@@ -637,6 +704,7 @@ class _Solver(abc.ABC):
         self.row_signs = []
         self.row_names = []
         self.col_names = []
+        self.var_types = []
 
     @property
     @abc.abstractmethod
@@ -652,7 +720,7 @@ class _Solver(abc.ABC):
         self.f=input_lp.f
         self.row_names=list(input_lp.row_names)
         self.col_names=list(input_lp.col_names)
-
+        self.var_types=list(input_lp.var_types)
 
     @abc.abstractmethod
     def build_lp(self):
@@ -682,6 +750,16 @@ class _Solver(abc.ABC):
                     swiglpk -> GLP_FEAS
                 feasible_only_before_unscaling:
                     cplex ->  5
+        """
+        pass
+
+    @abc.abstractmethod
+    def return_solver_specific_solution_status(self):
+        """
+        Returns solver specific solution status, after solving the problem.
+
+        Returns
+        ----------
         """
         pass
 
@@ -753,6 +831,37 @@ class _Solver(abc.ABC):
         ----------
         inputDict : dict
             Constraint IDs as keys and constraint type as values
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_variable_types(self, variables: list = []) -> dict:
+        """
+        Returns variable types for specified columns.
+        (C: continous ; I: integer)
+
+        Parameters
+        ----------
+        variables : list of column names.
+
+        Returns
+        ----------
+        dict
+            Dictionary with variable-IDs as keys and
+            type identification-characters as values.
+        """
+        pass
+
+    @abc.abstractmethod
+    def set_variable_types(self, inputDict: dict):
+        """
+        Sets the type of specified variables.
+        (C: continous ; I: integer)
+
+        Parameters
+        ----------
+        inputDict : dict
+            Variable IDs as keys and variable type as values
         """
         pass
 
@@ -904,6 +1013,16 @@ class _SolverGLPK(_Solver):
         else:
             return("infeasible")
 
+    def return_solver_specific_solution_status(self):
+        """
+        Returns solver specific solution status, after solving the problem.
+
+        Returns
+        ----------
+        """
+        status=glp_get_status(self.glpkLP)
+        return(status)
+
     def return_primal_values(self) -> dict:
         """
         Returns (primal)solution vector.
@@ -972,6 +1091,35 @@ class _SolverGLPK(_Solver):
             row_index=self.row_names.index(row)
             glp_set_row_bnds(self.glpkLP, row_index+1, row_sign_mapping[inputDict[row]], self.b[row_index], self.b[row_index]) #bounds the first row between lb 0 and ub 100
             self.row_signs[row_index]=inputDict[row]
+
+    def get_variable_types(self, variables: list = []) -> dict:
+        """
+        Returns variable types for specified columns.
+        (C: continous ; I: integer)
+
+        Parameters
+        ----------
+        variables : list of column names.
+
+        Returns
+        ----------
+        dict
+            Dictionary with variable-IDs as keys and
+            type identification-characters as values.
+        """
+        return({col:self.var_types[self.col_names.index(col)] for col in variables})
+
+    def set_variable_types(self, inputDict: dict):
+        """
+        Sets the type of specified variables.
+        (C: continous ; I: integer)
+
+        Parameters
+        ----------
+        inputDict : dict
+            Variable IDs as keys and variable type as values
+        """
+        pass
 
     def set_objective(self, inputDict: dict):
         """
@@ -1057,8 +1205,12 @@ class _SolverCPLEX(_Solver):
         #print("LP UB")
         #print([list(self.col_names)[i] for i in range(len(list(self.UB))) if not numpy.isfinite(list(self.UB)[i])])
         cpxLP = Cplex()
-        cpxLP.variables.add(obj=list(self.f), ub=list(self.UB),
-                            lb=list(self.LB), names=list(self.col_names))
+        if 'I' in self.var_types:
+            cpxLP.variables.add(obj=list(self.f), ub=list(self.UB),
+                                lb=list(self.LB), names=list(self.col_names),types=list(self.var_types))
+        else:
+            cpxLP.variables.add(obj=list(self.f), ub=list(self.UB),
+                                lb=list(self.LB), names=list(self.col_names))
         cpxLP.linear_constraints.add(lin_expr=rows,
                                      rhs=self.b,
                                      senses=self.row_signs,
@@ -1096,6 +1248,7 @@ class _SolverCPLEX(_Solver):
                     cplex ->  5
         """
         status=self.cplexLP.solution.get_status()
+        #print("CPLEX-status: {}".format(status))
         if status in SOLVER_MAP["cplex"]["optimal"]:
             return("optimal")
         elif status in SOLVER_MAP["cplex"]["feasible"]:
@@ -1104,6 +1257,16 @@ class _SolverCPLEX(_Solver):
             return("feasible_only_before_unscaling")
         else:
             return("infeasible")
+
+    def return_solver_specific_solution_status(self):
+        """
+        Returns solver specific solution status, after solving the problem.
+
+        Returns
+        ----------
+        """
+        status=self.cplexLP.solution.get_status()
+        return(status)
 
     def return_primal_values(self) -> dict:
         """
@@ -1172,6 +1335,35 @@ class _SolverCPLEX(_Solver):
         self.cplexLP.linear_constraints.set_senses(list(zip(inputDict.keys(), inputDict.values())))
         ##Transfer changes to rbatools.LP object##
         self.row_signs = self.cplexLP.linear_constraints.get_senses()
+
+    def get_variable_types(self, variables: list = []) -> dict:
+        """
+        Returns variable types for specified columns.
+        (C: continous ; I: integer)
+
+        Parameters
+        ----------
+        variables : list of column names.
+
+        Returns
+        ----------
+        dict
+            Dictionary with variable-IDs as keys and
+            type identification-characters as values.
+        """
+        pass
+
+    def set_variable_types(self, inputDict: dict):
+        """
+        Sets the type of specified variables.
+        (C: continous ; I: integer)
+
+        Parameters
+        ----------
+        inputDict : dict
+            Variable IDs as keys and variable type as values
+        """
+        pass
 
     def set_objective(self, inputDict: dict):
         """
