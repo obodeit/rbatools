@@ -519,6 +519,15 @@ def find_exchange_metabolite_in_medium(metabolite, Medium):
     else:
         return('')
 
+def get_module_reactions(RBA_Session,module):
+    ModuleInfo=RBA_Session.get_module_information(module)
+    module_rxns=[]
+    for proto_rxn in ModuleInfo['Members']:
+        if proto_rxn in RBA_Session.get_reactions():
+            proto_rxn_info=RBA_Session.get_reaction_information(proto_rxn)
+            module_rxns+=list([proto_rxn]+proto_rxn_info['Twins'])
+    return(module_rxns)        
+  
 def get_module_proteins(RBA_Session,module):
     ModuleInfo=RBA_Session.get_module_information(module)
     module_proteins=[]
