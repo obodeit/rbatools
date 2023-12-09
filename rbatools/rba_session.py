@@ -191,7 +191,8 @@ class SessionRBA(object):
                             'ObjectiveFunction': pandas.DataFrame(index=self.Problem.LP.col_names),
                             'Mu': pandas.DataFrame(index=['Mu']),
                             'ObjectiveValue': pandas.DataFrame(index=['ObjectiveValue']),
-                            'ExchangeFluxes': pandas.DataFrame(index=list(self.ExchangeMap.keys()))}
+                            'ExchangeFluxes': pandas.DataFrame(index=list(self.ExchangeMap.keys())),
+                            'ModuleCost':pandas.DataFrame(index=list(self.get_modules()))}
 
         Exchanges = self.return_exchange_fluxes()
         for i in Exchanges.keys():
@@ -208,12 +209,12 @@ class SessionRBA(object):
         self.Results['ProtoProteins'][run_name] = _auxiliary_functions.record_proto_proteome(RBA_Session=self, run=run_name, Proteinlevels=self.Results['Proteins'])
         self.Results['SolutionType'][run_name] = _auxiliary_functions.check_solution_feasibility(Value=self.Problem.SolutionType, RBA_Session=self)
         self.Results['Mu'][run_name] = _auxiliary_functions.check_solution_feasibility(Value=self.Problem.Mu, RBA_Session=self)
-        self.Results['ObjectiveValue'][run_name] = _auxiliary_functions.check_solution_feasibility(
-            Value=self.Problem.ObjectiveValue, RBA_Session=self)
+        self.Results['ObjectiveValue'][run_name] = _auxiliary_functions.check_solution_feasibility(Value=self.Problem.ObjectiveValue, RBA_Session=self)
         self.Results['ObjectiveFunction'][run_name] = [0.0]*self.Results['ObjectiveFunction'].shape[0]
         objective_function=self.Problem.get_objective()
         for i in objective_function.keys():
             self.Results['ObjectiveFunction'].loc[i,run_name]=objective_function[i]
+        self.Results['ModuleCost'][run_name] = [_auxiliary_functions.get_module_aa_occupation(RBA_Session=self,module=i,proteome=self.Results['ProtoProteins'],run_name=run_name) for i in self.Results['ModuleCost'].index]
 
     def record_parameters(self, run_name: str):
         """

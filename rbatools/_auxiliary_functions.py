@@ -519,6 +519,37 @@ def find_exchange_metabolite_in_medium(metabolite, Medium):
     else:
         return('')
 
+def get_module_proteins(RBA_Session,module):
+    ModuleInfo=RBA_Session.get_module_information(module)
+    module_proteins=[]
+    for proto_rxn in ModuleInfo['Members']:
+        if proto_rxn in RBA_Session.get_reactions():
+            proto_rxn_info=RBA_Session.get_reaction_information(proto_rxn)
+            for iso_rxn in list([proto_rxn]+proto_rxn_info['Twins']):
+                iso_rxn_info=RBA_Session.get_reaction_information(iso_rxn)
+                if iso_rxn_info['Enzyme'] in RBA_Session.get_enzymes():
+                    su_proteins=list(RBA_Session.get_enzyme_information(iso_rxn_info['Enzyme'])['Subunits'].keys())
+                    for su in su_proteins:
+                        su_info=RBA_Session.get_protein_information(su)
+                        if su_info['ProtoID'] not in module_proteins:
+                            module_proteins.append({su_info['ProtoID']:su_info['AAnumber']})
+    return(module_proteins)
+
+def get_module_aa_occupation(RBA_Session,module,proteome,run_name):
+    try:
+        module_protein_map=get_module_proteins(RBA_Session=RBA_Session,module=module)
+        occupation_aa=0
+        for component in module_protein_map:
+            protein_ID=list(component.keys())[0]
+            protein_length=list(component.values())[0]
+            if protein_ID in list(proteome.index):        
+                if not pandas.isna(proteome.loc[protein_ID,run_name]):
+                    aas_to_add=proteome.loc[protein_ID,run_name]*protein_length
+                    occupation_aa+=aas_to_add
+        return(occupation_aa)
+    except:
+        return(numpy.nan)
+
 
 def check_solution_feasibility(Value, RBA_Session):
     if RBA_Session.Problem.Solved:
