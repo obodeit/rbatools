@@ -4659,6 +4659,7 @@ def calibration_workflow(proteome,
         proteome.loc[proteome["Location"]==i,condition]*=abundance_coeff
         correction_results_compartement_sizes.loc[i,"copy_number_scaling"]=abundance_coeff
     ###
+    print(proteome)
     correction_results_compartement_sizes.to_csv(str('Correction_overview_HackettNielsen_corrected_'+condition+'.csv'))
     if process_efficiencies is None:
         if process_efficiency_estimation_input is not None:
