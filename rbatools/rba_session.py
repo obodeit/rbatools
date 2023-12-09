@@ -143,6 +143,7 @@ class SessionRBA(object):
         ExchangeMatrix.row_signs = ['E']*len(Mets_external)
         ExchangeMatrix.row_names = Mets_external
         ExchangeMatrix.col_names = ColNames
+        ExchangeMatrix.var_types=['C']*len(ColNames)
         ExchangeMatrix.map_indices()
         self.Problem.LP.add_matrix(matrix=ExchangeMatrix)
 
