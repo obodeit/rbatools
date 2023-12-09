@@ -85,8 +85,10 @@ class ProblemFBA(object):
         ReverseMatrix.row_signs = self.LP.row_signs
         ReverseMatrix.row_names = self.LP.row_names
         ReverseMatrix.col_names = newCols
+        ReverseMatrix.var_types=['C']*len(newCols)
         ReverseMatrix.map_indices()
         self.LP.add_matrix(matrix=ReverseMatrix)
+
         internalRxns = [i for i in self.LP.col_names if not i.startswith(
             'R_EX_') and not i.startswith('R_maintenance_') and not i.startswith('R_BIOMASS_')]
         for i in range(len(self.LP.col_names)):
