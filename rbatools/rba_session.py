@@ -999,6 +999,7 @@ class SessionRBA(object):
             added_matrix.row_signs = ['E']
             added_matrix.row_names = ["constraint_{}".format(x_varname)]
             added_matrix.col_names = variables_in_linear_combi+[x_varname]
+            added_matrix.var_types=['C']*len(variables_in_linear_combi+[x_varname])
             added_matrix.map_indices()
             self.Problem.LP.add_matrix(matrix=added_matrix)
         elif isinstance(variable_X, str):
@@ -1015,6 +1016,7 @@ class SessionRBA(object):
             added_matrix.row_signs = ['E']
             added_matrix.row_names = ["constraint_{}".format(y_varname)]
             added_matrix.col_names = variables_in_linear_combi+[y_varname]
+            added_matrix.var_types=['C']*len(variables_in_linear_combi+[y_varname])
             added_matrix.map_indices()
             self.Problem.LP.add_matrix(matrix=added_matrix)
         elif isinstance(variable_Y, str):
@@ -2560,6 +2562,7 @@ class SessionRBA(object):
         Matrix1.row_signs = row_signsNew
         Matrix1.row_names = row_namesNew
         Matrix1.col_names = col_namesNew
+        Matrix1.var_types=['C']*len(col_namesNew)
         Matrix1.f = fNew
         Matrix1.b = numpy.array([0.0]*Anew3.shape[0])
         LP1 = LinearProblem(lp_solver=self.lp_solver)
@@ -2626,6 +2629,7 @@ class SessionRBA(object):
         matrix_to_add=ProblemMatrix()
         matrix_to_add.row_names=list(list(density_constraints)+['global_density'])
         matrix_to_add.col_names=['f_{}'.format(i) for i in compartments]
+        matrix_to_add.var_types=['C']*len(compartments)
         matrix_to_add.b=numpy.array(list(list([0.0]*(len(compartments)))+[1.0])).astype('float64')
         #matrix_to_add.row_signs=list([row_signs_densities[i] for i in list(density_constraints)]+['E'])
         matrix_to_add.row_signs=list(['E' for i in list(density_constraints)]+['E'])
@@ -2733,6 +2737,7 @@ class SessionRBA(object):
         matrix_to_add=ProblemMatrix()
         matrix_to_add.row_names=list(list(density_constraints)+['global_density'])
         matrix_to_add.col_names=['f_{}'.format(i) for i in compartments]
+        matrix_to_add.var_types=['C']*len(compartments)
         matrix_to_add.b=numpy.array(list(list([0.0]*(len(compartments)))+[1.0])).astype('float64')
         #matrix_to_add.row_signs=list([row_signs_densities[i] for i in list(density_constraints)]+['E'])
         matrix_to_add.row_signs=list(['E' for i in list(density_constraints)]+['E'])
@@ -2826,6 +2831,7 @@ class SessionRBA(object):
         matrix_to_add=ProblemMatrix()
         matrix_to_add.row_names=list(list(density_constraints)+['global_density'])
         matrix_to_add.col_names=['f_{}'.format(i) for i in compartments]
+        matrix_to_add.var_types=['C']*len(compartments)
         matrix_to_add.b=numpy.array(list(list([0.0]*(len(compartments)))+[1.0])).astype('float64')
         matrix_to_add.row_signs=list([row_signs_densities[i] for i in list(density_constraints)]+['E'])
         matrix_to_add.LB=numpy.array(list([0.0]*len(compartments))).astype('float64')
@@ -2852,6 +2858,7 @@ class SessionRBA(object):
             matrix_to_add=ProblemMatrix()
             matrix_to_add.row_names=['f_size_{}'.format(i) for i in compartments_with_imposed_sizes]
             matrix_to_add.col_names=['f_{}'.format(i) for i in compartments_with_imposed_sizes]
+            matrix_to_add.var_types=['C']*len(compartments_with_imposed_sizes)
             matrix_to_add.b=numpy.array(list([1.0]*len(compartments_with_imposed_sizes))).astype('float64')
             matrix_to_add.row_signs=['L']*len(compartments_with_imposed_sizes)
             matrix_to_add.LB=numpy.array(list([0.0]*len(compartments_with_imposed_sizes))).astype('float64')
@@ -2925,6 +2932,7 @@ class SessionRBA(object):
         matrix_to_add.row_signs=['E']*len(proteins_for_constraints)
         matrix_to_add.row_names=proteins_for_constraints
         matrix_to_add.col_names=cols
+        matrix_to_add.var_types=['C']*len(cols)
         matrix_to_add.f=numpy.array(list(list([0]*len(consumers))+list([1]*len(protein_error_variables))))
         matrix_to_add.LB=numpy.array([0]*len(cols))
         matrix_to_add.UB=numpy.array([self.Problem.get_ub(i)[i] for i in cols if i in consumers]+[100000 for i in cols if i not in consumers])
