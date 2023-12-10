@@ -4415,7 +4415,13 @@ def module_based_efficiency_correction(enzyme_efficiencies,
     reference_module_occupation=pandas.DataFrame(index=simulation_results['ModuleCost'].index)
     reference_module_occupation["Measured"]=[_auxiliary_functions.get_module_aa_occupation(RBA_Session=rba_session,module=i,proteome=protein_data_for_occupation,run_name='copy_number') for i in reference_module_occupation.index]
     #get module_association_for_each_enzyme 
-    module_misprediction_factors={i:reference_module_occupation.loc[i,"Measured"].values[0]/simulation_results['ModuleCost'].loc[i,condition_to_look_up].values[0] for i in rba_session.get_modules()}
+
+    module_misprediction_factors={}
+    for i in rba_session.get_modules():
+        ratio=simulation_results['ModuleCost'].loc[i,condition_to_look_up]/reference_module_occupation.loc[i,"Measured"]
+        if numpy.isfinite(ratio):
+            if ratio!=0:
+                module_misprediction_factors[i]=ratio
 
     reaction_module_map={}
     for i in list(simulation_results['ModuleCost'].index):
@@ -4427,16 +4433,21 @@ def module_based_efficiency_correction(enzyme_efficiencies,
 
     reaction_correction_coefficients={}
     for rxn in list(reaction_module_map.keys()):
-        if len(reaction_module_map[rxn]) == 1:
-            reaction_correction_coefficients[rxn]=module_misprediction_factors[reaction_module_map[rxn][0]]
+        module_coeffs=[]
+        for i in reaction_module_map[rxn]:
+            if i in module_misprediction_factors.keys():
+                module_coeffs.append(module_misprediction_factors[i])
+        if len(module_coeffs) == 1:
+            reaction_correction_coefficients[rxn]=module_coeffs[0]
         elif len(reaction_module_map[rxn]) > 1:
-            reaction_correction_coefficients[rxn]=numpy.median(numpy.array([module_misprediction_factors[i] for i in reaction_module_map[rxn]]))
+            reaction_correction_coefficients[rxn]=numpy.median(numpy.array(module_coeffs))
         else:
             reaction_correction_coefficients[rxn]=1.0
 
-    enzyme_correction_coefficients={rba_session.get_enzyme_information(rxn)["Enzyme"]:numpy.power(reaction_correction_coefficients[rxn],1/n_th_root_mispred) for rxn in reaction_correction_coefficients.keys()}
+    enzyme_correction_coefficients={rba_session.get_reaction_information(rxn)["Enzyme"]:numpy.power(reaction_correction_coefficients[rxn],1/n_th_root_mispred) for rxn in reaction_correction_coefficients.keys()}
 
     for enzyme in enzyme_correction_coefficients.keys():
+        correction_coeff=enzyme_correction_coefficients[enzyme]
         if enzyme in list(enzyme_efficiencies["Enzyme_ID"]):
             old_kapp=enzyme_efficiencies.loc[enzyme_efficiencies["Enzyme_ID"]==enzyme,"Kapp"].values[0]
             new_kapp=old_kapp*correction_coeff
