@@ -47,7 +47,7 @@ def run_calibration_over_conditions_for_bootstrapping_run(input_dict_for_run):
 
     calib_dicts_2=[]
     for i in input_dicts_for_conditions:
-        calib_dicts_2.append(calibration(i,print_outputs= False))
+        calib_dicts_2.append(calibration(i,print_outputs= True))
 
     out={}
     for condition in input_dict["conditions"]:
@@ -130,9 +130,9 @@ def build_full_annotations(rba_session,
     full_annotations = build_full_annotations_from_dataset_annotations(annotations_list=[annotations_Absolute, annotations_Relative])
     return(full_annotations)
 
-def main(conditions,number_samples,n_parallel_processes=None,number_chunks=1):
+def main(conditions,number_samples,n_parallel_processes=None,chunk_size=1,import_initial_parameters=False):
     ###prep
-    Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim.csv', sep=';', decimal=',', index_col=0)
+    Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim_Frick_fluxes.csv', sep=';', decimal=',', index_col=0)
     Process_Efficiency_Estimation_Input = pandas.read_csv('../DataSetsYeastRBACalibration/Process_Efficiency_Estimation_Input.csv', sep=';', decimal=',')
     Uniprot = pandas.read_csv('../Yeast_iMM904_RBA_model/uniprot.csv', sep='\t')
     Compartment_Annotations_external = pandas.read_csv('../DataSetsYeastRBACalibration/Manually_curated_Protein_Locations_for_Calibration.csv', index_col=None, sep=';')
@@ -140,6 +140,15 @@ def main(conditions,number_samples,n_parallel_processes=None,number_chunks=1):
     Hackett_Clim_FCs = pandas.read_csv('../DataSetsYeastRBACalibration/Hacket_ProteinFCs.csv',sep=";")
     Nielsen_01 = pandas.read_csv('../DataSetsYeastRBACalibration/Nielsen01_ProteomicsData.csv',sep=";",index_col=0)
     Simulation = SessionRBA('../Yeast_iMM904_RBA_model')
+
+    if import_initial_parameters:
+        default_kapps_imported=pandas.read_csv("../Bootstrapping_Results/Input_parameters/default_kapps_refactored_WF.csv",index_col=0)
+        specific_kapps_imported=pandas.read_csv("../Bootstrapping_Results/Input_parameters/specific_kapps_refactored_WF.csv",index_col=0)
+        process_efficiencies_imported=pandas.read_csv("../Bootstrapping_Results/Input_parameters/process_efficiencies_refactored_WF.csv",index_col=0)
+    else:
+        default_kapps_imported=None
+        specific_kapps_imported=None
+        process_efficiencies_imported=None
 
     picogram_togram_coefficient = 1e12
     Nielsen_01['Mean_01'] *= picogram_togram_coefficient
@@ -157,7 +166,6 @@ def main(conditions,number_samples,n_parallel_processes=None,number_chunks=1):
                         Relative_Proteome=Hackett_Clim_FCs)
 
     ###sampling
-    """
     Sampled_Proteomes=sample_copy_numbers_from_residuals_quantiles(Input_data=Nielsen_01.copy(),
                                                                     replicate_cols=["Rep1_01","Rep2_01","Rep3_01"],
                                                                     mean_col='Mean_01',
@@ -175,13 +183,15 @@ def main(conditions,number_samples,n_parallel_processes=None,number_chunks=1):
     Sampled_Proteomes=generate_multiple_input_proteomes_from_mean(Input_data=Nielsen_01.copy(),
                                                                   mean_col='Mean_01',
                                                                   n=number_samples)
-
+    """
+    print(Sampled_Proteomes)
     sampled_runs=list(Sampled_Proteomes.columns)
-    if number_chunks == 1:
+    if chunk_size == 1:
         list_of_runs_to_execute=[sampled_runs]
     else:
-        list_of_runs_to_execute=[sampled_runs[i * number_chunks:(i + 1) * number_chunks] for i in range((len(sampled_runs) + number_chunks - 1) // number_chunks )]
+        list_of_runs_to_execute=[sampled_runs[i * chunk_size:(i + 1) * chunk_size] for i in range((len(sampled_runs) + chunk_size - 1) // chunk_size )]
 
+    print(list_of_runs_to_execute)
     count=0
     for runs_to_execute in list_of_runs_to_execute:
         ###generate list of input dicts over runs
@@ -203,7 +213,10 @@ def main(conditions,number_samples,n_parallel_processes=None,number_chunks=1):
                                     "process_efficiency_estimation_input":Process_Efficiency_Estimation_Input,
                                     "Compartment_sizes":None,
                                     "PG_fractions":None,
-                                    "conditions":conditions
+                                    "conditions":conditions,
+                                    "Process_efficiencies":process_efficiencies_imported,
+                                    "Specific_kapps":specific_kapps_imported,
+                                    "Default_kapps":default_kapps_imported
                                     }})
 
         ###calibrate each run
@@ -217,7 +230,7 @@ def main(conditions,number_samples,n_parallel_processes=None,number_chunks=1):
             bootstrapping_runs=pool.imap_unordered(run_calibration_over_conditions_for_bootstrapping_run,input_dicts)
         else:
             bootstrapping_runs=[run_calibration_over_conditions_for_bootstrapping_run(input_dict) for input_dict in input_dicts]
-
+        print(bootstrapping_runs)
         ###generate output
         if count==0:
             Reconstructed_Proteomes={condition:pandas.DataFrame() for condition in conditions}
@@ -318,9 +331,10 @@ if __name__ == "__main__":
     warnings.simplefilter('ignore', FutureWarning)
     warnings.simplefilter('ignore', RuntimeWarning)
     t0=time.time()
-    main(n_parallel_processes=4,
+    main(n_parallel_processes=None,
          #conditions = ['Hackett_C01'],
          conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
-         number_samples=4,
-         number_chunks=1)
+         number_samples=30,
+         chunk_size=8,
+         import_initial_parameters=True)
     print("Total time: {}".format(time.time()-t0))
