@@ -90,8 +90,9 @@ def calibration(input_dict,print_outputs=True):
                                          definition_file=input_dict["definition_file"],
                                          rba_session=Simulation,
                                          process_efficiency_estimation_input=input_dict["process_efficiency_estimation_input"],
-                                         spec_kapps=None,
-                                         process_efficiencies=None,
+                                         spec_kapps=input_dict["Specific_kapps"],
+                                         default_kapps=input_dict["Default_kapps"],
+                                         process_efficiencies=input_dict["Process_efficiencies"],
                                          Compartment_sizes=input_dict["Compartment_sizes"],
                                          PG_fractions=input_dict["PG_fractions"],
                                          transporter_multiplier=1,
@@ -185,6 +186,16 @@ def main(conditions,n_parallel_processes=None):
     input_dict["process_efficiency_estimation_input"]=Process_Efficiency_Estimation_Input
     input_dict["Compartment_sizes"]=None
     input_dict["PG_fractions"]=None
+    input_dict["Specific_kapps"]=None
+    input_dict["Default_kapps"]=None
+    input_dict["Process_efficiencies"]=None
+
+    default_kapps_imported=pandas.read_csv("../default_kapps_refactored_WF.csv",index_col=0)
+    specific_kapps_imported=pandas.read_csv("../specific_kapps_refactored_WF.csv",index_col=0)
+    process_efficiencies_imported=pandas.read_csv("../process_efficiencies_refactored_WF.csv",index_col=0)
+    input_dict["Specific_kapps"]=specific_kapps_imported
+    input_dict["Default_kapps"]=default_kapps_imported
+    input_dict["Process_efficiencies"]=process_efficiencies_imported
 
     run_calibration_over_conditions(input_dict=input_dict,
                                     n_parallel_processes=n_parallel_processes)
