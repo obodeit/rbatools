@@ -6645,7 +6645,8 @@ def determine_machinery_concentration_by_weighted_geometric_mean(rba_session,mac
         concentrations_of_subunits=[]
         stoichiometries_of_subunits=[]
         for i in subunit_derived_concentrations.keys():
-            concentrations_of_subunits.append(subunit_derived_concentrations[i]["Concentration"])
+            #concentrations_of_subunits.append(subunit_derived_concentrations[i]["Concentration"])
+            concentrations_of_subunits.append(subunit_derived_concentrations[i]["Concentration"]/subunit_derived_concentrations[i]["Stoichiometry"])
             stoichiometries_of_subunits.append(subunit_derived_concentrations[i]["Stoichiometry"])
         concentration=weighted_geometric_mean(data=concentrations_of_subunits,weights=stoichiometries_of_subunits)
     else:
