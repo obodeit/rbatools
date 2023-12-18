@@ -193,9 +193,9 @@ def main(conditions,n_parallel_processes=None):
     default_kapps_imported=pandas.read_csv("../default_kapps_refactored_WF.csv",index_col=0)
     specific_kapps_imported=pandas.read_csv("../specific_kapps_refactored_WF.csv",index_col=0)
     process_efficiencies_imported=pandas.read_csv("../process_efficiencies_refactored_WF.csv",index_col=0)
-    input_dict["Specific_kapps"]=specific_kapps_imported
-    input_dict["Default_kapps"]=default_kapps_imported
-    input_dict["Process_efficiencies"]=process_efficiencies_imported
+    #input_dict["Specific_kapps"]=specific_kapps_imported
+    #input_dict["Default_kapps"]=default_kapps_imported
+    #input_dict["Process_efficiencies"]=process_efficiencies_imported
 
     run_calibration_over_conditions(input_dict=input_dict,
                                     n_parallel_processes=n_parallel_processes)
