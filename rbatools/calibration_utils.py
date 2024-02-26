@@ -6534,14 +6534,15 @@ def determine_calibration_flux_distribution(rba_session,
             derive_bm_from_targets=False
             rba_session.Problem.set_constraint_types(original_density_constraint_signs)
         else:
-            print("{} - Solution with equality density not obtained".format(condition))
+            print("{} - Solution with equality density not obtained - Status: {}".format(condition,rba_session.Problem.SolutionStatus))
             rba_session.Problem.set_constraint_types(original_density_constraint_signs)
+            rba_session.set_growth_rate(mu)
             solved2=rba_session.solve()
             if solved2:
                 derive_bm_from_rbasolution=True
                 derive_bm_from_targets=False
             else:
-                print("{} - Solution with inequality density not obtained".format(condition))
+                print("{} - Solution with inequality density not obtained - Status: {}".format(condition,rba_session.Problem.SolutionStatus))
 
         rba_session.set_medium(original_medium)
         rba_session.build_fba_model(rba_derived_biomass_function=True,
