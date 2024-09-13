@@ -491,7 +491,6 @@ def flux_bounds_from_input(input,rba_session, condition, specific_exchanges=None
 
 def growth_rate_from_input(input, condition):
     return(input.loc[input['Type'] == 'Growth_Rate', condition].values[0])
-#    return(0.69314718056*input.loc[input['Type'] == 'Growth_Rate', condition].values[0])
 
 
 def proteome_fractions_from_input(input, condition):
@@ -813,7 +812,6 @@ def perform_simulations(condition,
         if len(list(proteomics_constraints_input.keys()))!=0:
             rba_session.build_protein_usage_constraints(input_proteome=proteomics_constraints_input)
         out['Mu_prok'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=start_val, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,verbose=False)
-#        out['Mu_prok'] = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
         out['SolutionStatus_prok']=rba_session.Problem.SolutionStatus
                 
         try:
@@ -1618,7 +1616,6 @@ def perform_simulations_old(condition,
                                                       feasible_stati=feasible_stati, 
                                                       try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling,
                                                       verbose=False)
-#        mumax_prok = rba_session.find_max_growth_rate(precision=Mu_approx_precision,max_value=max_mu_in_dichotomy,start_value=max_mu_in_dichotomy/2, feasible_stati=feasible_stati, try_unscaling_if_sol_status_is_feasible_only_before_unscaling=try_unscaling_if_sol_status_is_feasible_only_before_unscaling)
         sol_status=rba_session.Problem.SolutionStatus
         try:
             rba_session.record_results('Prokaryotic')
@@ -3136,8 +3133,6 @@ def calculate_rss(y_predicted,y_measured):
 
 
 def do_regression(x_to_fit,y_to_fit,x_to_plot,max_val,min_val,monotonous_quadratic=False,total_x_range=(0,1),permit_quadratic_model=True):
-    #y_max=min([max(y_to_fit),max_val])
-    #y_min=max([min(y_to_fit),min_val])
     y_max=max_val
     y_min=min_val
     x_max=total_x_range[1]
@@ -3467,7 +3462,6 @@ def regression_on_default_enzyme_efficiencies(default_kapps,min_kapp,max_kapp,co
 
 def plot_predicted_fluxes(simulation_outputs,types=['Fixed_PG_Eukaryotic_fixed_sizes','Fixed_PG_Eukaryotic','Eukaryotic_fixed_sizes',"DefaultKapp","Prokaryotic","Eukaryotic"],input_definition=None):
 
-    ########
     Mus_o2 = [0.025, 0.05, 0.1, 0.15, 0.2, 0.25, 0.28, 0.3, 0.35, 0.4]
     Glc_J = [0.3, 0.6, 1.1, 1.7, 2.3, 2.8, 3.4, 4.5, 8.6, 11.1]
     EtOH_J = [0, 0, 0, 0, 0, 0, 0.11, 2.3, 9.5, 13.9]
@@ -3639,7 +3633,6 @@ def plot_predicted_fluxes(simulation_outputs,types=['Fixed_PG_Eukaryotic_fixed_s
     Lac_Exchange_predicted_euk_fixed = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_Euk_fixed', run='Eukaryotic_fixed_sizes', metabolite='M_lac__D')
     Succ_Exchange_predicted_euk_fixed = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_Euk_fixed', run='Eukaryotic_fixed_sizes', metabolite='M_succ')
 
-#
     Glc_Exchange_predicted_fixed_pg_euk = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk', run='Fixed_PG_Eukaryotic', metabolite='M_glc__D')
     EtOH_Exchange_predicted_fixed_pg_euk = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk', run='Fixed_PG_Eukaryotic', metabolite='M_etoh')
     O2_Exchange_predicted_fixed_pg_euk = extract_predicted_exchange_fluxes(inputs=simulation_outputs,result_object='Simulation_Results_fixed_pg_Euk', run='Fixed_PG_Eukaryotic', metabolite='M_o2')
@@ -4299,10 +4292,6 @@ def efficiency_correction_2(enzyme_efficiencies,
                         su_concentrations['Measured'].append(measured_concentration)
                         su_concentrations['Predicted'].append(predicted_concentration)
         if len(su_concentrations['Subunits'])>2:
-#            regression_results=do_linear_regression_on_proteome_prediction(x=su_concentrations['Measured'],
-#                                                                           y=su_concentrations['Predicted'],
-#                                                                           fit_intercept=False)
-#            su_concentrations['Regression_coefficient']=regression_results['Regressor'].coef_[0][0]
             su_concentrations['Regression_coefficient']=numpy.median([su_concentrations['Predicted'][i]/su_concentrations['Measured'][i]for i in range(len(su_concentrations['Subunits']))])
             process_machinery_regression_results[process]=su_concentrations
         elif len(su_concentrations['Subunits'])==2:
@@ -4728,7 +4717,6 @@ def efficiency_correction(enzyme_efficiencies,
             if abs(numpy.log(tolerance)) <= abs(numpy.log(correction_coeff)):
                 process_efficiencies_out.loc[process,"Value"]=new_efficiency
 
-#    return({"sum_of_squared_residuals":sum(squared_residuals),"enzyme_efficiencies":enzyme_efficiencies_out,"process_efficiencies":process_efficiencies_out,"process_efficiency_correction_factors":process_correction_coefficients,"enzyme_efficiency_correction_factors":enzyme_correction_coefficients})
     return({"Sum_of_squared_residuals":sum(squared_residuals)/len(squared_residuals),"Kapps":enzyme_efficiencies_out,"ProcessEfficiencies":process_efficiencies_out,"Process_MispredictionFactors":process_correction_coefficients,"Enzyme_MispredictionFactors":enzyme_correction_coefficients})
 
 
@@ -6207,17 +6195,8 @@ def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,condi
     plt.show()
 
 def do_linear_regression_on_proteome_prediction(x,y,fit_intercept):
-    #protein_comparison=pandas.DataFrame()
-    #for protein in predicted_proteomes.index:
-    #    protein_comparison.loc[protein,"Predicted"]=6.023e20 *predicted_proteomes.loc[protein,condition]
-    #for protein in measured_proteomes.index:
-    #    protein_comparison.loc[protein,"Measured"]=6.023e20 *measured_proteomes.loc[protein,condition]
-    #protein_comparison["Ratio"]=protein_comparison["Predicted"]/protein_comparison["Measured"]
-    #protein_comparison_to_proceed=protein_comparison.loc[(numpy.isfinite(protein_comparison["Ratio"]))&(protein_comparison["Ratio"]!=0)]
     x_reg = numpy.reshape(numpy.array(x), (len(x), 1))
     y_reg = numpy.reshape(numpy.array(y), (len(y), 1))
-#    x_reg = numpy.reshape(numpy.array([i for i in list(protein_comparison_to_proceed["Predicted"])]), (len(list(protein_comparison_to_proceed["Predicted"])), 1))
-#    y_reg = numpy.reshape(numpy.array([i for i in list(protein_comparison_to_proceed["Measured"])]), (len(list(protein_comparison_to_proceed["Measured"])), 1))
     regressor = LinearRegression(fit_intercept=fit_intercept)
     regressor.fit(x_reg, y_reg)
     predictions = regressor.predict(x_reg)
@@ -6944,14 +6923,12 @@ def estimate_specific_enzyme_efficiencies(rba_session,
 
         pseudocomplex_constituent_concentrations=[individual_constituent_concentrations[i][0] for i in individual_constituent_concentrations.keys() if len(individual_constituent_concentrations[i])!=0]
         if len(pseudocomplex_constituent_concentrations)>0:
-#            concentration_pseudo_complex=gmean(numpy.array(pseudocomplex_constituent_concentrations))
             concentration_pseudo_complex=len(list(total_flux_dict.keys()))*gmean(numpy.array(pseudocomplex_constituent_concentrations))
         else:
             concentration_pseudo_complex=numpy.nan
 
         # 5.4 ...#
         total_flux_pseudo_complex=gmean(numpy.array(list(total_flux_dict.values())))
-#        total_flux_pseudo_complex=numpy.mean(list(total_flux_dict.values()))
         total_flux_pseudo_complex=sum(total_flux_dict.values())
         # 5.5 ...#
         flux_direction=numpy.nan
