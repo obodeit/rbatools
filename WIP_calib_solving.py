@@ -2,14 +2,16 @@ import pandas
 from rbatools.rba_session import SessionRBA
 from rbatools.calibration_utils import *
 
+#conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03', 'Mean_01']
 conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03']
+#conditions = ['Hackett_C005', 'Mean_01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03']
 #conditions = ['Hackett_C005','Hackett_C03']
 #conditions = ['Hackett_N005', 'Hackett_N01', 'Hackett_N016', 'Hackett_N03']
 #conditions = ['Hackett_P005', 'Hackett_P01', 'Hackett_P016', 'Hackett_P022']
 #conditions = ['0102_mean', '0152_mean', '0214_mean', '0254_mean', '0284_mean', '0334_mean', '0379_mean']
 
 
-Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim.csv', sep=';', decimal=',', index_col=0)
+Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim_Frick_fluxes.csv', sep=';', decimal=',', index_col=0)
 #Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nielsen.csv', sep=';', decimal=',', index_col=0)
 
 default_kapps_from_calibration=pandas.read_csv("../default_kapps_refactored_WF.csv",index_col=0)
@@ -20,9 +22,9 @@ compartment_sizes_from_calibration = pandas.read_csv("../compartment_sizes_refac
 
 growth_rates={condition:growth_rate_from_input(input=Input_Data, condition=condition) for condition in conditions}
 
-regressed_specific_kapps=regression_on_specific_enzyme_efficiencies(Spec_Kapps=specific_kapps_from_calibration.copy(),min_kapp=360,max_kapp=360000000,conditions=conditions,growth_rates=growth_rates,impose_on_isoenzymes=False,monotonous_quadratic=True,fill_in_missing_conditions=True)
-regressed_default_kapps=regression_on_default_enzyme_efficiencies(default_kapps=default_kapps_from_calibration.copy(),min_kapp=360,max_kapp=360000000,conditions=conditions,growth_rates=growth_rates,monotonous_quadratic=True)
-regressed_process_efficiencies=regression_on_process_efficiencies(Process_efficiencies=process_efficiencies_from_calibration.copy(),min_efficiency=360,max_efficiency=360000000,conditions=conditions,growth_rates=growth_rates,monotonous_quadratic=True)
+regressed_specific_kapps=regression_on_specific_enzyme_efficiencies(Spec_Kapps=specific_kapps_from_calibration.copy(),min_kapp=360,max_kapp=360000000,conditions=conditions,growth_rates=growth_rates,impose_on_isoenzymes=False,monotonous_quadratic=True,fill_in_missing_conditions=True,permit_quadratic_model=True)
+regressed_default_kapps=regression_on_default_enzyme_efficiencies(default_kapps=default_kapps_from_calibration.copy(),min_kapp=360,max_kapp=360000000,conditions=conditions,growth_rates=growth_rates,monotonous_quadratic=True,permit_quadratic_model=True)
+regressed_process_efficiencies=regression_on_process_efficiencies(Process_efficiencies=process_efficiencies_from_calibration.copy(),min_efficiency=360,max_efficiency=360000000,conditions=conditions,growth_rates=growth_rates,monotonous_quadratic=True,permit_quadratic_model=True)
 
 regressed_specific_kapps.to_csv("spec_kapp_reg.csv")
 regressed_default_kapps.to_csv("def_kapp_reg.csv")
@@ -34,7 +36,8 @@ plot_specific_enzyme_efficiencies(point_calibration_kapps=specific_kapps_from_ca
                     growth_rates=growth_rates,
                     filename="Specific_Kapp_Plots_sim.pdf")
 
-Simulation = SessionRBA('../Yeast_iMM904_RBA_model')
+#Simulation = SessionRBA('../Yeast_iMM904_RBA_model')
+Simulation = SessionRBA('../Yeast_models/Yeast_iMM904_RBA_model')
 #Simulation = SessionRBA('../Yeast_iMM904_RBA_model_no_BMcompo_targets')
 Simulation.add_exchange_reactions()
 
@@ -45,6 +48,7 @@ functions_to_include_list=["Default_Kapps","Process_Efficiencies"]
 functions_to_include_list=["Compartment_Sizes","PG_Fractions","Default_Kapps","Process_Efficiencies"]
 functions_to_include_list=["PG_Fractions","Default_Kapps","Process_Efficiencies"]
 functions_to_include_list=["Compartment_Sizes","PG_Fractions"]
+functions_to_include_list=[]
 
 list_of_rxns_to_impose=[]
 simulation_results_Js_not_imposed=[]

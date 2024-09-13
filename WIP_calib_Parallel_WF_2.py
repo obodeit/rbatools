@@ -6,7 +6,7 @@ import warnings
 from multiprocessing import Pool , cpu_count
 
 
-def run_calibration_over_conditions(input_dict,n_parallel_processes=None):
+def run_calibration_over_conditions(input_dict,n_parallel_processes=None,regression_on_compartments=False,conditions_for_compartment_regression=None):
     initial_time=time.time()
     growth_rates={condition:growth_rate_from_input(input=input_dict["definition_file"], condition=condition) for condition in input_dict["conditions"]}
     input_dict["preliminary_run"]=True
@@ -24,13 +24,30 @@ def run_calibration_over_conditions(input_dict,n_parallel_processes=None):
 
     compartment_sizes_from_calibration_1=extract_compartment_sizes_from_calibration_outputs(calibration_outputs=calibration_results_1)
     pg_fractions_from_calibration_1=extract_pg_fractions_from_calibration_outputs(calibration_outputs=calibration_results_1)
-    regressed_compartment_sizes_1=regression_on_compartment_sizes(Comp_sizes=compartment_sizes_from_calibration_1,conditions=input_dict["conditions"],growth_rates=growth_rates,monotonous_quadratic=False)
-    regressed_pg_fractions_1=regression_on_pg_fractions(PG_sizes=pg_fractions_from_calibration_1,conditions=input_dict["conditions"],growth_rates=growth_rates,monotonous_quadratic=False)
+    if conditions_for_compartment_regression is not None:
+        regressed_compartment_sizes_1=regression_on_compartment_sizes(Comp_sizes=compartment_sizes_from_calibration_1,conditions=conditions_for_compartment_regression,growth_rates=growth_rates,monotonous_quadratic=False)
+        regressed_pg_fractions_1=regression_on_pg_fractions(PG_sizes=pg_fractions_from_calibration_1,conditions=conditions_for_compartment_regression,growth_rates=growth_rates,monotonous_quadratic=False)
+        non_regression_conditions=[i for i in input_dict["conditions"] if i not in conditions_for_compartment_regression]
+        if len(non_regression_conditions)!=0:
+            for i in non_regression_conditions:
+                for comp in regressed_compartment_sizes_1.index:
+                    regressed_compartment_sizes_1.loc[comp,i]=compartment_sizes_from_calibration_1.loc[comp,i]
+                for comp in regressed_pg_fractions_1.index:
+                    regressed_pg_fractions_1.loc[comp,i]=pg_fractions_from_calibration_1.loc[comp,i]
+    else:
+        regressed_compartment_sizes_1=regression_on_compartment_sizes(Comp_sizes=compartment_sizes_from_calibration_1,conditions=input_dict["conditions"],growth_rates=growth_rates,monotonous_quadratic=False)
+        regressed_pg_fractions_1=regression_on_pg_fractions(PG_sizes=pg_fractions_from_calibration_1,conditions=input_dict["conditions"],growth_rates=growth_rates,monotonous_quadratic=False)
 
-    for i in input_dicts_for_conditions:
-        i.update({"Compartment_sizes":regressed_compartment_sizes_1,
-                  "PG_fractions":regressed_pg_fractions_1,
-                  "preliminary_run":False})
+    if regression_on_compartments:
+        for i in input_dicts_for_conditions:
+            i.update({"Compartment_sizes":regressed_compartment_sizes_1,
+                      "PG_fractions":regressed_pg_fractions_1,
+                      "preliminary_run":False})
+    else:
+        for i in input_dicts_for_conditions:
+            i.update({"Compartment_sizes":compartment_sizes_from_calibration_1,
+                    "PG_fractions":pg_fractions_from_calibration_1,
+                    "preliminary_run":False})
 
     if n_parallel_processes is None:
         num_cores=cpu_count()
@@ -62,7 +79,9 @@ def run_calibration_over_conditions(input_dict,n_parallel_processes=None):
 
     corrected_proteomes_DF.to_csv("../Corrected_calibration_proteomes.csv",sep=",",decimal=".")
     regressed_pg_fractions_1.to_csv("../pg_fractions_refactored_WF.csv")
+    pg_fractions_from_calibration_1.to_csv("../pg_fractions_refactored_WF_original_not_regressed.csv")
     regressed_compartment_sizes_1.to_csv("../compartment_sizes_refactored_WF.csv")
+    compartment_sizes_from_calibration_1.to_csv("../compartment_sizes_refactored_WF_original_not_regressed.csv")
     default_kapps_from_calibration.to_csv("../default_kapps_refactored_WF.csv")
     specific_kapps_from_calibration.to_csv("../specific_kapps_refactored_WF.csv")
     process_efficiencies_from_calibration.to_csv("../process_efficiencies_refactored_WF.csv")
@@ -82,7 +101,17 @@ def run_calibration_over_conditions(input_dict,n_parallel_processes=None):
         print("No RSS trajectory")
 
 def calibration(input_dict,print_outputs=True):
-    Simulation = SessionRBA(input_dict["xml_dir"])
+    condition_specific_models={'Hackett_C03':"Yeast_iMM904_RBA_model_C005",
+                               'Hackett_C005':"Yeast_iMM904_RBA_model_C01", 
+                               'Hackett_C022':"Yeast_iMM904_RBA_model_C016", 
+                               'Hackett_C016':"Yeast_iMM904_RBA_model_C022", 
+                               'Hackett_C01':"Yeast_iMM904_RBA_model_C03"}
+    
+    if input_dict["condition_specific_models"]:
+        Simulation = SessionRBA("{}/{}".format(input_dict["xml_dir"],condition_specific_models[input_dict["condition"]]))
+    else:
+        Simulation = SessionRBA("{}/Yeast_iMM904_RBA_model".format(input_dict["xml_dir"]))
+
     Simulation.add_exchange_reactions()
     calib_results = calibration_workflow(proteome=input_dict["proteome"],
                                          condition=input_dict["condition"],
@@ -116,14 +145,24 @@ def generate_input_proteome(fold_changes,
                             matching_column_in_fold_change_data,
                             conditions_in_fold_change_data_to_restore,
                             ID_column_in_restored_data,
-                            full_annotations):
-    restored_relative_Data = infer_copy_numbers_from_reference_copy_numbers(fold_changes=fold_changes,
+                            full_annotations,
+                            reference_condition=None):
+    proteomics_data = infer_copy_numbers_from_reference_copy_numbers(fold_changes=fold_changes,
                                                                         absolute_data=absolute_data,
                                                                         matching_column_in_fold_change_data=matching_column_in_fold_change_data,
                                                                         matching_column_in_absolute_data=matching_column_in_absolute_data,
                                                                         conditions_in_fold_change_data_to_restore=conditions_in_fold_change_data_to_restore)
-    restored_relative_Data_with_annotations= add_annotations_to_proteome(input=restored_relative_Data, ID_column=ID_column_in_restored_data, annotations=full_annotations)
-    return(restored_relative_Data_with_annotations)
+
+    if reference_condition is not None:
+        if reference_condition in list(absolute_data.columns):
+            for gene in absolute_data["Gene"]:
+                if gene not in proteomics_data["ID"]:
+                    proteomics_data.loc[gene,"ID"]=gene
+                xxx=absolute_data.loc[absolute_data["Gene"]==gene,reference_condition]
+                proteomics_data.loc[proteomics_data["ID"]==gene,reference_condition]=xxx
+
+    proteomics_data_with_annotations= add_annotations_to_proteome(input=proteomics_data, ID_column=ID_column_in_restored_data, annotations=full_annotations)
+    return(proteomics_data_with_annotations)
 
 def build_full_annotations(rba_session,
                            model_ribosomal_processes,
@@ -142,18 +181,18 @@ def build_full_annotations(rba_session,
     full_annotations = build_full_annotations_from_dataset_annotations(annotations_list=[annotations_Absolute, annotations_Relative])
     return(full_annotations)
 
-def main(conditions,n_parallel_processes=None):
+def main(conditions,n_parallel_processes=None,regression_on_compartments=False,specific_models=False,conditions_for_compartment_regression=None):
 #    Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim.csv', sep=';', decimal=',', index_col=0)
     Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim_Frick_fluxes.csv', sep=';', decimal=',', index_col=0)
     Process_Efficiency_Estimation_Input = pandas.read_csv('../DataSetsYeastRBACalibration/Process_Efficiency_Estimation_Input.csv', sep=';', decimal=',')
-    Uniprot = pandas.read_csv('../Yeast_iMM904_RBA_model/uniprot.csv', sep='\t')
+    Uniprot = pandas.read_csv('../Yeast_models/Yeast_iMM904_RBA_model/uniprot.csv', sep='\t')
     Compartment_Annotations_external = pandas.read_csv('../DataSetsYeastRBACalibration/Manually_curated_Protein_Locations_for_Calibration.csv', index_col=None, sep=';')
     Ribosomal_Proteins_Uniprot = pandas.read_csv('../DataSetsYeastRBACalibration/uniprot_ribosomal_proteins.csv', index_col=None, sep=';')
 
     Hackett_Clim_FCs = pandas.read_csv('../DataSetsYeastRBACalibration/Hacket_ProteinFCs.csv',sep=";")
     Nielsen_01 = pandas.read_csv('../DataSetsYeastRBACalibration/Nielsen01_ProteomicsData.csv',sep=";",index_col=0)
 
-    Simulation = SessionRBA('../Yeast_iMM904_RBA_model')
+    Simulation = SessionRBA('../Yeast_models/Yeast_iMM904_RBA_model')
 
     picogram_togram_coefficient = 1e12
     Reference_Condition='Mean_01'
@@ -166,22 +205,33 @@ def main(conditions,n_parallel_processes=None):
                         protein_ID_column='Gene',
                         Uniprot=Uniprot,
                         Relative_Proteome=Hackett_Clim_FCs)
+    
+    full_annotations.to_csv("../full_annot.csv")
 
     Nielsen_01[Reference_Condition] *= picogram_togram_coefficient
-    restored_Hackett_Data=generate_input_proteome(fold_changes=Hackett_Clim_FCs,
+
+    if Reference_Condition in conditions:
+        reference_condition_for_input_proteome=Reference_Condition
+    else:
+        reference_condition_for_input_proteome=None
+
+    proteomics_data=generate_input_proteome(fold_changes=Hackett_Clim_FCs,
                                                 absolute_data=Nielsen_01.loc[pandas.isna(Nielsen_01[Reference_Condition]) == False],
                                                 matching_column_in_absolute_data=Reference_Condition,
                                                 matching_column_in_fold_change_data='Hackett_C01',
                                                 conditions_in_fold_change_data_to_restore=conditions,
                                                 ID_column_in_restored_data='ID',
-                                                full_annotations=full_annotations)
+                                                full_annotations=full_annotations,
+                                                reference_condition=reference_condition_for_input_proteome)
 
-    restored_Hackett_Data.to_csv("../origRestoredProteome.csv")
+    proteomics_data.to_csv("../original_proteomes_for_calibration.csv")
 
     input_dict={}
+
+    input_dict["condition_specific_models"]=specific_models
     input_dict["conditions"]=conditions
-    input_dict["xml_dir"]='../Yeast_iMM904_RBA_model'
-    input_dict["proteome"]=restored_Hackett_Data
+    input_dict["xml_dir"]='../Yeast_models'
+    input_dict["proteome"]=proteomics_data
     input_dict["definition_file"]=Input_Data
     input_dict["process_efficiency_estimation_input"]=Process_Efficiency_Estimation_Input
     input_dict["Compartment_sizes"]=None
@@ -198,7 +248,9 @@ def main(conditions,n_parallel_processes=None):
     #input_dict["Process_efficiencies"]=process_efficiencies_imported
 
     run_calibration_over_conditions(input_dict=input_dict,
-                                    n_parallel_processes=n_parallel_processes)
+                                    n_parallel_processes=n_parallel_processes,
+                                    regression_on_compartments=regression_on_compartments,
+                                    conditions_for_compartment_regression=conditions_for_compartment_regression)
 
 if __name__ == "__main__":
     warnings.simplefilter('ignore', UserWarning)
@@ -206,9 +258,12 @@ if __name__ == "__main__":
     warnings.simplefilter('ignore', RuntimeWarning)
     #warnings.simplefilter('ignore', SettingWithCopyWarning)
     main(n_parallel_processes=5,
-        #conditions = ['Hackett_C01']
-        conditions = ['Hackett_C03','Hackett_C005', 'Hackett_C022', 'Hackett_C016', 'Hackett_C01']
-        #conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03']
-        #conditions = ['Hackett_N005', 'Hackett_N01', 'Hackett_N016', 'Hackett_N03']
-        #conditions = ['Hackett_P005', 'Hackett_P01', 'Hackett_P016', 'Hackett_P022']
+        regression_on_compartments=True,
+        specific_models=False,
+        #conditions = ['Hackett_C01','Mean_01'],
+        #conditions = ['Hackett_C03','Hackett_C005', 'Hackett_C022', 'Hackett_C016', 'Hackett_C01','Mean_01'],
+        conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
+        #conditions = ['Hackett_N005', 'Hackett_N01', 'Hackett_N016', 'Hackett_N03'],
+        #conditions = ['Hackett_P005', 'Hackett_P01', 'Hackett_P016', 'Hackett_P022'],
+        conditions_for_compartment_regression=['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03']
         )

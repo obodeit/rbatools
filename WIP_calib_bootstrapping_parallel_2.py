@@ -40,10 +40,17 @@ def run_calibration_over_conditions_for_bootstrapping_run(input_dict_for_run):
     regressed_compartment_sizes_1=regression_on_compartment_sizes(Comp_sizes=compartment_sizes_from_calibration_1,conditions=input_dict["conditions"],growth_rates=growth_rates,monotonous_quadratic=False)
     regressed_pg_fractions_1=regression_on_pg_fractions(PG_sizes=pg_fractions_from_calibration_1,conditions=input_dict["conditions"],growth_rates=growth_rates,monotonous_quadratic=False)
 
-    for i in input_dicts_for_conditions:
-        i.update({"Compartment_sizes":regressed_compartment_sizes_1,
-                  "PG_fractions":regressed_pg_fractions_1,
-                  "preliminary_run":False})
+    if input_dict_for_run["regression_on_compartments"]:
+        for i in input_dicts_for_conditions:
+            i.update({"Compartment_sizes":regressed_compartment_sizes_1,
+                    "PG_fractions":regressed_pg_fractions_1,
+                    "preliminary_run":False})
+    else:
+        for i in input_dicts_for_conditions:
+            i.update({"Compartment_sizes":compartment_sizes_from_calibration_1,
+                    "PG_fractions":pg_fractions_from_calibration_1,
+                    "preliminary_run":False})
+
 
     calib_dicts_2=[]
     for i in input_dicts_for_conditions:
@@ -53,7 +60,7 @@ def run_calibration_over_conditions_for_bootstrapping_run(input_dict_for_run):
     for condition in input_dict["conditions"]:
         for calib_results in calib_dicts_2:
             if condition in list(calib_results.keys()):
-                [condition]
+                #[condition]
                 proteome_corrected={i:calib_results[condition]["Proteome"].loc[i,"copy_number"] for i in calib_results[condition]["Proteome"].index}
                 proteome_input={i:input_dict["proteome"].loc[i,condition] for i in input_dict["proteome"].index}
                 densities={i:round(calib_results[condition]["Densities_PGs"].loc[i,"Density"],6) for i in calib_results[condition]["Densities_PGs"].index}
@@ -130,7 +137,7 @@ def build_full_annotations(rba_session,
     full_annotations = build_full_annotations_from_dataset_annotations(annotations_list=[annotations_Absolute, annotations_Relative])
     return(full_annotations)
 
-def main(conditions,number_samples,n_parallel_processes=None,chunk_size=1,import_initial_parameters=False):
+def main(conditions,number_samples,n_parallel_processes=None,chunk_size=1,import_initial_parameters=False,regression_on_compartments=True):
     ###prep
     Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim_Frick_fluxes.csv', sep=';', decimal=',', index_col=0)
     Process_Efficiency_Estimation_Input = pandas.read_csv('../DataSetsYeastRBACalibration/Process_Efficiency_Estimation_Input.csv', sep=';', decimal=',')
@@ -216,7 +223,8 @@ def main(conditions,number_samples,n_parallel_processes=None,chunk_size=1,import
                                     "conditions":conditions,
                                     "Process_efficiencies":process_efficiencies_imported,
                                     "Specific_kapps":specific_kapps_imported,
-                                    "Default_kapps":default_kapps_imported
+                                    "Default_kapps":default_kapps_imported,
+                                    "regression_on_compartments":regression_on_compartments
                                     }})
 
         ###calibrate each run
@@ -230,7 +238,7 @@ def main(conditions,number_samples,n_parallel_processes=None,chunk_size=1,import
             bootstrapping_runs=pool.imap_unordered(run_calibration_over_conditions_for_bootstrapping_run,input_dicts)
         else:
             bootstrapping_runs=[run_calibration_over_conditions_for_bootstrapping_run(input_dict) for input_dict in input_dicts]
-        print(bootstrapping_runs)
+        #print(bootstrapping_runs)
         ###generate output
         if count==0:
             Reconstructed_Proteomes={condition:pandas.DataFrame() for condition in conditions}
@@ -333,8 +341,9 @@ if __name__ == "__main__":
     t0=time.time()
     main(n_parallel_processes=None,
          #conditions = ['Hackett_C01'],
-         conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
-         number_samples=30,
+         conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03',],
+         number_samples=23,
          chunk_size=8,
-         import_initial_parameters=True)
+         import_initial_parameters=False,
+         regression_on_compartments=False)
     print("Total time: {}".format(time.time()-t0))

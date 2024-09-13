@@ -163,12 +163,12 @@ def infer_copy_numbers_from_reference_copy_numbers(fold_changes, absolute_data, 
             if not pandas.isna(FoldChange_match):
                 if not pandas.isna(CopyNumber_match):
                     out.loc[i, 'ID'] = i
-                    out.loc[i, 'Absolute_Reference'] = CopyNumber_match/(2**FoldChange_match)
+                    out.loc[i, 'Absolute_Reference_restored'] = CopyNumber_match/(2**FoldChange_match)
     for gene in list(out['ID']):
-        Abs_Ref = out.loc[gene, 'Absolute_Reference']
+        Abs_Ref = out.loc[gene, 'Absolute_Reference_restored']
         for condition in conditions_in_fold_change_data_to_restore:
-            out.loc[gene, condition] = Abs_Ref * \
-                (2**fold_changes.loc[fold_changes['Gene'] == gene, condition].values[0])
+            if condition in list(fold_changes.columns):
+                out.loc[gene, condition] = Abs_Ref * (2**fold_changes.loc[fold_changes['Gene'] == gene, condition].values[0])
     return(out)
 
 
@@ -3135,7 +3135,7 @@ def calculate_rss(y_predicted,y_measured):
         return(None)
 
 
-def do_regression(x_to_fit,y_to_fit,x_to_plot,max_val,min_val,monotonous_quadratic=False,total_x_range=(0,1)):
+def do_regression(x_to_fit,y_to_fit,x_to_plot,max_val,min_val,monotonous_quadratic=False,total_x_range=(0,1),permit_quadratic_model=True):
     #y_max=min([max(y_to_fit),max_val])
     #y_min=max([min(y_to_fit),min_val])
     y_max=max_val
@@ -3149,44 +3149,46 @@ def do_regression(x_to_fit,y_to_fit,x_to_plot,max_val,min_val,monotonous_quadrat
         lin_regression_results={"X_max":None,"X_min":None,"Y_max":round(y_max,5),"Y_min":round(y_min,5),"A":round(popt_lin[0],5),"B":round(popt_lin[1],5)}
     except:
         lin_regression_results={"X_max":None,"X_min":None,"Y_max":round(y_max,5),"Y_min":round(y_min,5),"A":0,"B":round(numpy.mean(y_to_fit),5)}
-    try:
-        popt_quad, pcov_quad = curve_fit(quadratic_function, xdata=x_to_fit, ydata=y_to_fit)
-        quad_regression_results={"X_max":None,"X_min":None,"Y_max":round(y_max,5),"Y_min":round(y_min,5),"A":round(popt_quad[0],5),"B":round(popt_quad[1],5),"C":round(popt_quad[2],5)}
-        if quad_regression_results["A"]!=0:
-            if monotonous_quadratic:
-                extremum_x= -0.5*quad_regression_results["B"]/quad_regression_results["A"]
-                if extremum_x > x_min:
-                    if extremum_x < x_max:
-                        test_params_extremum_is_xmax=quad_regression_results.copy()
-                        test_params_extremum_is_xmax["X_max"]=extremum_x
-                        test_params_extremum_is_xmin=quad_regression_results.copy()
-                        test_params_extremum_is_xmin["X_min"]=extremum_x
-                        try:
-                            predictions_extremum_is_xmax=quad_predictions(params=test_params_extremum_is_xmax,x_to_fit=x_to_fit)
-                            RSS_extremum_is_xmax=calculate_rss(y_predicted=predictions_extremum_is_xmax,y_measured=y_to_fit)
-                        except:
-                            RSS_extremum_is_xmax=None
-                        try:
-                            predictions_extremum_is_xmin=quad_predictions(params=test_params_extremum_is_xmin,x_to_fit=x_to_fit)
-                            RSS_extremum_is_xmin=calculate_rss(y_predicted=predictions_extremum_is_xmin,y_measured=y_to_fit)
-                        except:
-                            RSS_extremum_is_xmin=None
-                        if RSS_extremum_is_xmax is not None:
-                            if RSS_extremum_is_xmin is not None:
-                                if RSS_extremum_is_xmin > RSS_extremum_is_xmax:
-                                    quad_regression_results=test_params_extremum_is_xmax
+    if permit_quadratic_model:
+        try:
+            popt_quad, pcov_quad = curve_fit(quadratic_function, xdata=x_to_fit, ydata=y_to_fit)
+            quad_regression_results={"X_max":None,"X_min":None,"Y_max":round(y_max,5),"Y_min":round(y_min,5),"A":round(popt_quad[0],5),"B":round(popt_quad[1],5),"C":round(popt_quad[2],5)}
+            if quad_regression_results["A"]!=0:
+                if monotonous_quadratic:
+                    extremum_x= -0.5*quad_regression_results["B"]/quad_regression_results["A"]
+                    if extremum_x > x_min:
+                        if extremum_x < x_max:
+                            test_params_extremum_is_xmax=quad_regression_results.copy()
+                            test_params_extremum_is_xmax["X_max"]=extremum_x
+                            test_params_extremum_is_xmin=quad_regression_results.copy()
+                            test_params_extremum_is_xmin["X_min"]=extremum_x
+                            try:
+                                predictions_extremum_is_xmax=quad_predictions(params=test_params_extremum_is_xmax,x_to_fit=x_to_fit)
+                                RSS_extremum_is_xmax=calculate_rss(y_predicted=predictions_extremum_is_xmax,y_measured=y_to_fit)
+                            except:
+                                RSS_extremum_is_xmax=None
+                            try:
+                                predictions_extremum_is_xmin=quad_predictions(params=test_params_extremum_is_xmin,x_to_fit=x_to_fit)
+                                RSS_extremum_is_xmin=calculate_rss(y_predicted=predictions_extremum_is_xmin,y_measured=y_to_fit)
+                            except:
+                                RSS_extremum_is_xmin=None
+                            if RSS_extremum_is_xmax is not None:
+                                if RSS_extremum_is_xmin is not None:
+                                    if RSS_extremum_is_xmin > RSS_extremum_is_xmax:
+                                        quad_regression_results=test_params_extremum_is_xmax
+                                    else:
+                                        quad_regression_results=test_params_extremum_is_xmin
                                 else:
-                                    quad_regression_results=test_params_extremum_is_xmin
+                                    quad_regression_results=test_params_extremum_is_xmax
                             else:
-                                quad_regression_results=test_params_extremum_is_xmax
-                        else:
-                            if RSS_extremum_is_xmin is not None:
-                                quad_regression_results=test_params_extremum_is_xmin
-        else:
+                                if RSS_extremum_is_xmin is not None:
+                                    quad_regression_results=test_params_extremum_is_xmin
+            else:
+                quad_regression_results=None
+        except:
             quad_regression_results=None
-    except:
+    else:
         quad_regression_results=None
-
     predictions_on_log_model=lin_predictions(params=log_regression_results,x_to_fit=x_to_fit)
     RSS_log=calculate_rss(y_predicted=predictions_on_log_model,y_measured=y_to_fit)
 
@@ -3228,7 +3230,7 @@ def do_regression(x_to_fit,y_to_fit,x_to_plot,max_val,min_val,monotonous_quadrat
     return(out)
 
 
-def regression_on_specific_enzyme_efficiencies(Spec_Kapps,min_kapp,max_kapp,conditions,growth_rates,only_lin=False,impose_on_isoenzymes=True,monotonous_quadratic=False,fill_in_missing_conditions=False):
+def regression_on_specific_enzyme_efficiencies(Spec_Kapps,min_kapp,max_kapp,conditions,growth_rates,only_lin=False,impose_on_isoenzymes=True,monotonous_quadratic=False,fill_in_missing_conditions=False,permit_quadratic_model=True):
     out=pandas.DataFrame(columns=Spec_Kapps.columns)
     for enzyme in Spec_Kapps.index:
         out.loc[enzyme,list(Spec_Kapps.columns)]=Spec_Kapps.loc[enzyme,list(Spec_Kapps.columns)]
@@ -3248,7 +3250,7 @@ def regression_on_specific_enzyme_efficiencies(Spec_Kapps,min_kapp,max_kapp,cond
                     x_s.append(x[i])
         if len(x_s)>1:
             x_to_plot=(numpy.linspace(x_s[0], x_s[-1], 1000))
-            regression_results=do_regression(x_to_fit=x_s,y_to_fit=y_s,x_to_plot=x_to_plot,max_val=max_kapp,min_val=min_kapp,monotonous_quadratic=monotonous_quadratic,total_x_range=(min(x),max(x)))
+            regression_results=do_regression(x_to_fit=x_s,y_to_fit=y_s,x_to_plot=x_to_plot,max_val=max_kapp,min_val=min_kapp,monotonous_quadratic=monotonous_quadratic,total_x_range=(min(x),max(x)),permit_quadratic_model=permit_quadratic_model)
             if regression_results["Type"]=="Quad":
                 if fill_in_missing_conditions:
                     for condition in conditions:
@@ -3288,14 +3290,15 @@ def regression_on_specific_enzyme_efficiencies(Spec_Kapps,min_kapp,max_kapp,cond
     return(out)
 
 
-def regression_on_compartment_sizes(Comp_sizes,conditions,growth_rates,monotonous_quadratic=False):
-    pp = PdfPages('CompSize_Plots_refined3.pdf')
+def regression_on_compartment_sizes(Comp_sizes,conditions,growth_rates,monotonous_quadratic=False,permit_quadratic_model=True,plotting=True):
+    if plotting:
+        pp = PdfPages('CompSize_Plots_refined3.pdf')
     out=pandas.DataFrame()
     for comp in Comp_sizes.index:
         x=[growth_rates[i] for i in conditions]
         y=list(Comp_sizes.loc[comp,conditions])
         x_to_plot=(numpy.linspace(x[0], x[-1], 1000))
-        regression_results=do_regression(x_to_fit=x,y_to_fit=y,x_to_plot=x_to_plot,max_val=1,min_val=0,monotonous_quadratic=monotonous_quadratic,total_x_range=(0,1))
+        regression_results=do_regression(x_to_fit=x,y_to_fit=y,x_to_plot=x_to_plot,max_val=1,min_val=0,monotonous_quadratic=monotonous_quadratic,total_x_range=(0,1),permit_quadratic_model=permit_quadratic_model)
         if regression_results["Type"]=="Quad":
             color="orange"
             predictions_for_plot=quad_predictions(params=regression_results["Parameters"],x_to_fit=x_to_plot)
@@ -3307,16 +3310,17 @@ def regression_on_compartment_sizes(Comp_sizes,conditions,growth_rates,monotonou
                 color="green"
             predictions_for_plot=lin_predictions(params=regression_results["Parameters"],x_to_fit=x_to_plot)
             predictions_for_file=lin_predictions(params=regression_results["Parameters"],x_to_fit=x)
-        fig = plt.figure(figsize=(10,5))
-        plt.scatter(x,y)
-        plt.plot(x_to_plot,predictions_for_plot,color=color)
-        #plt.plot(x_to_plot,[regression_results["Parameters"]["Y_min"]]*len(x_to_plot),color="black")
-        #plt.plot(x_to_plot,[regression_results["Parameters"]["Y_max"]]*len(x_to_plot),color="black")
-        #plt.ylim(ymin=0*min_kapp)
-        plt.title(comp)
-        plt.xlabel(json.dumps(regression_results["Parameters"]))
-        pp.savefig(fig)
-        plt.close()
+        if plotting:
+            fig = plt.figure(figsize=(10,5))
+            plt.scatter(x,y)
+            plt.plot(x_to_plot,predictions_for_plot,color=color)
+            #plt.plot(x_to_plot,[regression_results["Parameters"]["Y_min"]]*len(x_to_plot),color="black")
+            #plt.plot(x_to_plot,[regression_results["Parameters"]["Y_max"]]*len(x_to_plot),color="black")
+            #plt.ylim(ymin=0*min_kapp)
+            plt.title(comp)
+            plt.xlabel(json.dumps(regression_results["Parameters"]))
+            pp.savefig(fig)
+            plt.close()
         out.loc[comp,conditions]=predictions_for_file
         if regression_results["Parameters"]["A"]!=0:
             if "C" in regression_results["Parameters"].keys():
@@ -3325,19 +3329,21 @@ def regression_on_compartment_sizes(Comp_sizes,conditions,growth_rates,monotonou
                 out.loc[comp,"Model"]=json.dumps({"linear":regression_results["Parameters"]})
         else:
             out.loc[comp,"Model"]=json.dumps({"constant":{'CONSTANT':regression_results["Parameters"]["B"]}})
-    pp.close()
+    if plotting:
+        pp.close()
     return(out)
 
 
-def regression_on_pg_fractions(PG_sizes,conditions,growth_rates,monotonous_quadratic=False):
-    pp = PdfPages('PGfraction_Plots_refined3.pdf')
+def regression_on_pg_fractions(PG_sizes,conditions,growth_rates,monotonous_quadratic=False,permit_quadratic_model=True,plotting=True):
+    if plotting:
+        pp = PdfPages('PGfraction_Plots_refined3.pdf')
     out=pandas.DataFrame()
     for comp in PG_sizes.index:
         x=[growth_rates[i]for i in conditions]
         y=list(PG_sizes.loc[comp,conditions])
 
         x_to_plot=(numpy.linspace(x[0], x[-1], 1000))
-        regression_results=do_regression(x_to_fit=x,y_to_fit=y,x_to_plot=x_to_plot,max_val=1,min_val=0,monotonous_quadratic=monotonous_quadratic,total_x_range=(0,1))
+        regression_results=do_regression(x_to_fit=x,y_to_fit=y,x_to_plot=x_to_plot,max_val=1,min_val=0,monotonous_quadratic=monotonous_quadratic,total_x_range=(0,1),permit_quadratic_model=permit_quadratic_model)
         if regression_results["Type"]=="Quad":
             color="orange"
             predictions_for_plot=quad_predictions(params=regression_results["Parameters"],x_to_fit=x_to_plot)
@@ -3349,16 +3355,17 @@ def regression_on_pg_fractions(PG_sizes,conditions,growth_rates,monotonous_quadr
                 color="green"
             predictions_for_plot=lin_predictions(params=regression_results["Parameters"],x_to_fit=x_to_plot)
             predictions_for_file=lin_predictions(params=regression_results["Parameters"],x_to_fit=x)
-        fig = plt.figure(figsize=(10,5))
-        plt.scatter(x,y)
-        plt.plot(x_to_plot,predictions_for_plot,color=color)
-        #plt.plot(x_to_plot,[regression_results["Parameters"]["Y_min"]]*len(x_to_plot),color="black")
-        #plt.plot(x_to_plot,[regression_results["Parameters"]["Y_max"]]*len(x_to_plot),color="black")
-        #plt.ylim(ymin=0*min_kapp)
-        plt.title(comp)
-        plt.xlabel(json.dumps(regression_results["Parameters"]))
-        pp.savefig(fig)
-        plt.close()
+        if plotting:
+            fig = plt.figure(figsize=(10,5))
+            plt.scatter(x,y)
+            plt.plot(x_to_plot,predictions_for_plot,color=color)
+            #plt.plot(x_to_plot,[regression_results["Parameters"]["Y_min"]]*len(x_to_plot),color="black")
+            #plt.plot(x_to_plot,[regression_results["Parameters"]["Y_max"]]*len(x_to_plot),color="black")
+            #plt.ylim(ymin=0*min_kapp)
+            plt.title(comp)
+            plt.xlabel(json.dumps(regression_results["Parameters"]))
+            pp.savefig(fig)
+            plt.close()
         out.loc[comp,conditions]=predictions_for_file
         if regression_results["Parameters"]["A"]!=0:
             if "C" in regression_results["Parameters"].keys():
@@ -3367,11 +3374,12 @@ def regression_on_pg_fractions(PG_sizes,conditions,growth_rates,monotonous_quadr
                 out.loc[comp,"Model"]=json.dumps({"linear":regression_results["Parameters"]})
         else:
             out.loc[comp,"Model"]=json.dumps({"constant":{'CONSTANT':regression_results["Parameters"]["B"]}})
-    pp.close()
+    if plotting:
+        pp.close()
     return(out)
 
 
-def regression_on_process_efficiencies(Process_efficiencies,min_efficiency,max_efficiency,conditions,growth_rates,monotonous_quadratic=False):
+def regression_on_process_efficiencies(Process_efficiencies,min_efficiency,max_efficiency,conditions,growth_rates,monotonous_quadratic=False,permit_quadratic_model=True):
     pp = PdfPages('ProcessEfficiencies_Plots_refined3.pdf')
     out=pandas.DataFrame()
     for process in Process_efficiencies.index:
@@ -3379,7 +3387,7 @@ def regression_on_process_efficiencies(Process_efficiencies,min_efficiency,max_e
         y=list(Process_efficiencies.loc[process,conditions])
 
         x_to_plot=(numpy.linspace(x[0], x[-1], 1000))
-        regression_results=do_regression(x_to_fit=x,y_to_fit=y,x_to_plot=x_to_plot,max_val=max_efficiency,min_val=min_efficiency,monotonous_quadratic=monotonous_quadratic,total_x_range=(min(x),max(x)))
+        regression_results=do_regression(x_to_fit=x,y_to_fit=y,x_to_plot=x_to_plot,max_val=max_efficiency,min_val=min_efficiency,monotonous_quadratic=monotonous_quadratic,total_x_range=(min(x),max(x)),permit_quadratic_model=permit_quadratic_model)
         if regression_results["Type"]=="Quad":
             color="orange"
             predictions_for_plot=quad_predictions(params=regression_results["Parameters"],x_to_fit=x_to_plot)
@@ -3413,14 +3421,14 @@ def regression_on_process_efficiencies(Process_efficiencies,min_efficiency,max_e
     return(out)
 
 
-def regression_on_default_enzyme_efficiencies(default_kapps,min_kapp,max_kapp,conditions,growth_rates,monotonous_quadratic=False):
+def regression_on_default_enzyme_efficiencies(default_kapps,min_kapp,max_kapp,conditions,growth_rates,monotonous_quadratic=False,permit_quadratic_model=True):
     pp = PdfPages('DefKapp_Plots_refined3.pdf')
     out=pandas.DataFrame()
     x=[growth_rates[i]for i in conditions]
     y=list(default_kapps.loc[conditions,"Default Kapp"])
 
     x_to_plot=(numpy.linspace(x[0], x[-1], 1000))
-    regression_results=do_regression(x_to_fit=x,y_to_fit=y,x_to_plot=x_to_plot,max_val=max_kapp,min_val=min_kapp,monotonous_quadratic=monotonous_quadratic,total_x_range=(min(x),max(x)))
+    regression_results=do_regression(x_to_fit=x,y_to_fit=y,x_to_plot=x_to_plot,max_val=max_kapp,min_val=min_kapp,monotonous_quadratic=monotonous_quadratic,total_x_range=(min(x),max(x)),permit_quadratic_model=permit_quadratic_model)
     if regression_results["Type"]=="Quad":
         color="orange"
         predictions_for_plot=quad_predictions(params=regression_results["Parameters"],x_to_fit=x_to_plot)
@@ -4721,7 +4729,7 @@ def efficiency_correction(enzyme_efficiencies,
                 process_efficiencies_out.loc[process,"Value"]=new_efficiency
 
 #    return({"sum_of_squared_residuals":sum(squared_residuals),"enzyme_efficiencies":enzyme_efficiencies_out,"process_efficiencies":process_efficiencies_out,"process_efficiency_correction_factors":process_correction_coefficients,"enzyme_efficiency_correction_factors":enzyme_correction_coefficients})
-    return({"Sum_of_squared_residuals":sum(squared_residuals),"Kapps":enzyme_efficiencies_out,"ProcessEfficiencies":process_efficiencies_out,"Process_MispredictionFactors":process_correction_coefficients,"Enzyme_MispredictionFactors":enzyme_correction_coefficients})
+    return({"Sum_of_squared_residuals":sum(squared_residuals)/len(squared_residuals),"Kapps":enzyme_efficiencies_out,"ProcessEfficiencies":process_efficiencies_out,"Process_MispredictionFactors":process_correction_coefficients,"Enzyme_MispredictionFactors":enzyme_correction_coefficients})
 
 
 def extract_proteomes_from_calibration_results(calib_results):
@@ -6159,6 +6167,7 @@ def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,condi
     number_conditions=len(conditions)
     fig, axs = plt.subplots(plot_dimensions[number_conditions][0], plot_dimensions[number_conditions][1], figsize=(28, 7), sharex=True)
     condition_count=0
+
     for condition in conditions:
         condition_count+=1
         fig_row=plot_indices[condition_count][0]-1
@@ -6166,8 +6175,11 @@ def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,condi
         #protein_comparison=pandas.DataFrame()
         if condition in list(predicted_proteomes.columns):
             if condition in list(measured_proteomes.columns):
-                x=[6.023e20*predicted_proteomes.loc[i,condition] for i in predicted_proteomes.index if i in measured_proteomes.index]
-                y=[6.023e20*measured_proteomes.loc[i,condition] for i in predicted_proteomes.index if i in measured_proteomes.index]
+                respective_measured_proteome=measured_proteomes.loc[pandas.isna(measured_proteomes[condition])==False]
+                respective_predicted_proteome=predicted_proteomes.loc[pandas.isna(predicted_proteomes[condition])==False]
+                x=[6.023e20*respective_predicted_proteome.loc[i,condition] for i in respective_predicted_proteome.index if i in respective_measured_proteome.index]
+                y=[6.023e20*respective_measured_proteome.loc[i,condition] for i in respective_predicted_proteome.index if i in respective_measured_proteome.index]
+
                 regression_results=do_linear_regression_on_proteome_prediction(x=x,
                                                                                y=y,
                                                                                fit_intercept=False)
@@ -6496,8 +6508,24 @@ def determine_calibration_flux_distribution(rba_session,
                                             condition=None,
                                             use_bm_flux_of_one=False
                                             ):
+    
+    #print(compartment_densities_and_pg)
+    """
+    n_sec_replacement_coeff=0.5
+    for comp in list(compartment_densities_and_pg['Compartment_ID']):
+        sum_n_sec=0
+        if comp in ["n","Secreted"]:
+            sum_n_sec+=compartment_densities_and_pg.loc[compartment_densities_and_pg['Compartment_ID'] == comp, 'Density'].values[0]
+            rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = (1-n_sec_replacement_coeff)*compartment_densities_and_pg.loc[compartment_densities_and_pg['Compartment_ID'] == comp, 'Density'].values[0]
+            rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = 0.0
+    for comp in list(compartment_densities_and_pg['Compartment_ID']):
+        if comp not in ["n","Secreted"]:
+            rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value =  ((1-((1-n_sec_replacement_coeff)*sum_n_sec))/(1-sum_n_sec)) * compartment_densities_and_pg.loc[compartment_densities_and_pg['Compartment_ID'] == comp, 'Density'].values[0]
+            rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = 0.0
+    """
     for comp in list(compartment_densities_and_pg['Compartment_ID']):
         rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_pg.loc[compartment_densities_and_pg['Compartment_ID'] == comp, 'Density'].values[0]
+        rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = 0.0
 
     rba_session.rebuild_from_model()
     rba_session.set_medium(rba_session.Medium)
@@ -6524,7 +6552,8 @@ def determine_calibration_flux_distribution(rba_session,
         derive_bm_from_rbasolution=False
         derive_bm_from_targets=True
         original_medium = copy.deepcopy(rba_session.Medium)
-        #rba_session.set_medium({i:100.0 for i in original_medium.keys()})
+        #print(original_medium)
+        rba_session.set_medium({i:100.0 for i in original_medium.keys()})
         original_density_constraint_signs=rba_session.Problem.get_constraint_types(constraints=[i for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names])
         rba_session.Problem.set_constraint_types({i:"E" for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names})
         solved=rba_session.solve()
@@ -7020,6 +7049,7 @@ def inject_process_capacities(rba_session, process_efficiencies, round_to_digits
     """
     for i in process_efficiencies.index:
         if numpy.isfinite(process_efficiencies.loc[i, 'Value']):
+            #print(process_efficiencies.loc[i, :])
             val = round(process_efficiencies.loc[i, 'Value'], round_to_digits)
             if val >= min_value:
                 if process_efficiencies.loc[i, 'Process'] in rba_session.model.processes.processes._elements_by_id.keys():
