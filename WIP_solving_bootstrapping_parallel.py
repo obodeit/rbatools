@@ -1,6 +1,11 @@
 import pandas
 from rbatools.rba_session import SessionRBA
 from rbatools.calibration_utils import *
+from rbatools.bootstrapping_utils import *
+from rbatools.rba_xml_utils import *
+from rbatools.regression_utils import *
+from rbatools.plotting_analysis_utils import *
+from rbatools.other_utils import *
 import time
 from multiprocessing import Pool , cpu_count
 from joblib import Parallel, delayed

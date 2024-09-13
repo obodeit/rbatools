@@ -1,6 +1,11 @@
 import pandas
 from rbatools.rba_session import SessionRBA
 from rbatools.calibration_utils import *
+from rbatools.bootstrapping_utils import *
+from rbatools.rba_xml_utils import *
+from rbatools.regression_utils import *
+from rbatools.plotting_analysis_utils import *
+from rbatools.other_utils import *
 
 #conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03', 'Mean_01']
 conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03']

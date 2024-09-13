@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from sklearn.linear_model import LinearRegression
 
+from rbatools.regression_utils import  do_regression , lin_predictions , quad_predictions
+
 
 def extract_feasible_bounds(inputs=[],feasible_range_object='FeasibleRange_prok', variable='',bound_type="Min"):
     out = []
@@ -887,6 +889,7 @@ def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,condi
 
     plt.show()
 
+
 def do_linear_regression_on_proteome_prediction(x,y,fit_intercept):
     x_reg = numpy.reshape(numpy.array(x), (len(x), 1))
     y_reg = numpy.reshape(numpy.array(y), (len(y), 1))
@@ -897,7 +900,6 @@ def do_linear_regression_on_proteome_prediction(x,y,fit_intercept):
             'Prediction':predictions,
             'X_regression':x_reg,
             'Y_regression':y_reg})
-
 
 def regression_on_specific_enzyme_efficiencies(Spec_Kapps,min_kapp,max_kapp,conditions,growth_rates,only_lin=False,impose_on_isoenzymes=True,monotonous_quadratic=False,fill_in_missing_conditions=False,permit_quadratic_model=True):
     out=pandas.DataFrame(columns=Spec_Kapps.columns)
@@ -1120,7 +1122,6 @@ def regression_on_default_enzyme_efficiencies(default_kapps,min_kapp,max_kapp,co
     plt.close()
     out.loc[:,"Default Kapp"]=predictions_for_file
     for cond in conditions:
-        #out.loc[cond,"Default Kapp"]=list(lin_predictions(params=regression_results["Parameters"],x_to_fit=[growth_rates[cond]]))[0]
         out.loc[cond,"ID"]= cond
         out.loc[cond,"Mu"]= growth_rates[cond]
     if regression_results["Parameters"]["A"]!=0:

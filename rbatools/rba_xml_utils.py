@@ -202,7 +202,6 @@ def inject_specific_kapps_as_function(rba_session, specific_kapps, round_to_digi
                                 enz.backward_efficiency = parameter_ID
 
 
-
 def inject_estimated_efficiencies_into_model(rba_session, specific_kapps=None, default_kapps=None, process_efficiencies=None, round_to_digits=2):
     """
     Parameters

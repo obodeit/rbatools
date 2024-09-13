@@ -5,7 +5,9 @@ import time
 import numpy
 import json
 from scipy.stats.mstats import gmean
-import rbatools._auxiliary_functions as _auxiliary_functions
+
+from rbatools.rba_xml_utils import inject_estimated_efficiencies_into_model , inject_estimated_efficiencies_as_functions_into_model
+
 
 def calibration_workflow(proteome,
                          condition,
