@@ -262,7 +262,7 @@ if __name__ == "__main__":
     warnings.simplefilter('ignore', FutureWarning)
     warnings.simplefilter('ignore', RuntimeWarning)
     #warnings.simplefilter('ignore', SettingWithCopyWarning)
-    main(n_parallel_processes=5,
+    main(n_parallel_processes=1,
         regression_on_compartments=True,
         specific_models=False,
         #conditions = ['Hackett_C01','Mean_01'],
