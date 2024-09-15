@@ -7,6 +7,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from sklearn.linear_model import LinearRegression
 
 from rbatools.regression_utils import  do_regression , lin_predictions , quad_predictions
+from rbatools.other_utils import growth_rate_from_input
 
 
 def extract_feasible_bounds(inputs=[],feasible_range_object='FeasibleRange_prok', variable='',bound_type="Min"):
