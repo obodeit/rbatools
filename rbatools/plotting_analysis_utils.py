@@ -784,12 +784,12 @@ def plot_compartment_sizes_and_pg(point_calibration_sizes,point_calibration_pg,r
     out_pdf.close()
 
 
-def plot_rss_trajectory(calibration_outputs):
+def plot_rss_trajectory(filename,calibration_outputs):
     out=pandas.DataFrame()
     for cal_input in calibration_outputs:
         for i in range(len(cal_input["RSS_trajectory"])):
             out.loc[i,cal_input["Condition"]]=cal_input["RSS_trajectory"][i]
-    out.to_csv("RRS_trajectory.csv")
+    out.to_csv(filename)
     n_figs=len(calibration_outputs)
     if n_figs<=3:
         n_rows=2
@@ -961,9 +961,9 @@ def regression_on_specific_enzyme_efficiencies(Spec_Kapps,min_kapp,max_kapp,cond
     return(out)
 
 
-def regression_on_compartment_sizes(Comp_sizes,conditions,growth_rates,monotonous_quadratic=False,permit_quadratic_model=True,plotting=True):
+def regression_on_compartment_sizes(filename,Comp_sizes,conditions,growth_rates,monotonous_quadratic=False,permit_quadratic_model=True,plotting=True):
     if plotting:
-        pp = PdfPages('CompSize_Plots_refined3.pdf')
+        pp = PdfPages(filename)
     out=pandas.DataFrame()
     for comp in Comp_sizes.index:
         x=[growth_rates[i] for i in conditions]
@@ -1005,9 +1005,9 @@ def regression_on_compartment_sizes(Comp_sizes,conditions,growth_rates,monotonou
     return(out)
 
 
-def regression_on_pg_fractions(PG_sizes,conditions,growth_rates,monotonous_quadratic=False,permit_quadratic_model=True,plotting=True):
+def regression_on_pg_fractions(filename,PG_sizes,conditions,growth_rates,monotonous_quadratic=False,permit_quadratic_model=True,plotting=True):
     if plotting:
-        pp = PdfPages('PGfraction_Plots_refined3.pdf')
+        pp = PdfPages(filename)
     out=pandas.DataFrame()
     for comp in PG_sizes.index:
         x=[growth_rates[i]for i in conditions]
@@ -1050,8 +1050,8 @@ def regression_on_pg_fractions(PG_sizes,conditions,growth_rates,monotonous_quadr
     return(out)
 
 
-def regression_on_process_efficiencies(Process_efficiencies,min_efficiency,max_efficiency,conditions,growth_rates,monotonous_quadratic=False,permit_quadratic_model=True):
-    pp = PdfPages('ProcessEfficiencies_Plots_refined3.pdf')
+def regression_on_process_efficiencies(filename,Process_efficiencies,min_efficiency,max_efficiency,conditions,growth_rates,monotonous_quadratic=False,permit_quadratic_model=True):
+    pp = PdfPages(filename)
     out=pandas.DataFrame()
     for process in Process_efficiencies.index:
         x=[growth_rates[i]for i in conditions]
@@ -1092,8 +1092,8 @@ def regression_on_process_efficiencies(Process_efficiencies,min_efficiency,max_e
     return(out)
 
 
-def regression_on_default_enzyme_efficiencies(default_kapps,min_kapp,max_kapp,conditions,growth_rates,monotonous_quadratic=False,permit_quadratic_model=True):
-    pp = PdfPages('DefKapp_Plots_refined3.pdf')
+def regression_on_default_enzyme_efficiencies(filename,default_kapps,min_kapp,max_kapp,conditions,growth_rates,monotonous_quadratic=False,permit_quadratic_model=True):
+    pp = PdfPages(filename)
     out=pandas.DataFrame()
     x=[growth_rates[i]for i in conditions]
     y=list(default_kapps.loc[conditions,"Default Kapp"])

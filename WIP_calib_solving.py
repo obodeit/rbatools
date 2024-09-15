@@ -16,34 +16,34 @@ conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Ha
 #conditions = ['0102_mean', '0152_mean', '0214_mean', '0254_mean', '0284_mean', '0334_mean', '0379_mean']
 
 
-Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim_Frick_fluxes.csv', sep=';', decimal=',', index_col=0)
-#Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nielsen.csv', sep=';', decimal=',', index_col=0)
+Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim_Frick_fluxes.csv', sep=';', decimal=',', index_col=0)
+#Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nielsen.csv', sep=';', decimal=',', index_col=0)
 
-default_kapps_from_calibration=pandas.read_csv("../default_kapps_refactored_WF.csv",index_col=0)
-specific_kapps_from_calibration=pandas.read_csv("../specific_kapps_refactored_WF.csv",index_col=0)
-process_efficiencies_from_calibration=pandas.read_csv("../process_efficiencies_refactored_WF.csv",index_col=0)
-pg_fractions_from_calibration=pandas.read_csv("../pg_fractions_refactored_WF.csv",index_col=0)
-compartment_sizes_from_calibration = pandas.read_csv("../compartment_sizes_refactored_WF.csv",index_col=0)
+default_kapps_from_calibration=pandas.read_csv("../Calibration_stuff/default_kapps_refactored_WF.csv",index_col=0)
+specific_kapps_from_calibration=pandas.read_csv("../Calibration_stuff/specific_kapps_refactored_WF.csv",index_col=0)
+process_efficiencies_from_calibration=pandas.read_csv("../Calibration_stuff/process_efficiencies_refactored_WF.csv",index_col=0)
+pg_fractions_from_calibration=pandas.read_csv("../Calibration_stuff/pg_fractions_refactored_WF.csv",index_col=0)
+compartment_sizes_from_calibration = pandas.read_csv("../Calibration_stuff/compartment_sizes_refactored_WF.csv",index_col=0)
 
 growth_rates={condition:growth_rate_from_input(input=Input_Data, condition=condition) for condition in conditions}
 
 regressed_specific_kapps=regression_on_specific_enzyme_efficiencies(Spec_Kapps=specific_kapps_from_calibration.copy(),min_kapp=360,max_kapp=360000000,conditions=conditions,growth_rates=growth_rates,impose_on_isoenzymes=False,monotonous_quadratic=True,fill_in_missing_conditions=True,permit_quadratic_model=True)
-regressed_default_kapps=regression_on_default_enzyme_efficiencies(default_kapps=default_kapps_from_calibration.copy(),min_kapp=360,max_kapp=360000000,conditions=conditions,growth_rates=growth_rates,monotonous_quadratic=True,permit_quadratic_model=True)
-regressed_process_efficiencies=regression_on_process_efficiencies(Process_efficiencies=process_efficiencies_from_calibration.copy(),min_efficiency=360,max_efficiency=360000000,conditions=conditions,growth_rates=growth_rates,monotonous_quadratic=True,permit_quadratic_model=True)
+regressed_default_kapps=regression_on_default_enzyme_efficiencies(filename='../Calibration_stuff/DefKapp_Plots_refined3.pdf',default_kapps=default_kapps_from_calibration.copy(),min_kapp=360,max_kapp=360000000,conditions=conditions,growth_rates=growth_rates,monotonous_quadratic=True,permit_quadratic_model=True)
+regressed_process_efficiencies=regression_on_process_efficiencies(filename='../Calibration_stuff/ProcessEfficiencies_Plots_refined3.pdf',Process_efficiencies=process_efficiencies_from_calibration.copy(),min_efficiency=360,max_efficiency=360000000,conditions=conditions,growth_rates=growth_rates,monotonous_quadratic=True,permit_quadratic_model=True)
 
-regressed_specific_kapps.to_csv("spec_kapp_reg.csv")
-regressed_default_kapps.to_csv("def_kapp_reg.csv")
-regressed_process_efficiencies.to_csv("proc_eff_reg.csv")
+regressed_specific_kapps.to_csv("../Calibration_stuff/spec_kapp_reg.csv")
+regressed_default_kapps.to_csv("../Calibration_stuff/def_kapp_reg.csv")
+regressed_process_efficiencies.to_csv("../Calibration_stuff/proc_eff_reg.csv")
 
 plot_specific_enzyme_efficiencies(point_calibration_kapps=specific_kapps_from_calibration,
                     regressed_kapps=regressed_specific_kapps,
                     conditions=conditions,
                     growth_rates=growth_rates,
-                    filename="Specific_Kapp_Plots_sim.pdf")
+                    filename="../Calibration_stuff/Calibration_stuffSpecific_Kapp_Plots_sim.pdf")
 
-#Simulation = SessionRBA('../Yeast_iMM904_RBA_model')
-Simulation = SessionRBA('../Yeast_models/Yeast_iMM904_RBA_model')
-#Simulation = SessionRBA('../Yeast_iMM904_RBA_model_no_BMcompo_targets')
+#Simulation = SessionRBA('../Calibration_stuff/Yeast_iMM904_RBA_model')
+Simulation = SessionRBA('../Calibration_stuff/Yeast_models/Yeast_iMM904_RBA_model')
+#Simulation = SessionRBA('../Calibration_stuff/Yeast_iMM904_RBA_model_no_BMcompo_targets')
 Simulation.add_exchange_reactions()
 
 
@@ -101,14 +101,14 @@ for i in simulation_results_Js_not_imposed:
     out.loc["Mu",i["Condition"]]=i["Mu_euk"]
     for comp in i['Euk_CompSizes'].keys():
         out.loc[comp,i["Condition"]]=i['Euk_CompSizes'][comp]
-out.to_csv("../CompSizesPredicted_Euk.csv")
+out.to_csv("../Calibration_stuff/CompSizesPredicted_Euk.csv")
 
 out=pandas.DataFrame()
 for i in simulation_results_Js_not_imposed:
     out.loc["Mu",i["Condition"]]=i["Mu_fixed_pg_euk"]
     for comp in i['Fixed_pg_Euk_CompSizes'].keys():
         out.loc[comp,i["Condition"]]=i['Fixed_pg_Euk_CompSizes'][comp]
-out.to_csv("../CompSizesPredicted_Euk_fixedPG.csv")
+out.to_csv("../Calibration_stuff/CompSizesPredicted_Euk_fixedPG.csv")
 
 simulation_results_Js_imposed=[]
 for condition in conditions:
@@ -162,8 +162,8 @@ for result in simulation_results_Js_not_imposed:
             Max_VA.loc[exchange,"Real_{}".format(result["Condition"])]=result['FeasibleRange_prok'][exchange]["Max"]
     except:
         print("")
-Min_VA.to_csv("../VAmin_mean.csv")
-Max_VA.to_csv("../VAmax_mean.csv")
+Min_VA.to_csv("../Calibration_stuff/VAmin_mean.csv")
+Max_VA.to_csv("../Calibration_stuff/VAmax_mean.csv")
 
 predicted_growth_rates=pandas.DataFrame(columns=conditions)
 predicted_glucose_exchanges=pandas.DataFrame(columns=conditions)
@@ -185,21 +185,21 @@ predicted_acald_exchanges.loc["Mean",:]=extract_predicted_exchange_fluxes(inputs
 predicted_lactate_exchanges.loc["Mean",:]=extract_predicted_exchange_fluxes(inputs=simulation_results_Js_not_imposed,result_object='Simulation_Results', run='Prokaryotic', metabolite='M_lac__D')
 predicted_succinate_exchanges.loc["Mean",:]=extract_predicted_exchange_fluxes(inputs=simulation_results_Js_not_imposed,result_object='Simulation_Results', run='Prokaryotic', metabolite='M_succ')
 
-predicted_growth_rates.to_csv("../Mean_predicted_growth_rates.csv")
-predicted_glucose_exchanges.to_csv("../Mean_predicted_glucose_exchanges.csv")
-predicted_oxygen_exchanges.to_csv("../Mean_predicted_oxygen_exchanges.csv")
-predicted_ethanol_exchanges.to_csv("../Mean_predicted_ethanol_exchanges.csv")
-predicted_acetate_exchanges.to_csv("../Mean_predicted_acetate_exchanges.csv")
-predicted_glycerol_exchanges.to_csv("../Mean_predicted_glycerol_exchanges.csv")
-predicted_acald_exchanges.to_csv("../Mean_predicted_acald_exchanges.csv")
-predicted_lactate_exchanges.to_csv("../Mean_predicted_lactate_exchanges.csv")
-predicted_succinate_exchanges.to_csv("../Mean_predicted_succinate_exchanges.csv")
+predicted_growth_rates.to_csv("../Calibration_stuff/Mean_predicted_growth_rates.csv")
+predicted_glucose_exchanges.to_csv("../Calibration_stuff/Mean_predicted_glucose_exchanges.csv")
+predicted_oxygen_exchanges.to_csv("../Calibration_stuff/Mean_predicted_oxygen_exchanges.csv")
+predicted_ethanol_exchanges.to_csv("../Calibration_stuff/Mean_predicted_ethanol_exchanges.csv")
+predicted_acetate_exchanges.to_csv("../Calibration_stuff/Mean_predicted_acetate_exchanges.csv")
+predicted_glycerol_exchanges.to_csv("../Calibration_stuff/Mean_predicted_glycerol_exchanges.csv")
+predicted_acald_exchanges.to_csv("../Calibration_stuff/Mean_predicted_acald_exchanges.csv")
+predicted_lactate_exchanges.to_csv("../Calibration_stuff/Mean_predicted_lactate_exchanges.csv")
+predicted_succinate_exchanges.to_csv("../Calibration_stuff/Mean_predicted_succinate_exchanges.csv")
 
 pred_prot=extract_proteomes_from_simulation_results(simulation_outputs=simulation_results_Js_not_imposed,type="Prokaryotic")
 pred_prot_fixed=extract_proteomes_from_simulation_results(simulation_outputs=simulation_results_Js_imposed,type="Prokaryotic")
-pred_prot.to_csv("../Predicted_proteomes.csv")
-pred_prot_fixed.to_csv("../Predicted_proteomes_fixed_exchanges.csv")
-measured_proteomes=pandas.read_csv("../Corrected_calibration_proteomes.csv",index_col=0)
+pred_prot.to_csv("../Calibration_stuff/Predicted_proteomes.csv")
+pred_prot_fixed.to_csv("../Calibration_stuff/Predicted_proteomes_fixed_exchanges.csv")
+measured_proteomes=pandas.read_csv("../Calibration_stuff/Corrected_calibration_proteomes.csv",index_col=0)
 
 plot_predicted_fluxes(simulation_outputs=simulation_results_Js_not_imposed,types=["Prokaryotic"],input_definition=Input_Data)
 plot_protein_protein_comparison(predicted_proteomes=pred_prot,measured_proteomes=measured_proteomes,conditions=conditions)
@@ -209,16 +209,16 @@ plot_protein_protein_comparison(predicted_proteomes=pred_prot_fixed,measured_pro
 
 #FD=get_flux_distribution(simulation_outputs=simulation_results_Js_not_imposed,result_object='Simulation_Results_Euk', run='Eukaryotic')
 FD=get_flux_distribution(simulation_outputs=simulation_results_Js_not_imposed,result_object='Simulation_Results', run='Prokaryotic')
-FD.to_csv("../FluxDistrubution.csv")
+FD.to_csv("../Calibration_stuff/FluxDistrubution.csv")
 ExFD=get_exchange_flux_distribution(simulation_outputs=simulation_results_Js_not_imposed,result_object='Simulation_Results', run='Prokaryotic')
-ExFD.to_csv("../ExchangeFluxDistrubution.csv")
+ExFD.to_csv("../Calibration_stuff/ExchangeFluxDistrubution.csv")
 try:
     out=pandas.DataFrame()
     for i in simulation_results_Js_not_imposed:
         out.loc["Mu",i["Condition"]]=i["Mu_euk"]
         for comp in i['Euk_CompSizes'].keys():
             out.loc[comp,i["Condition"]]=i['Euk_CompSizes'][comp]
-    out.to_csv("../CompSizesPredicted_Euk.csv")
+    out.to_csv("../Calibration_stuff/CompSizesPredicted_Euk.csv")
 except:
     print("")
 
@@ -228,6 +228,6 @@ try:
         out.loc["Mu",i["Condition"]]=i["Mu_euk_fixed"]
         for comp in i['Euk_fixed_CompSizes'].keys():
             out.loc[comp,i["Condition"]]=i['Euk_fixed_CompSizes'][comp]
-    out.to_csv("../CompSizesPredicted_Euk_fixed.csv")
+    out.to_csv("../Calibration_stuff/CompSizesPredicted_Euk_fixed.csv")
 except:
     print("")

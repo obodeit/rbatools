@@ -30,8 +30,8 @@ def run_calibration_over_conditions(input_dict,n_parallel_processes=None,regress
     compartment_sizes_from_calibration_1=extract_compartment_sizes_from_calibration_outputs(calibration_outputs=calibration_results_1)
     pg_fractions_from_calibration_1=extract_pg_fractions_from_calibration_outputs(calibration_outputs=calibration_results_1)
     if conditions_for_compartment_regression is not None:
-        regressed_compartment_sizes_1=regression_on_compartment_sizes(Comp_sizes=compartment_sizes_from_calibration_1,conditions=conditions_for_compartment_regression,growth_rates=growth_rates,monotonous_quadratic=False)
-        regressed_pg_fractions_1=regression_on_pg_fractions(PG_sizes=pg_fractions_from_calibration_1,conditions=conditions_for_compartment_regression,growth_rates=growth_rates,monotonous_quadratic=False)
+        regressed_compartment_sizes_1=regression_on_compartment_sizes(filename='../Calibration_stuff/CompSize_Plots_refined3.pdf',Comp_sizes=compartment_sizes_from_calibration_1,conditions=conditions_for_compartment_regression,growth_rates=growth_rates,monotonous_quadratic=False)
+        regressed_pg_fractions_1=regression_on_pg_fractions(filename='../Calibration_stuff/PGfraction_Plots_refined3.pdf',PG_sizes=pg_fractions_from_calibration_1,conditions=conditions_for_compartment_regression,growth_rates=growth_rates,monotonous_quadratic=False)
         non_regression_conditions=[i for i in input_dict["conditions"] if i not in conditions_for_compartment_regression]
         if len(non_regression_conditions)!=0:
             for i in non_regression_conditions:
@@ -40,8 +40,8 @@ def run_calibration_over_conditions(input_dict,n_parallel_processes=None,regress
                 for comp in regressed_pg_fractions_1.index:
                     regressed_pg_fractions_1.loc[comp,i]=pg_fractions_from_calibration_1.loc[comp,i]
     else:
-        regressed_compartment_sizes_1=regression_on_compartment_sizes(Comp_sizes=compartment_sizes_from_calibration_1,conditions=input_dict["conditions"],growth_rates=growth_rates,monotonous_quadratic=False)
-        regressed_pg_fractions_1=regression_on_pg_fractions(PG_sizes=pg_fractions_from_calibration_1,conditions=input_dict["conditions"],growth_rates=growth_rates,monotonous_quadratic=False)
+        regressed_compartment_sizes_1=regression_on_compartment_sizes(filename='../Calibration_stuff/CompSize_Plots_refined3.pdf',Comp_sizes=compartment_sizes_from_calibration_1,conditions=input_dict["conditions"],growth_rates=growth_rates,monotonous_quadratic=False)
+        regressed_pg_fractions_1=regression_on_pg_fractions(filename='../Calibration_stuff/PGfraction_Plots_refined3.pdf',PG_sizes=pg_fractions_from_calibration_1,conditions=input_dict["conditions"],growth_rates=growth_rates,monotonous_quadratic=False)
 
     if regression_on_compartments:
         for i in input_dicts_for_conditions:
@@ -82,14 +82,14 @@ def run_calibration_over_conditions(input_dict,n_parallel_processes=None,regress
     specific_kapps_from_calibration=extract_specific_kapps_from_calibration_outputs(calibration_outputs=calibration_results_2)
     default_kapps_from_calibration=extract_default_kapps_from_calibration_outputs(calibration_outputs=calibration_results_2)
 
-    corrected_proteomes_DF.to_csv("../Corrected_calibration_proteomes.csv",sep=",",decimal=".")
-    regressed_pg_fractions_1.to_csv("../pg_fractions_refactored_WF.csv")
-    pg_fractions_from_calibration_1.to_csv("../pg_fractions_refactored_WF_original_not_regressed.csv")
-    regressed_compartment_sizes_1.to_csv("../compartment_sizes_refactored_WF.csv")
-    compartment_sizes_from_calibration_1.to_csv("../compartment_sizes_refactored_WF_original_not_regressed.csv")
-    default_kapps_from_calibration.to_csv("../default_kapps_refactored_WF.csv")
-    specific_kapps_from_calibration.to_csv("../specific_kapps_refactored_WF.csv")
-    process_efficiencies_from_calibration.to_csv("../process_efficiencies_refactored_WF.csv")
+    corrected_proteomes_DF.to_csv("../Calibration_stuff/Corrected_calibration_proteomes.csv",sep=",",decimal=".")
+    regressed_pg_fractions_1.to_csv("../Calibration_stuff/pg_fractions_refactored_WF.csv")
+    pg_fractions_from_calibration_1.to_csv("../Calibration_stuff/pg_fractions_refactored_WF_original_not_regressed.csv")
+    regressed_compartment_sizes_1.to_csv("../Calibration_stuff/compartment_sizes_refactored_WF.csv")
+    compartment_sizes_from_calibration_1.to_csv("../Calibration_stuff/compartment_sizes_refactored_WF_original_not_regressed.csv")
+    default_kapps_from_calibration.to_csv("../Calibration_stuff/default_kapps_refactored_WF.csv")
+    specific_kapps_from_calibration.to_csv("../Calibration_stuff/specific_kapps_refactored_WF.csv")
+    process_efficiencies_from_calibration.to_csv("../Calibration_stuff/process_efficiencies_refactored_WF.csv")
 
     print("Total Runtime: {}".format(time.time()-initial_time))
 
@@ -99,9 +99,9 @@ def run_calibration_over_conditions(input_dict,n_parallel_processes=None,regress
                                 regressed_pg=regressed_pg_fractions_1,
                                 conditions=input_dict["conditions"],
                                 growth_rates=growth_rates,
-                                filename="../Compartment_sizes_and_PG.pdf")
+                                filename="../Calibration_stuff/Compartment_sizes_and_PG.pdf")
     try:
-        plot_rss_trajectory(calibration_results_2)
+        plot_rss_trajectory(filename="../Calibration_stuff/RRS_trajectory.csv",calibration_outputs=calibration_results_2)
     except:
         print("No RSS trajectory")
 
@@ -187,17 +187,17 @@ def build_full_annotations(rba_session,
     return(full_annotations)
 
 def main(conditions,n_parallel_processes=None,regression_on_compartments=False,specific_models=False,conditions_for_compartment_regression=None):
-#    Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim.csv', sep=';', decimal=',', index_col=0)
-    Input_Data = pandas.read_csv('../DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim_Frick_fluxes.csv', sep=';', decimal=',', index_col=0)
-    Process_Efficiency_Estimation_Input = pandas.read_csv('../DataSetsYeastRBACalibration/Process_Efficiency_Estimation_Input.csv', sep=';', decimal=',')
-    Uniprot = pandas.read_csv('../Yeast_models/Yeast_iMM904_RBA_model/uniprot.csv', sep='\t')
-    Compartment_Annotations_external = pandas.read_csv('../DataSetsYeastRBACalibration/Manually_curated_Protein_Locations_for_Calibration.csv', index_col=None, sep=';')
-    Ribosomal_Proteins_Uniprot = pandas.read_csv('../DataSetsYeastRBACalibration/uniprot_ribosomal_proteins.csv', index_col=None, sep=';')
+#    Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim.csv', sep=';', decimal=',', index_col=0)
+    Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim_Frick_fluxes.csv', sep=';', decimal=',', index_col=0)
+    Process_Efficiency_Estimation_Input = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Process_Efficiency_Estimation_Input.csv', sep=';', decimal=',')
+    Uniprot = pandas.read_csv('../Calibration_stuff/Yeast_models/Yeast_iMM904_RBA_model/uniprot.csv', sep='\t')
+    Compartment_Annotations_external = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Manually_curated_Protein_Locations_for_Calibration.csv', index_col=None, sep=';')
+    Ribosomal_Proteins_Uniprot = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/uniprot_ribosomal_proteins.csv', index_col=None, sep=';')
 
-    Hackett_Clim_FCs = pandas.read_csv('../DataSetsYeastRBACalibration/Hacket_ProteinFCs.csv',sep=";")
-    Nielsen_01 = pandas.read_csv('../DataSetsYeastRBACalibration/Nielsen01_ProteomicsData.csv',sep=";",index_col=0)
+    Hackett_Clim_FCs = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Hacket_ProteinFCs.csv',sep=";")
+    Nielsen_01 = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Nielsen01_ProteomicsData.csv',sep=";",index_col=0)
 
-    Simulation = SessionRBA('../Yeast_models/Yeast_iMM904_RBA_model')
+    Simulation = SessionRBA('../Calibration_stuff/Yeast_models/Yeast_iMM904_RBA_model')
 
     picogram_togram_coefficient = 1e12
     Reference_Condition='Mean_01'
@@ -211,7 +211,7 @@ def main(conditions,n_parallel_processes=None,regression_on_compartments=False,s
                         Uniprot=Uniprot,
                         Relative_Proteome=Hackett_Clim_FCs)
     
-    full_annotations.to_csv("../full_annot.csv")
+    full_annotations.to_csv("../Calibration_stuff/full_annot.csv")
 
     Nielsen_01[Reference_Condition] *= picogram_togram_coefficient
 
@@ -229,7 +229,7 @@ def main(conditions,n_parallel_processes=None,regression_on_compartments=False,s
                                                 full_annotations=full_annotations,
                                                 reference_condition=reference_condition_for_input_proteome)
 
-    proteomics_data.to_csv("../original_proteomes_for_calibration.csv")
+    proteomics_data.to_csv("../Calibration_stuff/original_proteomes_for_calibration.csv")
 
     input_dict={}
 
@@ -245,13 +245,6 @@ def main(conditions,n_parallel_processes=None,regression_on_compartments=False,s
     input_dict["Default_kapps"]=None
     input_dict["Process_efficiencies"]=None
 
-    default_kapps_imported=pandas.read_csv("../default_kapps_refactored_WF.csv",index_col=0)
-    specific_kapps_imported=pandas.read_csv("../specific_kapps_refactored_WF.csv",index_col=0)
-    process_efficiencies_imported=pandas.read_csv("../process_efficiencies_refactored_WF.csv",index_col=0)
-    #input_dict["Specific_kapps"]=specific_kapps_imported
-    #input_dict["Default_kapps"]=default_kapps_imported
-    #input_dict["Process_efficiencies"]=process_efficiencies_imported
-
     run_calibration_over_conditions(input_dict=input_dict,
                                     n_parallel_processes=n_parallel_processes,
                                     regression_on_compartments=regression_on_compartments,
@@ -262,7 +255,7 @@ if __name__ == "__main__":
     warnings.simplefilter('ignore', FutureWarning)
     warnings.simplefilter('ignore', RuntimeWarning)
     #warnings.simplefilter('ignore', SettingWithCopyWarning)
-    main(n_parallel_processes=1,
+    main(n_parallel_processes=5,
         regression_on_compartments=True,
         specific_models=False,
         #conditions = ['Hackett_C01','Mean_01'],

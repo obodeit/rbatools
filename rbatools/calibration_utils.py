@@ -220,7 +220,7 @@ def calibration_workflow(proteome,
                                                                 results_to_look_up=results_to_look_up,
                                                                 fixed_mu_when_above_target_mu_in_correction=correction_settings['fixed_growth_rate_global_scaling'],
                                                                 n_th_root_mispred=1,
-                                                                print_outputs=True,
+                                                                print_outputs=False,
                                                                 adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'],
                                                                 proteomics_constraints_input=proteomics_data)
 
@@ -232,7 +232,6 @@ def calibration_workflow(proteome,
             process_efficiencies=results_global_scaling["process_efficiencies"]
 
             if len(list(Simulation_results[results_to_look_up].keys()))!=0:
-                print("--------------------------------------------------Specific Correction ------------------------")
                 efficiencies_over_correction_iterations.append({"Specific_Kapps":Specific_Kapps.copy(),"Default_Kapps":Default_Kapps.copy(),"Process_Efficiencies":process_efficiencies.copy()})
                 KappCorrectionResults=efficiency_correction(enzyme_efficiencies=Specific_Kapps,
                                                                 simulation_results=Simulation_results[results_to_look_up],
