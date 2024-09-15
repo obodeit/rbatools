@@ -5,7 +5,7 @@ import time
 import numpy
 import json
 from scipy.stats.mstats import gmean
-from rbatools.other_utils import medium_concentrations_from_input , machinery_efficiency_correction_settings_from_input , enzyme_efficiency_estimation_settings_from_input , flux_bounds_from_input , growth_rate_from_input , proteome_fractions_from_input
+from rbatools.other_utils import medium_concentrations_from_input , machinery_efficiency_correction_settings_from_input , enzyme_efficiency_estimation_settings_from_input , flux_bounds_from_input , growth_rate_from_input , proteome_fractions_from_input , perform_simulations , perform_simulations_fixed_Mu
 
 
 def calibration_workflow(proteome,
@@ -220,7 +220,7 @@ def calibration_workflow(proteome,
                                                                 results_to_look_up=results_to_look_up,
                                                                 fixed_mu_when_above_target_mu_in_correction=correction_settings['fixed_growth_rate_global_scaling'],
                                                                 n_th_root_mispred=1,
-                                                                print_outputs=False,
+                                                                print_outputs=True,
                                                                 adjust_root=correction_settings['abjust_root_of_correction_coeffs_global_scaling'],
                                                                 proteomics_constraints_input=proteomics_data)
 
@@ -231,7 +231,21 @@ def calibration_workflow(proteome,
             Default_Kapps=results_global_scaling["default_kapps"]
             process_efficiencies=results_global_scaling["process_efficiencies"]
 
+            print("---------------------------------------------------------------------------------------------------------------------------------------------")
+            print("---------------------------------------------------------------------------------------------------------------------------------------------")
+            print("---------------------------------------------------------------------------------------------------------------------------------------------")
+            print("---------------------------------------------------------------------------------------------------------------------------------------------")
+            print("---------------------------------------------------------------------------------------------------------------------------------------------")
+            print(results_global_scaling)
+            print("---------------------------------------------------------------------------------------------------------------------------------------------")
+            print("---------------------------------------------------------------------------------------------------------------------------------------------")
+            print("---------------------------------------------------------------------------------------------------------------------------------------------")
+            print("---------------------------------------------------------------------------------------------------------------------------------------------")
+            print("---------------------------------------------------------------------------------------------------------------------------------------------")
+            print("Global scaling resutl lenght: {}".format(len(list(Simulation_results[results_to_look_up].keys()))))
+
             if len(list(Simulation_results[results_to_look_up].keys()))!=0:
+                print("--------------------------------------------------Specific Correction ------------------------")
                 efficiencies_over_correction_iterations.append({"Specific_Kapps":Specific_Kapps.copy(),"Default_Kapps":Default_Kapps.copy(),"Process_Efficiencies":process_efficiencies.copy()})
                 KappCorrectionResults=efficiency_correction(enzyme_efficiencies=Specific_Kapps,
                                                                 simulation_results=Simulation_results[results_to_look_up],
@@ -1335,7 +1349,11 @@ def global_efficiency_scaling(condition,
                 last_misprediction_direction=current_misprediction_direction
 
             if print_outputs:
-                print("Measured: {} - Predicted: {} - mispred coeff: {} - root: {} - runs_of_sign: {}-- status: {}".format(mu_measured,mumax_predicted,mu_misprediction_factor,n_th_root_mispred,runs_of_sign))
+                print("Measured: {} - Predicted: {} - mispred coeff: {} - root: {} - runs_of_sign: {}".format(mu_measured,
+                                                                                                                           mumax_predicted,
+                                                                                                                           mu_misprediction_factor,
+                                                                                                                           n_th_root_mispred,
+                                                                                                                           runs_of_sign))
 
         prediction_residulas_growth_rates=[mu_measured-mu_pred for mu_pred in predicted_growth_rates]
         minimum_prediction_residual=min([abs(i) for i in prediction_residulas_growth_rates])
