@@ -1,4 +1,5 @@
 import pandas
+import numpy
 from rbatools.rba_xml_utils import inject_estimated_efficiencies_into_model , inject_estimated_efficiencies_as_functions_into_model
 
 
