@@ -250,15 +250,12 @@ if __name__ == "__main__":
     warnings.simplefilter('ignore', UserWarning)
     warnings.simplefilter('ignore', FutureWarning)
     warnings.simplefilter('ignore', RuntimeWarning)
-    #warnings.simplefilter('ignore', SettingWithCopyWarning)
     main(model_xml_dir='../Yeast_iMM904_RBA_model',
          n_parallel_processes=5,
         regression_on_compartments=True,
         #conditions = ['Hackett_C01','Mean_01'],
         #conditions = ['Hackett_C03','Hackett_C005', 'Hackett_C022', 'Hackett_C016', 'Hackett_C01','Mean_01'],
         conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
-        #conditions = ['Hackett_N005', 'Hackett_N01', 'Hackett_N016', 'Hackett_N03'],
-        #conditions = ['Hackett_P005', 'Hackett_P01', 'Hackett_P016', 'Hackett_P022'],
         conditions_for_compartment_regression=['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
         coarse_calibration=False
         )
