@@ -27,7 +27,8 @@ def calibration_workflow(proteome,
                          print_outputs=True,
                          global_protein_scaling_coeff=1,
                          use_mean_enzyme_composition_for_calibration=False,
-                         max_kapp_threshold=None):
+                         max_kapp_threshold=None,
+                         output_dir=""):
     
     correction_settings=machinery_efficiency_correction_settings_from_input(input=definition_file, condition=condition)
     enzyme_efficiency_estimation_settings=enzyme_efficiency_estimation_settings_from_input(input=definition_file, condition=condition)
@@ -46,7 +47,7 @@ def calibration_workflow(proteome,
     rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
     if prelim_run:
         compartment_densities_and_PGs = extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=correction_results_compartement_sizes,rows_to_exclude=["Ribosomes","Total"]+[i for i in correction_results_compartement_sizes.index if i.startswith("pg_")])
-        correction_results_compartement_sizes.to_csv(str('Correction_overview_HackettNielsen_'+condition+'.csv'))
+        correction_results_compartement_sizes.to_csv(str(output_dir+'/Correction_overview_HackettNielsen_'+condition+'.csv'))
         return({"Densities_PGs":compartment_densities_and_PGs,
                 "Condition":condition})
     if Compartment_sizes is not None:
@@ -65,7 +66,7 @@ def calibration_workflow(proteome,
         proteome.loc[proteome["Location"]==i,condition]*=abundance_coeff
         correction_results_compartement_sizes.loc[i,"copy_number_scaling"]=abundance_coeff
     ###
-    correction_results_compartement_sizes.to_csv(str('Correction_overview_HackettNielsen_corrected_'+condition+'.csv'))
+    correction_results_compartement_sizes.to_csv(str(output_dir+'/Correction_overview_HackettNielsen_corrected_'+condition+'.csv'))
     if process_efficiencies is None:
         if process_efficiency_estimation_input is not None:
             process_efficiencies = determine_apparent_process_efficiencies(growth_rate=growth_rate_from_input(input=definition_file,
@@ -83,7 +84,7 @@ def calibration_workflow(proteome,
     ### define coeff as input ###
     proteome[condition]*=global_protein_scaling_coeff
     ###
-    process_efficiencies.to_csv("ProcEffsOrig_{}.csv".format(condition))
+    process_efficiencies.to_csv(output_dir+'/ProcEffsOrig_{}.csv'.format(condition))
 
     compartment_densities_and_PGs = extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=correction_results_compartement_sizes,
                                                                                               rows_to_exclude=["Ribosomes","Total"]+[i for i in correction_results_compartement_sizes.index if i.startswith("pg_")])
@@ -116,7 +117,8 @@ def calibration_workflow(proteome,
                                                                    condition=condition, 
                                                                    store_output=True,
                                                                    rxns_to_ignore_when_parsimonious=[],
-                                                                   use_bm_flux_of_one=True)
+                                                                   use_bm_flux_of_one=True,
+                                                                   output_dir=output_dir)
 
     Specific_Kapps=Specific_Kapps_Results["Overview"]
     if min_kapp is not None:
@@ -142,7 +144,7 @@ def calibration_workflow(proteome,
                         #elif flux_value==0:
                         #    fba_flux_directions.update({fba_rxn:{"LB":0,"UB":0}})
 
-    Specific_Kapps.to_csv("Specific_Kapps_Hackett__{}.csv".format(condition), sep=";", decimal=",")
+    Specific_Kapps.to_csv(output_dir+'/Specific_Kapps_Hackett__{}.csv'.format(condition), sep=";", decimal=",")
 
         ## NEW
         #if enzyme_efficiency_estimation_settings['use_target_biomass_function']:
@@ -638,7 +640,8 @@ def estimate_specific_enzyme_efficiencies(rba_session,
                                           condition=None, 
                                           store_output=True,
                                           rxns_to_ignore_when_parsimonious=[],
-                                          use_bm_flux_of_one=False):
+                                          use_bm_flux_of_one=False,
+                                          output_dir=""):
     """
     Parameters
     ----------
@@ -665,7 +668,7 @@ def estimate_specific_enzyme_efficiencies(rba_session,
                                                              condition=condition,
                                                              use_bm_flux_of_one=use_bm_flux_of_one
                                                              )
-    FluxDistribution.to_csv('Calib_FluxDist_'+condition+'_.csv', sep=';')
+    FluxDistribution.to_csv(output_dir+'/Calib_FluxDist_'+condition+'_.csv', sep=';')
 
     if chose_most_likely_isoreactions:
         ### INCORPORATE ANA´s REMARK ON NOT ELIMINATING ISOENZYMES WITH SUs ONLY PRESENT IN THIS ISOENZYMES ###
@@ -845,9 +848,9 @@ def estimate_specific_enzyme_efficiencies(rba_session,
     # 8: ...#
     if store_output:
         if condition is not None:
-            overview_out.to_csv('SpecKapp_Network_overview_'+condition+'_.csv', sep=';')
+            overview_out.to_csv(output_dir+'/SpecKapp_Network_overview_'+condition+'_.csv', sep=';')
         else:
-            overview_out.to_csv('SpecKapp_Network_overview_.csv', sep=';')
+            overview_out.to_csv(output_dir+'/SpecKapp_Network_overview_.csv', sep=';')
     # 9: ...#
     return({"Overview":overview_out,"Flux_Distribution":FluxDistribution})
 
