@@ -1,6 +1,6 @@
-import pandas
+#import pandas
 import numpy
-import json
+#import json
 import scipy.signal
 from scipy.optimize import curve_fit
 
@@ -45,7 +45,7 @@ def eval_logistic_function_1st_derivative(x_in,y_max,x0,k):
     return([logistic_function_1st_derivative(x=x,y_max=y_max,x_0=x0,k=k) for x in x_in])
 
 
-def do_lin_regression(x_to_fit,y_to_fit,min_val):
+def do_lin_regression(x_to_fit,y_to_fit,min_val=0):
     if len(x_to_fit)>2:
         popt_lin, pcov_lin = curve_fit(linear_function, xdata=x_to_fit, ydata=y_to_fit)
         a=popt_lin[0]

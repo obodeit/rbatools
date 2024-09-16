@@ -3,7 +3,7 @@ import copy
 import pandas
 import time
 import numpy
-import json
+#import json
 from scipy.stats.mstats import gmean
 from rbatools.other_utils import medium_concentrations_from_input , machinery_efficiency_correction_settings_from_input , enzyme_efficiency_estimation_settings_from_input , flux_bounds_from_input , growth_rate_from_input , proteome_fractions_from_input , perform_simulations , perform_simulations_fixed_Mu
 
