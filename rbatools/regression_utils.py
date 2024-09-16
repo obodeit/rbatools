@@ -7,6 +7,8 @@ from scipy.optimize import curve_fit
 def linear_function(x, a, b):
     return((a*x)+b)
 
+def linear_function_without_intercept(x, a):
+    return((a*x))
 
 def quadratic_function(x, a, b,c):
     return((a*x**2)+(b*x)+c)
@@ -14,7 +16,6 @@ def quadratic_function(x, a, b,c):
 
 def eval_linear_function(x_in, a, b):
     return([(a*x)+b for x in x_in])
-
 
 def eval_quadratic_function(x_in, a, b , c):
     return([(a*x**2)+(b*x)+c for x in x_in])
@@ -45,20 +46,25 @@ def eval_logistic_function_1st_derivative(x_in,y_max,x0,k):
     return([logistic_function_1st_derivative(x=x,y_max=y_max,x_0=x0,k=k) for x in x_in])
 
 
-def do_lin_regression(x_to_fit,y_to_fit,min_val=0):
-    if len(x_to_fit)>2:
-        popt_lin, pcov_lin = curve_fit(linear_function, xdata=x_to_fit, ydata=y_to_fit)
+def do_lin_regression(x_to_fit,y_to_fit,min_val=0,fit_intercept=True):
+    if fit_intercept:
+        if len(x_to_fit)>2:
+            popt_lin, pcov_lin = curve_fit(linear_function, xdata=x_to_fit, ydata=y_to_fit)
+            a=popt_lin[0]
+            b=popt_lin[1]
+        elif len(x_to_fit)==2:
+            a=(abs(y_to_fit[1])-abs(y_to_fit[0]))/(abs(x_to_fit[1])-abs(x_to_fit[0]))
+            b=y_to_fit[0]-(a*x_to_fit[0])
+        elif len(x_to_fit)==1:
+            a=0
+            b=y_to_fit[0]
+        elif len(x_to_fit)==0:
+            a=0
+            b=min_val
+    else:
+        popt_lin, pcov_lin = curve_fit(linear_function_without_intercept, xdata=x_to_fit, ydata=y_to_fit)
         a=popt_lin[0]
-        b=popt_lin[1]
-    elif len(x_to_fit)==2:
-        a=(abs(y_to_fit[1])-abs(y_to_fit[0]))/(abs(x_to_fit[1])-abs(x_to_fit[0]))
-        b=y_to_fit[0]-(a*x_to_fit[0])
-    elif len(x_to_fit)==1:
-        a=0
-        b=y_to_fit[0]
-    elif len(x_to_fit)==0:
-        a=0
-        b=min_val
+        b=0
     return({"A":round(a,5),"B":round(b,5)})
 
 
@@ -228,7 +234,7 @@ def do_log_regression(x_to_fit,y_to_fit,x_to_plot,max_val,min_val):
                         params={"Y_max":y_max,"Y_min":y_min,"A":0,"B":numpy.mean(y_to_fit)}
     except:
         try:
-            lin_pars=do_lin_regression(x_to_fit=x_to_fit,y_to_fit=y_to_fit,min_val=min_val)
+            lin_pars=do_lin_regression(x_to_fit=x_to_fit,y_to_fit=y_to_fit,min_val=min_val,fit_intercept=True)
             y_max=min([max(y_to_fit),max_val])
             y_min=max([min(y_to_fit),min_val])
             params={"Y_max":y_max,"Y_min":y_min,"A":lin_pars["A"],"B":lin_pars["B"]}

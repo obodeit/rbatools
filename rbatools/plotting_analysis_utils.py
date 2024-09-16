@@ -4,9 +4,9 @@ import json
 import math
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-from sklearn.linear_model import LinearRegression
+#from sklearn.linear_model import LinearRegression
 
-from rbatools.regression_utils import  do_regression , lin_predictions , quad_predictions
+from rbatools.regression_utils import  do_regression ,lin_predictions, eval_linear_function , quad_predictions , do_lin_regression
 from rbatools.other_utils import growth_rate_from_input
 
 
@@ -869,7 +869,7 @@ def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,condi
                                                                                fit_intercept=False)
                 x_reg=regression_results['X_regression']
                 #y_reg=regression_results['Y_regression']
-                regressor=regression_results['Regressor']
+                #regressor=regression_results['Regressor']
                 predictions=regression_results['Prediction']
 
                 total_max=max([max(x),max(y)])
@@ -879,7 +879,8 @@ def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,condi
                 axs[fig_row, fig_col].scatter([numpy.log10(i) for i in x],[numpy.log10(i) for i in y],alpha=0.4)
                 axs[fig_row, fig_col].plot(numpy.log10(x_reg), numpy.log10(predictions), color='red')
                 #axs[fig_row, fig_col].plot(x_reg, predictions, color='red')
-                axs[fig_row, fig_col].legend(['Identity', "Correlation: {}".format(str(round(regressor.coef_[0][0],2))), 'Data'])
+                axs[fig_row, fig_col].legend(['Identity', "Correlation: {}".format(str(round(regression_results['Parameters']['A'],2))), 'Data'])
+                #axs[fig_row, fig_col].legend(['Identity', "Correlation: {}".format(str(round(regressor.coef_[0][0],2))), 'Data'])
                 axs[fig_row, fig_col].plot([numpy.log10(total_min), numpy.log10(total_max)], [numpy.log10(total_min)+2, numpy.log10(total_max)+2], color='black', linewidth=1,alpha=0.6)
                 axs[fig_row, fig_col].plot([numpy.log10(total_min), numpy.log10(total_max)], [numpy.log10(total_min)-2, numpy.log10(total_max)-2], color='black', linewidth=1,alpha=0.6)
                 #axs[fig_row, fig_col].set_title("Predicted protein numbers per gram dry weight - {}".format(condition))
@@ -892,15 +893,18 @@ def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,condi
 
 
 def do_linear_regression_on_proteome_prediction(x,y,fit_intercept):
-    x_reg = numpy.reshape(numpy.array(x), (len(x), 1))
-    y_reg = numpy.reshape(numpy.array(y), (len(y), 1))
-    regressor = LinearRegression(fit_intercept=fit_intercept)
-    regressor.fit(x_reg, y_reg)
-    predictions = regressor.predict(x_reg)
-    return({'Regressor':regressor,
+    #x_reg = numpy.reshape(numpy.array(x), (len(x), 1))
+    #y_reg = numpy.reshape(numpy.array(y), (len(y), 1))
+    #regressor = LinearRegression(fit_intercept=fit_intercept)
+    #regressor.fit(x_reg, y_reg)
+    lin_regression_results=do_lin_regression(x_to_fit=x,y_to_fit=y,fit_intercept=False)
+    #predictions = lin_predictions(params=lin_regression_results,x_to_fit=x_reg)
+    predictions = eval_linear_function(x_in=x, a=lin_regression_results["A"], b=lin_regression_results["B"])
+
+    return({'Parameters':lin_regression_results,
             'Prediction':predictions,
-            'X_regression':x_reg,
-            'Y_regression':y_reg})
+            'X_regression':x,
+            'Y_regression':y})
 
 def regression_on_specific_enzyme_efficiencies(Spec_Kapps,min_kapp,max_kapp,conditions,growth_rates,only_lin=False,impose_on_isoenzymes=True,monotonous_quadratic=False,fill_in_missing_conditions=False,permit_quadratic_model=True):
     out=pandas.DataFrame(columns=Spec_Kapps.columns)
