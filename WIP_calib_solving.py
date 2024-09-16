@@ -39,7 +39,7 @@ plot_specific_enzyme_efficiencies(point_calibration_kapps=specific_kapps_from_ca
                     regressed_kapps=regressed_specific_kapps,
                     conditions=conditions,
                     growth_rates=growth_rates,
-                    filename="../Calibration_stuff/Calibration_stuffSpecific_Kapp_Plots_sim.pdf")
+                    filename="../Calibration_stuff/Specific_Kapp_Plots_sim.pdf")
 
 #Simulation = SessionRBA('../Calibration_stuff/Yeast_iMM904_RBA_model')
 Simulation = SessionRBA('../Calibration_stuff/Yeast_models/Yeast_iMM904_RBA_model')
