@@ -106,16 +106,8 @@ def run_calibration_over_conditions(input_dict,n_parallel_processes=None,regress
         print("No RSS trajectory")
 
 def calibration(input_dict,print_outputs=True):
-    condition_specific_models={'Hackett_C03':"Yeast_iMM904_RBA_model_C005",
-                               'Hackett_C005':"Yeast_iMM904_RBA_model_C01", 
-                               'Hackett_C022':"Yeast_iMM904_RBA_model_C016", 
-                               'Hackett_C016':"Yeast_iMM904_RBA_model_C022", 
-                               'Hackett_C01':"Yeast_iMM904_RBA_model_C03"}
     
-    if input_dict["condition_specific_models"]:
-        Simulation = SessionRBA("{}/{}".format(input_dict["xml_dir"],condition_specific_models[input_dict["condition"]]))
-    else:
-        Simulation = SessionRBA("{}/Yeast_iMM904_RBA_model".format(input_dict["xml_dir"]))
+    Simulation = SessionRBA(input_dict["xml_dir"])
 
     Simulation.add_exchange_reactions()
     calib_results = calibration_workflow(proteome=input_dict["proteome"],
@@ -187,18 +179,18 @@ def build_full_annotations(rba_session,
     full_annotations = build_full_annotations_from_dataset_annotations(annotations_list=[annotations_Absolute, annotations_Relative])
     return(full_annotations)
 
-def main(conditions,n_parallel_processes=None,regression_on_compartments=False,specific_models=False,conditions_for_compartment_regression=None):
+def main(model_xml_dir,conditions,n_parallel_processes=None,regression_on_compartments=False,conditions_for_compartment_regression=None):
 #    Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim.csv', sep=';', decimal=',', index_col=0)
     Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim_Frick_fluxes.csv', sep=';', decimal=',', index_col=0)
     Process_Efficiency_Estimation_Input = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Process_Efficiency_Estimation_Input.csv', sep=';', decimal=',')
-    Uniprot = pandas.read_csv('../Calibration_stuff/Yeast_models/Yeast_iMM904_RBA_model/uniprot.csv', sep='\t')
+    Uniprot = pandas.read_csv('{}/uniprot.csv'.format(model_xml_dir), sep='\t')
     Compartment_Annotations_external = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Manually_curated_Protein_Locations_for_Calibration.csv', index_col=None, sep=';')
     Ribosomal_Proteins_Uniprot = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/uniprot_ribosomal_proteins.csv', index_col=None, sep=';')
 
     Hackett_Clim_FCs = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Hacket_ProteinFCs.csv',sep=";")
     Nielsen_01 = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Nielsen01_ProteomicsData.csv',sep=";",index_col=0)
 
-    Simulation = SessionRBA('../Calibration_stuff/Yeast_models/Yeast_iMM904_RBA_model')
+    Simulation = SessionRBA(model_xml_dir)
 
     picogram_togram_coefficient = 1e12
     Reference_Condition='Mean_01'
@@ -234,9 +226,8 @@ def main(conditions,n_parallel_processes=None,regression_on_compartments=False,s
 
     input_dict={}
 
-    input_dict["condition_specific_models"]=specific_models
     input_dict["conditions"]=conditions
-    input_dict["xml_dir"]='../Yeast_models'
+    input_dict["xml_dir"]=model_xml_dir
     input_dict["proteome"]=proteomics_data
     input_dict["definition_file"]=Input_Data
     input_dict["process_efficiency_estimation_input"]=Process_Efficiency_Estimation_Input
@@ -256,9 +247,9 @@ if __name__ == "__main__":
     warnings.simplefilter('ignore', FutureWarning)
     warnings.simplefilter('ignore', RuntimeWarning)
     #warnings.simplefilter('ignore', SettingWithCopyWarning)
-    main(n_parallel_processes=5,
+    main(model_xml_dir='../Yeast_iMM904_RBA_model',
+         n_parallel_processes=5,
         regression_on_compartments=True,
-        specific_models=False,
         #conditions = ['Hackett_C01','Mean_01'],
         #conditions = ['Hackett_C03','Hackett_C005', 'Hackett_C022', 'Hackett_C016', 'Hackett_C01','Mean_01'],
         conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
