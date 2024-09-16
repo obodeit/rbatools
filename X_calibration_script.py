@@ -182,9 +182,16 @@ def build_full_annotations(rba_session,
 def main(model_xml_dir,conditions,n_parallel_processes=None,regression_on_compartments=False,conditions_for_compartment_regression=None,coarse_calibration=False):
 
     if coarse_calibration:
-        Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plusFrick_fluxes_COARSE_Settings.csv', sep=';', decimal=',', index_col=0)
+        dir_input_settings_file='../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plusFrick_fluxes_COARSE_Settings.csv'
+        print("Calibration with coarse settings")
     else:
-        Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plusFrick_fluxes.csv', sep=';', decimal=',', index_col=0)
+        dir_input_settings_file='../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plusFrick_fluxes.csv'
+        print("Calibration with regular settings")
+    
+    print('Importing input from file: {}'.format(dir_input_settings_file))
+    print("")
+
+    Input_Data = pandas.read_csv(dir_input_settings_file, sep=';', decimal=',', index_col=0)
     
     Process_Efficiency_Estimation_Input = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Process_Efficiency_Estimation_Input.csv', sep=';', decimal=',')
     Uniprot = pandas.read_csv('{}/uniprot.csv'.format(model_xml_dir), sep='\t')
@@ -257,5 +264,5 @@ if __name__ == "__main__":
         #conditions = ['Hackett_C03','Hackett_C005', 'Hackett_C022', 'Hackett_C016', 'Hackett_C01','Mean_01'],
         conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
         conditions_for_compartment_regression=['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
-        coarse_calibration=False
+        coarse_calibration=True
         )
