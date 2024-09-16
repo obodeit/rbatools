@@ -179,10 +179,12 @@ def build_full_annotations(rba_session,
     full_annotations = build_full_annotations_from_dataset_annotations(annotations_list=[annotations_Absolute, annotations_Relative])
     return(full_annotations)
 
-def main(model_xml_dir,conditions,n_parallel_processes=None,regression_on_compartments=False,conditions_for_compartment_regression=None):
+def main(model_xml_dir,conditions,n_parallel_processes=None,regression_on_compartments=False,conditions_for_compartment_regression=None,coarse_calibration=False):
 
-    Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plusFrick_fluxes_COARSE_Settings.csv', sep=';', decimal=',', index_col=0)
-    #Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plusFrick_fluxes.csv', sep=';', decimal=',', index_col=0)
+    if coarse_calibration:
+        Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plusFrick_fluxes_COARSE_Settings.csv', sep=';', decimal=',', index_col=0)
+    else:
+        Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plusFrick_fluxes.csv', sep=';', decimal=',', index_col=0)
     
     Process_Efficiency_Estimation_Input = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Process_Efficiency_Estimation_Input.csv', sep=';', decimal=',')
     Uniprot = pandas.read_csv('{}/uniprot.csv'.format(model_xml_dir), sep='\t')
@@ -257,5 +259,6 @@ if __name__ == "__main__":
         conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
         #conditions = ['Hackett_N005', 'Hackett_N01', 'Hackett_N016', 'Hackett_N03'],
         #conditions = ['Hackett_P005', 'Hackett_P01', 'Hackett_P016', 'Hackett_P022'],
-        conditions_for_compartment_regression=['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03']
+        conditions_for_compartment_regression=['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
+        coarse_calibration=False
         )
