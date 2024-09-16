@@ -180,8 +180,10 @@ def build_full_annotations(rba_session,
     return(full_annotations)
 
 def main(model_xml_dir,conditions,n_parallel_processes=None,regression_on_compartments=False,conditions_for_compartment_regression=None):
-#    Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim.csv', sep=';', decimal=',', index_col=0)
-    Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plus_Nlim_Frick_fluxes.csv', sep=';', decimal=',', index_col=0)
+
+    Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plusFrick_fluxes_COARSE_Settings.csv', sep=';', decimal=',', index_col=0)
+    #Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plusFrick_fluxes.csv', sep=';', decimal=',', index_col=0)
+    
     Process_Efficiency_Estimation_Input = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Process_Efficiency_Estimation_Input.csv', sep=';', decimal=',')
     Uniprot = pandas.read_csv('{}/uniprot.csv'.format(model_xml_dir), sep='\t')
     Compartment_Annotations_external = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Manually_curated_Protein_Locations_for_Calibration.csv', index_col=None, sep=';')
