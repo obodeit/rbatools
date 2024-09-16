@@ -16,8 +16,8 @@ conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Ha
 #conditions = ['0102_mean', '0152_mean', '0214_mean', '0254_mean', '0284_mean', '0334_mean', '0379_mean']
 
 
-Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plusFrick_fluxes_COARSE_Settings.csv', sep=';', decimal=',', index_col=0)
-#Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plusFrick_fluxes.csv', sep=';', decimal=',', index_col=0)
+#Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plusFrick_fluxes_COARSE_Settings.csv', sep=';', decimal=',', index_col=0)
+Input_Data = pandas.read_csv('../Calibration_stuff/DataSetsYeastRBACalibration/Calibration_InputDefinition_plusFrick_fluxes.csv', sep=';', decimal=',', index_col=0)
 
 default_kapps_from_calibration=pandas.read_csv("../Calibration_stuff/default_kapps_refactored_WF.csv",index_col=0)
 specific_kapps_from_calibration=pandas.read_csv("../Calibration_stuff/specific_kapps_refactored_WF.csv",index_col=0)
