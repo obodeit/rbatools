@@ -1,7 +1,8 @@
 
 import pandas
 import numpy
-from sklearn.linear_model import LinearRegression
+#from sklearn.linear_model import LinearRegression
+from rbatools.regression_utils import  do_lin_regression
 
 def sample_copy_numbers_from_proteome_replicates(Input_data,cols_to_draw_from,target_size=1):
     sample_set=set()
@@ -136,21 +137,27 @@ def sample_copy_numbers_from_residuals_quantiles(Input_data,replicate_cols,mean_
     if transform_residuals:
         if regression_type=="lin":
         # do linear regression of standard deviation over replicates of protein
-            x_reg = numpy.reshape(numpy.array(list(data_to_use["Log__mean"])), (len(list(data_to_use["Log__mean"])), 1))
-            y_reg = numpy.reshape(numpy.array(list(data_to_use["Log__sdev"])), (len(list(data_to_use["Log__sdev"])), 1))
-            regressor = LinearRegression(fit_intercept=True)
-            regressor.fit(x_reg, y_reg)
-            slope_sdev=regressor.coef_[0][0]
-            offset_sdev=regressor.intercept_[0]
+            #x_reg = numpy.reshape(numpy.array(list(data_to_use["Log__mean"])), (len(list(data_to_use["Log__mean"])), 1))
+            #y_reg = numpy.reshape(numpy.array(list(data_to_use["Log__sdev"])), (len(list(data_to_use["Log__sdev"])), 1))
+            #regressor = LinearRegression(fit_intercept=True)
+            #regressor.fit(x_reg, y_reg)
+            #slope_sdev=regressor.coef_[0][0]
+            #offset_sdev=regressor.intercept_[0]
+            lin_regression_results=do_lin_regression(x_to_fit=list(data_to_use["Log__mean"]),y_to_fit=list(data_to_use["Log__sdev"]),fit_intercept=True)
+            slope_sdev=lin_regression_results["A"]
+            offset_sdev=lin_regression_results["B"]
             data_to_use["Fitted_Stdev"]=[offset_sdev+slope_sdev*data_to_use.loc[i,"Log__mean"] for i in data_to_use.index]
             df_intermediate["Fitted_Stdev"]=[offset_sdev+slope_sdev*df_intermediate.loc[i,"LogMean"] for i in df_intermediate.index]
         elif regression_type=="inverse_lin":
-            x_reg = numpy.reshape(numpy.array(list(data_to_use.loc[data_to_use["Log__sdev"]!=0,"Log__mean"])), (len(list(data_to_use.loc[data_to_use["Log__sdev"]!=0,"Log__mean"])), 1))
-            y_reg = numpy.reshape(numpy.array([1/i for i in list(data_to_use.loc[data_to_use["Log__sdev"]!=0,"Log__sdev"])]), (len(list(data_to_use.loc[data_to_use["Log__sdev"]!=0,"Log__sdev"])), 1))
-            regressor = LinearRegression(fit_intercept=True)
-            regressor.fit(x_reg, y_reg)
-            slope_sdev=regressor.coef_[0][0]
-            offset_sdev=regressor.intercept_[0]
+            #x_reg = numpy.reshape(numpy.array(list(data_to_use.loc[data_to_use["Log__sdev"]!=0,"Log__mean"])), (len(list(data_to_use.loc[data_to_use["Log__sdev"]!=0,"Log__mean"])), 1))
+            #y_reg = numpy.reshape(numpy.array([1/i for i in list(data_to_use.loc[data_to_use["Log__sdev"]!=0,"Log__sdev"])]), (len(list(data_to_use.loc[data_to_use["Log__sdev"]!=0,"Log__sdev"])), 1))
+            #regressor = LinearRegression(fit_intercept=True)
+            #regressor.fit(x_reg, y_reg)
+            #slope_sdev=regressor.coef_[0][0]
+            #offset_sdev=regressor.intercept_[0]
+            lin_regression_results=do_lin_regression(x_to_fit=list(data_to_use.loc[data_to_use["Log__sdev"]!=0,"Log__mean"]),y_to_fit=[1/i for i in list(data_to_use.loc[data_to_use["Log__sdev"]!=0,"Log__sdev"])],fit_intercept=True)
+            slope_sdev=lin_regression_results["A"]
+            offset_sdev=lin_regression_results["B"]
             data_to_use["Fitted_Stdev"]=[1/(offset_sdev+slope_sdev*data_to_use.loc[i,"Log__mean"]) for i in data_to_use.index]
             df_intermediate["Fitted_Stdev"]=[1/(offset_sdev+slope_sdev*df_intermediate.loc[i,"LogMean"]) for i in df_intermediate.index]
         out["Fitted_Stdev"]=df_intermediate["Fitted_Stdev"]
