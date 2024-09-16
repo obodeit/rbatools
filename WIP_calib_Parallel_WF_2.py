@@ -140,7 +140,8 @@ def calibration(input_dict,print_outputs=True):
                                          use_mean_enzyme_composition_for_calibration=False,
                                          global_protein_scaling_coeff=1000/6.022e23,
                                          #max_kapp_threshold=100000000000
-                                         max_kapp_threshold=None
+                                         max_kapp_threshold=None,
+                                         output_dir="../Calibration_stuff"
                                          )
     return({input_dict["condition"]:calib_results})
 
