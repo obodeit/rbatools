@@ -264,5 +264,5 @@ if __name__ == "__main__":
         #conditions = ['Hackett_C03','Hackett_C005', 'Hackett_C022', 'Hackett_C016', 'Hackett_C01','Mean_01'],
         conditions = ['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
         conditions_for_compartment_regression=['Hackett_C005', 'Hackett_C01', 'Hackett_C016', 'Hackett_C022', 'Hackett_C03'],
-        coarse_calibration=True
+        coarse_calibration=False
         )
