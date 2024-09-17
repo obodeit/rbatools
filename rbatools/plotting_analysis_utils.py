@@ -101,7 +101,7 @@ def generate_proto_protein_map(rba_session):
 
 
 
-def plot_predicted_fluxes(simulation_outputs,types=['Fixed_PG_Eukaryotic_fixed_sizes','Fixed_PG_Eukaryotic','Eukaryotic_fixed_sizes',"DefaultKapp","Prokaryotic","Eukaryotic"],input_definition=None):
+def plot_predicted_fluxes(simulation_outputs,types=['Fixed_PG_Eukaryotic_fixed_sizes','Fixed_PG_Eukaryotic','Eukaryotic_fixed_sizes',"DefaultKapp","Prokaryotic","Eukaryotic"],input_definition=None,filename=None):
 
     Mus_o2 = [0.025, 0.05, 0.1, 0.15, 0.2, 0.25, 0.28, 0.3, 0.35, 0.4]
     Glc_J = [0.3, 0.6, 1.1, 1.7, 2.3, 2.8, 3.4, 4.5, 8.6, 11.1]
@@ -734,8 +734,10 @@ def plot_predicted_fluxes(simulation_outputs,types=['Fixed_PG_Eukaryotic_fixed_s
     axs[2, 2].set_title('Succinate-excretion rate')
     axs[2, 2].set_xlabel('$\mu$ [$h^{-1}$]')
     axs[2, 2].set_ylabel('$J^{Ex}$ [$mmol * g^{-1}_{DW} * h^{-1}$]')
-
-    plt.show()
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename,dpi=300)
 
 
 def plot_specific_enzyme_efficiencies(point_calibration_kapps,regressed_kapps,conditions,growth_rates,filename,min_y=0,max_y=10**12):
@@ -784,13 +786,14 @@ def plot_compartment_sizes_and_pg(point_calibration_sizes,point_calibration_pg,r
         plt.close()
     out_pdf.close()
 
-
-def plot_rss_trajectory(filename,calibration_outputs):
+def store_rss_values_of_calibration(calibration_outputs,filename):
     out=pandas.DataFrame()
     for cal_input in calibration_outputs:
         for i in range(len(cal_input["RSS_trajectory"])):
             out.loc[i,cal_input["Condition"]]=cal_input["RSS_trajectory"][i]
     out.to_csv(filename)
+
+def plot_rss_trajectory(calibration_outputs,filename=None):    
     n_figs=len(calibration_outputs)
     if n_figs<=3:
         n_rows=2
@@ -815,7 +818,10 @@ def plot_rss_trajectory(filename,calibration_outputs):
         axs[ax_indices[count][0],ax_indices[count][1]].set_xlabel("Iteration")
         axs[ax_indices[count][0],ax_indices[count][1]].set_ylabel("Residual Sum of squares")
         count+=1
-    plt.show()
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename,dpi=300)
 
 
 def perform_protein_protein_comparison(rba_session,condition,calibration_object,simulation_object,simulation_type,scaling_coeff=6.023e20):
@@ -845,7 +851,7 @@ def plot_predicted_versus_measured_proteomes(rba_session,calibration_outputs,sim
         results_object="Simulation_Results_DefKapp"
 
 
-def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,conditions):
+def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,conditions,filename=None):
     plot_dimensions={1:(1,1),2:(1,2),3:(1,3),4:(2,3),5:(2,3),6:(2,3),7:(3,3),8:(3,3),9:(3,3)}
     plot_indices={1:(1,1),2:(1,2),3:(1,3),4:(2,1),5:(2,2),6:(2,3),7:(3,1),8:(3,2),9:(3,3)}
     number_conditions=len(conditions)
@@ -889,7 +895,10 @@ def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,condi
                 axs[fig_row, fig_col].set_ylabel('Measured copies per $g_{DW}$ ($Log_{10}$)')
                 axs[fig_row, fig_col].set_ylim(math.floor(numpy.log10(min(y))),math.ceil(numpy.log10(max(y))))
 
-    plt.show()
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename,dpi=300)
 
 
 def do_linear_regression_on_proteome_prediction(x,y,fit_intercept):
