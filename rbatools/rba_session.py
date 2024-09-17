@@ -215,6 +215,7 @@ class SessionRBA(object):
         for i in objective_function.keys():
             self.Results['ObjectiveFunction'].loc[i,run_name]=objective_function[i]
         self.Results['ModuleCost'][run_name] = [_auxiliary_functions.get_module_aa_occupation(RBA_Session=self,module=i,proteome=self.Results['ProtoProteins'],run_name=run_name) for i in self.Results['ModuleCost'].index]
+        self.Results['uniqueReactions'] = _auxiliary_functions.map_iso_reactions(RBA_Session=self)
 
     def record_parameters(self, run_name: str):
         """
