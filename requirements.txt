@@ -3,7 +3,7 @@ scipy
 pandas
 numpy
 matplotlib
-sbtab>=1.0.6
+sbtab==1.0.6
 python-libsbml
 jxmlease
 swiglpk
