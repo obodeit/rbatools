@@ -29,7 +29,54 @@ def calibration_workflow(proteome,
                          use_mean_enzyme_composition_for_calibration=False,
                          max_kapp_threshold=None,
                          output_dir=""):
-    
+    """
+    _summary_
+
+    Parameters
+    ----------
+    proteome : _type_
+        _description_
+    condition : _type_
+        _description_
+    gene_ID_column : _type_
+        _description_
+    definition_file : _type_
+        _description_
+    rba_session : _type_
+        _description_
+    process_efficiency_estimation_input : _type_, optional
+        _description_, by default None
+    spec_kapps : _type_, optional
+        _description_, by default None
+    default_kapps : _type_, optional
+        _description_, by default None
+    process_efficiencies : _type_, optional
+        _description_, by default None
+    Compartment_sizes : _type_, optional
+        _description_, by default None
+    PG_fractions : _type_, optional
+        _description_, by default None
+    transporter_multiplier : int, optional
+        _description_, by default 3
+    prelim_run : bool, optional
+        _description_, by default False
+    Mu_approx_precision : float, optional
+        _description_, by default 0.00001
+    feasible_stati : list, optional
+        _description_, by default ["optimal","feasible","feasible_only_before_unscaling"]
+    min_kapp : _type_, optional
+        _description_, by default None
+    print_outputs : bool, optional
+        _description_, by default True
+    global_protein_scaling_coeff : int, optional
+        _description_, by default 1
+    use_mean_enzyme_composition_for_calibration : bool, optional
+        _description_, by default False
+    max_kapp_threshold : _type_, optional
+        _description_, by default None
+    output_dir : str, optional
+        _description_, by default ""
+    """
     correction_settings=machinery_efficiency_correction_settings_from_input(input=definition_file, condition=condition)
     enzyme_efficiency_estimation_settings=enzyme_efficiency_estimation_settings_from_input(input=definition_file, condition=condition)
 
@@ -415,6 +462,32 @@ def correction_pipeline(input,
                           directly_corrected_compartments,
                           merged_compartments,
                           min_compartment_fraction):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    input : _type_
+        _description_
+    condition : _type_
+        _description_
+    definition_file : _type_
+        _description_
+    compartments_to_replace : _type_
+        _description_
+    compartments_no_original_PG : _type_
+        _description_
+    fractions_entirely_replaced_with_expected_value : _type_
+        _description_
+    imposed_compartment_fractions : _type_
+        _description_
+    directly_corrected_compartments : _type_
+        _description_
+    merged_compartments : _type_
+        _description_
+    min_compartment_fraction : _type_
+        _description_
+    """
     out = build_proteome_overview(input=input, condition=condition, compartments_to_replace=compartments_to_replace,
                                   compartments_no_original_PG=compartments_no_original_PG, ribosomal_proteins_as_extra_compartment=True)
     factor_a=1/(1-sum([out.loc["pg_{}".format(i),"original_protein_fraction"] for i in compartments_no_original_PG]))
@@ -451,6 +524,22 @@ def correction_pipeline(input,
 
 
 def build_proteome_overview(input, condition, compartments_to_replace={'DEF':"c", 'DEFA':"c", 'Def':"c"}, compartments_no_original_PG=['n', 'Secreted'], ribosomal_proteins_as_extra_compartment=True):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    input : _type_
+        _description_
+    condition : _type_
+        _description_
+    compartments_to_replace : dict, optional
+        _description_, by default {'DEF':"c", 'DEFA':"c", 'Def':"c"}
+    compartments_no_original_PG : list, optional
+        _description_, by default ['n', 'Secreted']
+    ribosomal_proteins_as_extra_compartment : bool, optional
+        _description_, by default True
+    """
     out = determine_compartment_occupation(Data_input=input, Condition=condition, compartments_to_replace=compartments_to_replace,
                                            compartments_no_original_PG=compartments_no_original_PG, ribosomal_proteins_as_extra_compartment=ribosomal_proteins_as_extra_compartment, only_in_model=False)
     out_in_model = determine_compartment_occupation(Data_input=input, Condition=condition, compartments_to_replace=compartments_to_replace,
@@ -468,6 +557,26 @@ def determine_compartment_occupation(Data_input,
                                        compartments_to_replace={'DEF':"c"},
                                        compartments_no_original_PG=[],
                                        ribosomal_proteins_as_extra_compartment=True):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    Data_input : _type_
+        _description_
+    Condition : _type_
+        _description_
+    mass_col : str, optional
+        _description_, by default 'AA_residues'
+    only_in_model : bool, optional
+        _description_, by default False
+    compartments_to_replace : dict, optional
+        _description_, by default {'DEF':"c"}
+    compartments_no_original_PG : list, optional
+        _description_, by default []
+    ribosomal_proteins_as_extra_compartment : bool, optional
+        _description_, by default True
+    """
     out=pandas.DataFrame()
     if only_in_model:
         Data_intermediate = Data_input.loc[Data_input['InModel'] >= 1,:]
@@ -503,6 +612,16 @@ def determine_compartment_occupation(Data_input,
 
 
 def extract_compsizes_and_pgfractions_from_correction_summary(corrsummary,rows_to_exclude):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    corrsummary : _type_
+        _description_
+    rows_to_exclude : _type_
+        _description_
+    """
     out=pandas.DataFrame()
     for i in list(corrsummary.index):
         if i in rows_to_exclude:
@@ -515,6 +634,28 @@ def extract_compsizes_and_pgfractions_from_correction_summary(corrsummary,rows_t
 
 
 def determine_apparent_process_efficiencies(growth_rate, input, rba_session, proteome_summary, protein_data, condition, gene_id_col,fit_nucleotide_assembly_machinery=False):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    growth_rate : _type_
+        _description_
+    input : _type_
+        _description_
+    rba_session : _type_
+        _description_
+    proteome_summary : _type_
+        _description_
+    protein_data : _type_
+        _description_
+    condition : _type_
+        _description_
+    gene_id_col : _type_
+        _description_
+    fit_nucleotide_assembly_machinery : bool, optional
+        _description_, by default False
+    """
     process_efficiencies = pandas.DataFrame()
     for i in input.index:
         process_ID = input.loc[i, 'Process_ID']
@@ -571,6 +712,14 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session, pro
 
 
 def determine_macromolecule_synthesis_machinery_demand(rba_session):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    rba_session : _type_
+        _description_
+    """
     production_fluxes_macromolecules={}
     for i in rba_session.model.targets.target_groups._elements_by_id["transcription_targets"].concentrations._elements:
         species=i.species
@@ -618,6 +767,16 @@ def determine_macromolecule_synthesis_machinery_demand(rba_session):
 
 
 def build_input_proteome_for_specific_kapp_estimation(proteomics_data, condition):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    proteomics_data : _type_
+        _description_
+    condition : _type_
+        _description_
+    """
     out = pandas.DataFrame()
     out['ID'] = proteomics_data['ID']
     out['copy_number'] = proteomics_data[condition]
@@ -865,8 +1024,33 @@ def determine_calibration_flux_distribution(rba_session,
                                             rxns_to_ignore_when_parsimonious,
                                             condition=None,
                                             use_bm_flux_of_one=False
-                                            ):
-    
+                                            ):                                        
+    """
+    _summary_
+
+    Parameters
+    ----------
+    rba_session : _type_
+        _description_
+    mu : _type_
+        _description_
+    flux_bounds : _type_
+        _description_
+    compartment_densities_and_pg : _type_
+        _description_
+    biomass_function : _type_
+        _description_
+    target_biomass_function : _type_
+        _description_
+    parsimonious_fba : _type_
+        _description_
+    rxns_to_ignore_when_parsimonious : _type_
+        _description_
+    condition : _type_, optional
+        _description_, by default None
+    use_bm_flux_of_one : bool, optional
+        _description_, by default False
+    """
     for comp in list(compartment_densities_and_pg['Compartment_ID']):
         rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_pg.loc[compartment_densities_and_pg['Compartment_ID'] == comp, 'Density'].values[0]
         rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = 0.0
@@ -971,6 +1155,16 @@ def determine_calibration_flux_distribution(rba_session,
 
 
 def determine_reactions_associated_with_measured_proto_protein(measured_proteins_isoform_map,rba_session):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    measured_proteins_isoform_map : _type_
+        _description_
+    rba_session : _type_
+        _description_
+    """
     # identify all model reactions, associated with the measured proteins
     out = {}
     for p_ID in measured_proteins_isoform_map.keys():
@@ -983,8 +1177,21 @@ def determine_reactions_associated_with_measured_proto_protein(measured_proteins
 
 
 def pre_select_iso_reactions(measured_proteins_reaction_map,rba_session,chose_most_quantified,keep_isorxns_specific_to_quantified_proteins=False):
-    # choose most likely iso-reaction for each measured-protein associated reaction
+    """
+    _summary_
 
+    Parameters
+    ----------
+    measured_proteins_reaction_map : _type_
+        _description_
+    rba_session : _type_
+        _description_
+    chose_most_quantified : _type_
+        _description_
+    keep_isorxns_specific_to_quantified_proteins : bool, optional
+        _description_, by default False
+    """
+    # choose most likely iso-reaction for each measured-protein associated reaction
     proto_rxn_dict = {}
     for p_ID in measured_proteins_reaction_map.keys():
         for rxn in measured_proteins_reaction_map[p_ID]:
@@ -1026,6 +1233,20 @@ def pre_select_iso_reactions(measured_proteins_reaction_map,rba_session,chose_mo
 
 
 def determine_machinery_concentration_by_weighted_geometric_mean(rba_session,machinery_composition,proteomicsData,proto_proteins=False):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    rba_session : _type_
+        _description_
+    machinery_composition : _type_
+        _description_
+    proteomicsData : _type_
+        _description_
+    proto_proteins : bool, optional
+        _description_, by default False
+    """
     subunit_derived_concentrations={}
     for subunit in machinery_composition.keys():
         if proto_proteins:
@@ -1058,6 +1279,20 @@ def determine_machinery_concentration_by_weighted_geometric_mean(rba_session,mac
 
 
 def determine_machinery_concentration(rba_session,machinery_composition,proteomicsData,proto_proteins=False):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    rba_session : _type_
+        _description_
+    machinery_composition : _type_
+        _description_
+    proteomicsData : _type_
+        _description_
+    proto_proteins : bool, optional
+        _description_, by default False
+    """
     subunit_derived_concentrations={}
     for subunit in machinery_composition.keys():
         if proto_proteins:
@@ -1091,6 +1326,18 @@ def determine_machinery_concentration(rba_session,machinery_composition,proteomi
 
 
 def determine_fba_flux_carrying_isoreaction(rba_session,reaction_id,flux_distribution):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    rba_session : _type_
+        _description_
+    reaction_id : _type_
+        _description_
+    flux_distribution : _type_
+        _description_
+    """
     out=None
     if reaction_id in rba_session.get_reactions():
         if reaction_id in flux_distribution.index:
@@ -1126,7 +1373,52 @@ def global_efficiency_scaling(condition,
                               print_outputs=False,
                               adjust_root=True,
                               proteomics_constraints_input={}):
-    
+    """
+    _summary_
+
+    Parameters
+    ----------
+    condition : _type_
+        _description_
+    definition_file : _type_
+        _description_
+    rba_session : _type_
+        _description_
+    compartment_densities_and_pg : _type_
+        _description_
+    process_efficiencies : _type_
+        _description_
+    default_kapps : _type_
+        _description_
+    specific_kapps : _type_
+        _description_
+    exchanges_to_impose : _type_
+        _description_
+    feasible_stati : _type_
+        _description_
+    transporter_multiplier : _type_
+        _description_
+    mu_approx_precision : _type_
+        _description_
+    mu_misprediction_tolerance : _type_
+        _description_
+    condition_to_look_up : _type_
+        _description_
+    growth_rate_to_look_up : _type_
+        _description_
+    results_to_look_up : _type_
+        _description_
+    fixed_mu_when_above_target_mu_in_correction : _type_
+        _description_
+    n_th_root_mispred : int, optional
+        _description_, by default 1
+    print_outputs : bool, optional
+        _description_, by default False
+    adjust_root : bool, optional
+        _description_, by default True
+    proteomics_constraints_input : dict, optional
+        _description_, by default {}
+    """
     mu_measured=growth_rate_from_input(input=definition_file, condition=condition)
 
     default_kapps_for_scaling=copy.deepcopy(default_kapps)
@@ -1400,6 +1692,36 @@ def efficiency_correction(enzyme_efficiencies,
                                correct_default_kapp_enzymes=False,
                                only_consider_misprediction_for_predicted_nonzero_enzymes=False,
                                max_kapp=None):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    enzyme_efficiencies : _type_
+        _description_
+    simulation_results : _type_
+        _description_
+    protein_data : _type_
+        _description_
+    rba_session : _type_
+        _description_
+    condition_to_look_up : _type_
+        _description_
+    default_enzyme_efficiencies : _type_
+        _description_
+    tolerance : int, optional
+        _description_, by default 2
+    n_th_root_mispred : int, optional
+        _description_, by default 2
+    process_efficiencies : _type_, optional
+        _description_, by default None
+    correct_default_kapp_enzymes : bool, optional
+        _description_, by default False
+    only_consider_misprediction_for_predicted_nonzero_enzymes : bool, optional
+        _description_, by default False
+    max_kapp : _type_, optional
+        _description_, by default None
+    """
     proto_protein_quantities={}
     for i in simulation_results["Proteins"].index:
         proto_protein_ID=rba_session.get_protein_information(protein=i)["ProtoID"]
@@ -1559,6 +1881,18 @@ def efficiency_correction(enzyme_efficiencies,
 
 ############    
 def import_process_efficiencies(input_data,rba_session,condition):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    input_data : _type_
+        _description_
+    rba_session : _type_
+        _description_
+    condition : _type_
+        _description_
+    """
     id_name_map={rba_session.get_process_information(i)["ID"]:rba_session.get_process_information(i)["Name"] for i in rba_session.get_processes()}
     out=pandas.DataFrame()
     for i in list(input_data.index):
@@ -1569,6 +1903,18 @@ def import_process_efficiencies(input_data,rba_session,condition):
 
 
 def import_specific_enzyme_efficiencies(input_data,rba_session,condition):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    input_data : _type_
+        _description_
+    rba_session : _type_
+        _description_
+    condition : _type_
+        _description_
+    """
     out=pandas.DataFrame()
     for i in list(input_data["Enzyme_ID"]):
         out.loc[rba_session.get_enzyme_information(i)["Reaction"],"Enzyme_ID"]=i
@@ -1585,10 +1931,32 @@ def import_specific_enzyme_efficiencies(input_data,rba_session,condition):
 
 
 def import_default_enzyme_efficiencies(input_data,condition,default_transporter_kapp_coefficient=1):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    input_data : _type_
+        _description_
+    condition : _type_
+        _description_
+    default_transporter_kapp_coefficient : int, optional
+        _description_, by default 1
+    """
     return({'default_efficiency': input_data.loc[condition,"Default Kapp"], 'default_transporter_efficiency':input_data.loc[condition,"Default Kapp"]*default_transporter_kapp_coefficient})
 
 
 def weighted_geometric_mean(data,weights=None):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    data : _type_
+        _description_
+    weights : _type_, optional
+        _description_, by default None
+    """
     if weights is None:
         value=1
         for i in data:
@@ -1603,6 +1971,14 @@ def weighted_geometric_mean(data,weights=None):
 
 
 def extract_compartment_sizes_from_calibration_outputs(calibration_outputs):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    calibration_outputs : _type_
+        _description_
+    """
     out=pandas.DataFrame()
     for i in calibration_outputs:
         for j in i["Densities_PGs"].index:
@@ -1611,6 +1987,14 @@ def extract_compartment_sizes_from_calibration_outputs(calibration_outputs):
 
 
 def extract_pg_fractions_from_calibration_outputs(calibration_outputs):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    calibration_outputs : _type_
+        _description_
+    """
     out=pandas.DataFrame()
     for i in calibration_outputs:
         for j in i["Densities_PGs"].index:
@@ -1619,6 +2003,14 @@ def extract_pg_fractions_from_calibration_outputs(calibration_outputs):
 
 
 def extract_specific_kapps_from_calibration_outputs(calibration_outputs):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    calibration_outputs : _type_
+        _description_
+    """
     out=pandas.DataFrame()
     for i in calibration_outputs:
         for j in i['Specific_Kapps']["Enzyme_ID"]:
@@ -1629,6 +2021,14 @@ def extract_specific_kapps_from_calibration_outputs(calibration_outputs):
 
 
 def extract_default_kapps_from_calibration_outputs(calibration_outputs):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    calibration_outputs : _type_
+        _description_
+    """
     out = pandas.DataFrame()
     for i in calibration_outputs:
         out.loc[i["Condition"], 'ID'] = i["Condition"]
@@ -1637,6 +2037,14 @@ def extract_default_kapps_from_calibration_outputs(calibration_outputs):
 
 
 def extract_process_capacities_from_calibration_outputs(calibration_outputs):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    calibration_outputs : _type_
+        _description_
+    """
     out = pandas.DataFrame()
     for i in calibration_outputs:
         for j in list(i['Process_Efficiencies']['Process']):
@@ -1644,7 +2052,7 @@ def extract_process_capacities_from_calibration_outputs(calibration_outputs):
             out.loc[j,i["Condition"]]=val
     return(out)
 
-
+############    
 def generate_mean_enzyme_composition_model(rba_session,condition):
     enzymes_already_handled=[]
     model_enzymes=rba_session.get_enzymes()

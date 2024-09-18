@@ -11,6 +11,20 @@ from rbatools.other_utils import growth_rate_from_input
 
 
 def extract_feasible_bounds(inputs=[],feasible_range_object='FeasibleRange_prok', variable='',bound_type="Min"):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    inputs : list, optional
+        _description_, by default []
+    feasible_range_object : str, optional
+        _description_, by default 'FeasibleRange_prok'
+    variable : str, optional
+        _description_, by default ''
+    bound_type : str, optional
+        _description_, by default "Min"
+    """
     out = []
     for i in inputs:
         try:
@@ -24,8 +38,21 @@ def extract_feasible_bounds(inputs=[],feasible_range_object='FeasibleRange_prok'
     return(out)
 
 
-
 def extract_predicted_exchange_fluxes(inputs=[],result_object='Simulation_Results', run='Prokaryotic', metabolite=''):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    inputs : list, optional
+        _description_, by default []
+    result_object : str, optional
+        _description_, by default 'Simulation_Results'
+    run : str, optional
+        _description_, by default 'Prokaryotic'
+    metabolite : str, optional
+        _description_, by default ''
+    """
     out = []
     for i in inputs:
         try:
@@ -35,8 +62,19 @@ def extract_predicted_exchange_fluxes(inputs=[],result_object='Simulation_Result
     return(out)
 
 
-
 def extract_predicted_growth_rates(inputs=[],result_object='Simulation_Results', run='Prokaryotic'):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    inputs : list, optional
+        _description_, by default []
+    result_object : str, optional
+        _description_, by default 'Simulation_Results'
+    run : str, optional
+        _description_, by default 'Prokaryotic'
+    """
     out = []
     for i in inputs:
         try:
@@ -46,8 +84,21 @@ def extract_predicted_growth_rates(inputs=[],result_object='Simulation_Results',
     return(out)
 
 
-
 def determine_kapp_type_classification(protein_DF,rbaSession,specific_kapps,protomap):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    protein_DF : _type_
+        _description_
+    rbaSession : _type_
+        _description_
+    specific_kapps : _type_
+        _description_
+    protomap : _type_
+        _description_
+    """
     comments=[]
     comp_comments=[]
     for i in protein_DF.index:
@@ -88,8 +139,15 @@ def determine_kapp_type_classification(protein_DF,rbaSession,specific_kapps,prot
     return(protein_DF)
 
 
-
 def generate_proto_protein_map(rba_session):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    rba_session : _type_
+        _description_
+    """
     protomap={}
     for i in rba_session.get_proteins():
         protoID=rba_session.get_protein_information(protein=i)["ProtoID"]
@@ -100,9 +158,21 @@ def generate_proto_protein_map(rba_session):
     return(protomap)
 
 
-
 def plot_predicted_fluxes(simulation_outputs,types=['Fixed_PG_Eukaryotic_fixed_sizes','Fixed_PG_Eukaryotic','Eukaryotic_fixed_sizes',"DefaultKapp","Prokaryotic","Eukaryotic"],input_definition=None,filename=None):
+    """
+    _summary_
 
+    Parameters
+    ----------
+    simulation_outputs : _type_
+        _description_
+    types : list, optional
+        _description_, by default ['Fixed_PG_Eukaryotic_fixed_sizes','Fixed_PG_Eukaryotic','Eukaryotic_fixed_sizes',"DefaultKapp","Prokaryotic","Eukaryotic"]
+    input_definition : _type_, optional
+        _description_, by default None
+    filename : _type_, optional
+        _description_, by default None
+    """
     Mus_o2 = [0.025, 0.05, 0.1, 0.15, 0.2, 0.25, 0.28, 0.3, 0.35, 0.4]
     Glc_J = [0.3, 0.6, 1.1, 1.7, 2.3, 2.8, 3.4, 4.5, 8.6, 11.1]
     EtOH_J = [0, 0, 0, 0, 0, 0, 0.11, 2.3, 9.5, 13.9]
@@ -741,6 +811,26 @@ def plot_predicted_fluxes(simulation_outputs,types=['Fixed_PG_Eukaryotic_fixed_s
 
 
 def plot_specific_enzyme_efficiencies(point_calibration_kapps,regressed_kapps,conditions,growth_rates,filename,min_y=0,max_y=10**12):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    point_calibration_kapps : _type_
+        _description_
+    regressed_kapps : _type_
+        _description_
+    conditions : _type_
+        _description_
+    growth_rates : _type_
+        _description_
+    filename : _type_
+        _description_
+    min_y : int, optional
+        _description_, by default 0
+    max_y : _type_, optional
+        _description_, by default 10**12
+    """
     out_pdf=PdfPages(filename)
     for enzyme in point_calibration_kapps.index:
         if enzyme in regressed_kapps.index:
@@ -766,6 +856,26 @@ def plot_specific_enzyme_efficiencies(point_calibration_kapps,regressed_kapps,co
 
 
 def plot_compartment_sizes_and_pg(point_calibration_sizes,point_calibration_pg,regressed_sizes,regressed_pg,conditions,growth_rates,filename):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    point_calibration_sizes : _type_
+        _description_
+    point_calibration_pg : _type_
+        _description_
+    regressed_sizes : _type_
+        _description_
+    regressed_pg : _type_
+        _description_
+    conditions : _type_
+        _description_
+    growth_rates : _type_
+        _description_
+    filename : _type_
+        _description_
+    """
     out_pdf=PdfPages(filename)
     for compartment in point_calibration_sizes.index:
         fig, ax = plt.subplots(1, 2, figsize=(9, 4))
@@ -786,14 +896,36 @@ def plot_compartment_sizes_and_pg(point_calibration_sizes,point_calibration_pg,r
         plt.close()
     out_pdf.close()
 
+
 def store_rss_values_of_calibration(calibration_outputs,filename):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    calibration_outputs : _type_
+        _description_
+    filename : _type_
+        _description_
+    """
     out=pandas.DataFrame()
     for cal_input in calibration_outputs:
         for i in range(len(cal_input["RSS_trajectory"])):
             out.loc[i,cal_input["Condition"]]=cal_input["RSS_trajectory"][i]
     out.to_csv(filename)
 
+
 def plot_rss_trajectory(calibration_outputs,filename=None):    
+    """
+    _summary_
+
+    Parameters
+    ----------
+    calibration_outputs : _type_
+        _description_
+    filename : _type_, optional
+        _description_, by default None
+    """
     n_figs=len(calibration_outputs)
     if n_figs<=3:
         n_rows=2
@@ -825,6 +957,24 @@ def plot_rss_trajectory(calibration_outputs,filename=None):
 
 
 def perform_protein_protein_comparison(rba_session,condition,calibration_object,simulation_object,simulation_type,scaling_coeff=6.023e20):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    rba_session : _type_
+        _description_
+    condition : _type_
+        _description_
+    calibration_object : _type_
+        _description_
+    simulation_object : _type_
+        _description_
+    simulation_type : _type_
+        _description_
+    scaling_coeff : _type_, optional
+        _description_, by default 6.023e20
+    """
     ProtoProteinMap=generate_proto_protein_map(rba_session=rba_session)
     out = pandas.DataFrame()
     for i in list(set(list(simulation_object[simulation_type]['ProtoProteins'].index)+list(calibration_object['Proteome']['ID']))):
@@ -841,6 +991,20 @@ def perform_protein_protein_comparison(rba_session,condition,calibration_object,
 
 
 def plot_predicted_versus_measured_proteomes(rba_session,calibration_outputs,simulation_outputs,type):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    rba_session : _type_
+        _description_
+    calibration_outputs : _type_
+        _description_
+    simulation_outputs : _type_
+        _description_
+    type : _type_
+        _description_
+    """
     if type=="Prokaryotic":
         results_object="Simulation_Results"
     elif type=="Eukaryotic":
@@ -852,6 +1016,20 @@ def plot_predicted_versus_measured_proteomes(rba_session,calibration_outputs,sim
 
 
 def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,conditions,filename=None):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    predicted_proteomes : _type_
+        _description_
+    measured_proteomes : _type_
+        _description_
+    conditions : _type_
+        _description_
+    filename : _type_, optional
+        _description_, by default None
+    """
     plot_dimensions={1:(1,1),2:(1,2),3:(1,3),4:(2,3),5:(2,3),6:(2,3),7:(3,3),8:(3,3),9:(3,3)}
     plot_indices={1:(1,1),2:(1,2),3:(1,3),4:(2,1),5:(2,2),6:(2,3),7:(3,1),8:(3,2),9:(3,3)}
     number_conditions=len(conditions)
@@ -902,6 +1080,18 @@ def plot_protein_protein_comparison(predicted_proteomes,measured_proteomes,condi
 
 
 def do_linear_regression_on_proteome_prediction(x,y,fit_intercept):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    x : _type_
+        _description_
+    y : _type_
+        _description_
+    fit_intercept : _type_
+        _description_
+    """
     #x_reg = numpy.reshape(numpy.array(x), (len(x), 1))
     #y_reg = numpy.reshape(numpy.array(y), (len(y), 1))
     #regressor = LinearRegression(fit_intercept=fit_intercept)
@@ -915,7 +1105,34 @@ def do_linear_regression_on_proteome_prediction(x,y,fit_intercept):
             'X_regression':x,
             'Y_regression':y})
 
+
 def regression_on_specific_enzyme_efficiencies(Spec_Kapps,min_kapp,max_kapp,conditions,growth_rates,only_lin=False,impose_on_isoenzymes=True,monotonous_quadratic=False,fill_in_missing_conditions=False,permit_quadratic_model=True):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    Spec_Kapps : _type_
+        _description_
+    min_kapp : _type_
+        _description_
+    max_kapp : _type_
+        _description_
+    conditions : _type_
+        _description_
+    growth_rates : _type_
+        _description_
+    only_lin : bool, optional
+        _description_, by default False
+    impose_on_isoenzymes : bool, optional
+        _description_, by default True
+    monotonous_quadratic : bool, optional
+        _description_, by default False
+    fill_in_missing_conditions : bool, optional
+        _description_, by default False
+    permit_quadratic_model : bool, optional
+        _description_, by default True
+    """
     out=pandas.DataFrame(columns=Spec_Kapps.columns)
     for enzyme in Spec_Kapps.index:
         out.loc[enzyme,list(Spec_Kapps.columns)]=Spec_Kapps.loc[enzyme,list(Spec_Kapps.columns)]
@@ -976,6 +1193,26 @@ def regression_on_specific_enzyme_efficiencies(Spec_Kapps,min_kapp,max_kapp,cond
 
 
 def regression_on_compartment_sizes(filename,Comp_sizes,conditions,growth_rates,monotonous_quadratic=False,permit_quadratic_model=True,plotting=True):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    filename : _type_
+        _description_
+    Comp_sizes : _type_
+        _description_
+    conditions : _type_
+        _description_
+    growth_rates : _type_
+        _description_
+    monotonous_quadratic : bool, optional
+        _description_, by default False
+    permit_quadratic_model : bool, optional
+        _description_, by default True
+    plotting : bool, optional
+        _description_, by default True
+    """
     if plotting:
         pp = PdfPages(filename)
     out=pandas.DataFrame()
@@ -1020,6 +1257,26 @@ def regression_on_compartment_sizes(filename,Comp_sizes,conditions,growth_rates,
 
 
 def regression_on_pg_fractions(filename,PG_sizes,conditions,growth_rates,monotonous_quadratic=False,permit_quadratic_model=True,plotting=True):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    filename : _type_
+        _description_
+    PG_sizes : _type_
+        _description_
+    conditions : _type_
+        _description_
+    growth_rates : _type_
+        _description_
+    monotonous_quadratic : bool, optional
+        _description_, by default False
+    permit_quadratic_model : bool, optional
+        _description_, by default True
+    plotting : bool, optional
+        _description_, by default True
+    """
     if plotting:
         pp = PdfPages(filename)
     out=pandas.DataFrame()
@@ -1065,6 +1322,28 @@ def regression_on_pg_fractions(filename,PG_sizes,conditions,growth_rates,monoton
 
 
 def regression_on_process_efficiencies(filename,Process_efficiencies,min_efficiency,max_efficiency,conditions,growth_rates,monotonous_quadratic=False,permit_quadratic_model=True):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    filename : _type_
+        _description_
+    Process_efficiencies : _type_
+        _description_
+    min_efficiency : _type_
+        _description_
+    max_efficiency : _type_
+        _description_
+    conditions : _type_
+        _description_
+    growth_rates : _type_
+        _description_
+    monotonous_quadratic : bool, optional
+        _description_, by default False
+    permit_quadratic_model : bool, optional
+        _description_, by default True
+    """
     pp = PdfPages(filename)
     out=pandas.DataFrame()
     for process in Process_efficiencies.index:
@@ -1107,6 +1386,28 @@ def regression_on_process_efficiencies(filename,Process_efficiencies,min_efficie
 
 
 def regression_on_default_enzyme_efficiencies(filename,default_kapps,min_kapp,max_kapp,conditions,growth_rates,monotonous_quadratic=False,permit_quadratic_model=True):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    filename : _type_
+        _description_
+    default_kapps : _type_
+        _description_
+    min_kapp : _type_
+        _description_
+    max_kapp : _type_
+        _description_
+    conditions : _type_
+        _description_
+    growth_rates : _type_
+        _description_
+    monotonous_quadratic : bool, optional
+        _description_, by default False
+    permit_quadratic_model : bool, optional
+        _description_, by default True
+    """
     pp = PdfPages(filename)
     out=pandas.DataFrame()
     x=[growth_rates[i]for i in conditions]

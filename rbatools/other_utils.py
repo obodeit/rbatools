@@ -5,6 +5,16 @@ from rbatools.rba_xml_utils import inject_estimated_efficiencies_into_model , in
 
 
 def machinery_efficiency_correction_settings_from_input(input, condition):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    input : _type_
+        _description_
+    condition : _type_
+        _description_
+    """
     out={}
     out['tolerance_global_scaling']=0.1
     if 'Global_scaling_tolerance_growth_rate_approximation' in list(input['Type']):
@@ -87,6 +97,16 @@ def machinery_efficiency_correction_settings_from_input(input, condition):
 
 
 def enzyme_efficiency_estimation_settings_from_input(input, condition):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    input : _type_
+        _description_
+    condition : _type_
+        _description_
+    """
     out={}
     out['rRNA_target_rna_weight_ratio']=4.8824
     if 'rRNA_target_rna_weight_ratio' in list(input['Type']):
@@ -146,7 +166,24 @@ def enzyme_efficiency_estimation_settings_from_input(input, condition):
 
 
 def flux_bounds_from_input(input,rba_session, condition, specific_exchanges=None, specific_directions=None,also_consider_iso_enzmes=True):
+    """
+    _summary_
 
+    Parameters
+    ----------
+    input : _type_
+        _description_
+    rba_session : _type_
+        _description_
+    condition : _type_
+        _description_
+    specific_exchanges : _type_, optional
+        _description_, by default None
+    specific_directions : _type_, optional
+        _description_, by default None
+    also_consider_iso_enzmes : bool, optional
+        _description_, by default True
+    """
     out = pandas.DataFrame(columns=['Reaction_ID', 'LB', 'UB'])
 
     flux_mean_df = input.loc[input['Type'] == 'Flux_Range_Mean', :]
@@ -231,20 +268,62 @@ def flux_bounds_from_input(input,rba_session, condition, specific_exchanges=None
 
 
 def growth_rate_from_input(input, condition):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    input : _type_
+        _description_
+    condition : _type_
+        _description_
+    """
     return(input.loc[input['Type'] == 'Growth_Rate', condition].values[0])
 
 
 def proteome_fractions_from_input(input, condition):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    input : _type_
+        _description_
+    condition : _type_
+        _description_
+    """
     df = input.loc[input['Type'] == 'Expected_ProteomeFraction', :]
     return(dict(zip(list(df['ID']), list(df[condition]))))
 
 
 def medium_concentrations_from_input(input, condition):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    input : _type_
+        _description_
+    condition : _type_
+        _description_
+    """
     df = input.loc[input['Type'] == 'Medium_Concentration', :]
     return(dict(zip(list(df['ID']), list(df[condition]))))
 
 
 def generate_compartment_size_and_pg_input(compartment_sizes,pg_fractions,condition):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    compartment_sizes : _type_
+        _description_
+    pg_fractions : _type_
+        _description_
+    condition : _type_
+        _description_
+    """
     out=pandas.DataFrame()
     for i in compartment_sizes.index:
         out.loc[i,"Compartment_ID"]=i
@@ -256,6 +335,18 @@ def generate_compartment_size_and_pg_input(compartment_sizes,pg_fractions,condit
 
 
 def generate_process_efficiency_input(process_efficiencies,condition,parameter_name_suffix):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    process_efficiencies : _type_
+        _description_
+    condition : _type_
+        _description_
+    parameter_name_suffix : _type_
+        _description_
+    """
     out=pandas.DataFrame()
     for i in process_efficiencies.index:
         out.loc[i,"Process"]=i
@@ -265,6 +356,18 @@ def generate_process_efficiency_input(process_efficiencies,condition,parameter_n
 
 
 def generate_default_kapp_input(default_kapps,condition,transporter_multiplier):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    default_kapps : _type_
+        _description_
+    condition : _type_
+        _description_
+    transporter_multiplier : _type_
+        _description_
+    """
     out={}
     out["default_efficiency"]=default_kapps.loc[condition,"Default Kapp"]
     out["default_transporter_efficiency"]=transporter_multiplier*default_kapps.loc[condition,"Default Kapp"]
@@ -272,6 +375,16 @@ def generate_default_kapp_input(default_kapps,condition,transporter_multiplier):
 
 
 def generate_specific_kapp_input(specific_kapps,condition):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    specific_kapps : _type_
+        _description_
+    condition : _type_
+        _description_
+    """
     out=pandas.DataFrame()
     for i in specific_kapps.index:
         if not pandas.isna(specific_kapps.loc[i,condition]):
@@ -303,6 +416,56 @@ def perform_simulations(condition,
                         Mu_approx_precision=0.000001,
                         max_mu_in_dichotomy=1,
                         proteomics_constraints_input={}):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    condition : _type_
+        _description_
+    rba_session : _type_
+        _description_
+    definition_file : _type_
+        _description_
+    compartment_sizes : _type_
+        _description_
+    pg_fractions : _type_
+        _description_
+    process_efficiencies : _type_
+        _description_
+    Default_Kapps : _type_
+        _description_
+    Specific_Kapps : _type_
+        _description_
+    Exchanges_to_impose : _type_, optional
+        _description_, by default None
+    sims_to_perform : list, optional
+        _description_, by default ['DefaultKapp','Prokaryotic','Eukaryotic']
+    feasible_stati : list, optional
+        _description_, by default ['optimal','feasible']
+    try_unscaling_if_sol_status_is_feasible_only_before_unscaling : bool, optional
+        _description_, by default True
+    print_output : bool, optional
+        _description_, by default True
+    variability_analysis : _type_, optional
+        _description_, by default None
+    mu_factor_for_variability : int, optional
+        _description_, by default 1
+    apply_model : bool, optional
+        _description_, by default False
+    functions_to_include_list : list, optional
+        _description_, by default []
+    transporter_multiplier : int, optional
+        _description_, by default 3
+    start_val : _type_, optional
+        _description_, by default numpy.nan
+    Mu_approx_precision : float, optional
+        _description_, by default 0.000001
+    max_mu_in_dichotomy : int, optional
+        _description_, by default 1
+    proteomics_constraints_input : dict, optional
+        _description_, by default {}
+    """
     out={'SolutionStatus_def':None,
         'SolutionStatus_prok':None,
         'SolutionStatus_euk':None,
@@ -1113,6 +1276,56 @@ def perform_simulations_fixed_Mu(condition,
                                  functions_to_include_list=[],
                                  transporter_multiplier=3,
                                  proteomics_constraints_input={}):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    condition : _type_
+        _description_
+    rba_session : _type_
+        _description_
+    definition_file : _type_
+        _description_
+    compartment_sizes : _type_
+        _description_
+    pg_fractions : _type_
+        _description_
+    process_efficiencies : _type_
+        _description_
+    Default_Kapps : _type_
+        _description_
+    Specific_Kapps : _type_
+        _description_
+    Exchanges_to_impose : _type_, optional
+        _description_, by default None
+    metabolite_to_minimize : _type_, optional
+        _description_, by default None
+    sims_to_perform : list, optional
+        _description_, by default ["DefaultKapp","Prokaryotic","Eukaryotic"]
+    feasible_stati : list, optional
+        _description_, by default ["optimal","feasible"]
+    try_unscaling_if_sol_status_is_feasible_only_before_unscaling : bool, optional
+        _description_, by default True
+    Mu_scaling_coeff : int, optional
+        _description_, by default 1
+    total_protein_scaling_coeff : int, optional
+        _description_, by default 1
+    print_output : bool, optional
+        _description_, by default False
+    variability_analysis : _type_, optional
+        _description_, by default None
+    mu_factor_for_variability : int, optional
+        _description_, by default 1
+    apply_model : bool, optional
+        _description_, by default False
+    functions_to_include_list : list, optional
+        _description_, by default []
+    transporter_multiplier : int, optional
+        _description_, by default 3
+    proteomics_constraints_input : dict, optional
+        _description_, by default {}
+    """
 
     def_Feasible_Ranges={}
     prok_Feasible_Ranges={}
@@ -1652,6 +1865,18 @@ def perform_simulations_fixed_Mu(condition,
 
 
 def find_ribosomal_proteins(rba_session, model_processes=['TranslationC', 'TranslationM'], external_annotations=None):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    rba_session : _type_
+        _description_
+    model_processes : list, optional
+        _description_, by default ['TranslationC', 'TranslationM']
+    external_annotations : _type_, optional
+        _description_, by default None
+    """
     out = []
     for i in model_processes:
         out += [rba_session.get_protein_information(protein=j)['ProtoID']
@@ -1662,12 +1887,30 @@ def find_ribosomal_proteins(rba_session, model_processes=['TranslationC', 'Trans
 
 
 def build_model_compartment_map(rba_session):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    rba_session : _type_
+        _description_
+    """
     out = {rba_session.get_protein_information(protein=i)['ProtoID']: rba_session.get_protein_information(protein=i)['Compartment'] for i in list(
         rba_session.get_proteins())}
     return(out)
 
 
 def build_compartment_annotations(Compartment_Annotations_external, model_protein_compartment_map):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    Compartment_Annotations_external : _type_
+        _description_
+    model_protein_compartment_map : _type_
+        _description_
+    """
     for i in Compartment_Annotations_external.index:
         if Compartment_Annotations_external.loc[i, 'ID'] in list(model_protein_compartment_map.keys()):
             Compartment_Annotations_external.loc[i, 'modelproteinannotation'] = 1
@@ -1682,6 +1925,24 @@ def build_compartment_annotations(Compartment_Annotations_external, model_protei
 
 
 def build_dataset_annotations(input, ID_column, Uniprot, Compartment_Annotations, model_protein_compartment_map,ribosomal_proteins=[]):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    input : _type_
+        _description_
+    ID_column : _type_
+        _description_
+    Uniprot : _type_
+        _description_
+    Compartment_Annotations : _type_
+        _description_
+    model_protein_compartment_map : _type_
+        _description_
+    ribosomal_proteins : list, optional
+        _description_, by default []
+    """
     out = pandas.DataFrame()
     for g in list(input[ID_column]):
         out.loc[g, 'ID'] = g
@@ -1706,6 +1967,14 @@ def build_dataset_annotations(input, ID_column, Uniprot, Compartment_Annotations
 
 
 def build_full_annotations_from_dataset_annotations(annotations_list):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    annotations_list : _type_
+        _description_
+    """
     out = pandas.concat(annotations_list, axis=0)
     index = out.index
     is_duplicate = index.duplicated(keep="first")
@@ -1715,6 +1984,22 @@ def build_full_annotations_from_dataset_annotations(annotations_list):
 
 
 def infer_copy_numbers_from_reference_copy_numbers(fold_changes, absolute_data, matching_column_in_fold_change_data, matching_column_in_absolute_data, conditions_in_fold_change_data_to_restore):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    fold_changes : _type_
+        _description_
+    absolute_data : _type_
+        _description_
+    matching_column_in_fold_change_data : _type_
+        _description_
+    matching_column_in_absolute_data : _type_
+        _description_
+    conditions_in_fold_change_data_to_restore : _type_
+        _description_
+    """
     out = pandas.DataFrame()
     for i in list(absolute_data['Gene']):
         if i in list(fold_changes['Gene']):
@@ -1733,6 +2018,18 @@ def infer_copy_numbers_from_reference_copy_numbers(fold_changes, absolute_data, 
 
 
 def add_annotations_to_proteome(input, ID_column, annotations):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    input : _type_
+        _description_
+    ID_column : _type_
+        _description_
+    annotations : _type_
+        _description_
+    """
     for i in input.index:
         if input.loc[i, ID_column] in annotations.index:
             input.loc[i, 'AA_residues'] = annotations.loc[input.loc[i, ID_column], 'AA_residues']
@@ -1743,6 +2040,14 @@ def add_annotations_to_proteome(input, ID_column, annotations):
 
 
 def extract_proteomes_from_calibration_results(calib_results):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    calib_results : _type_
+        _description_
+    """
     proteomes=pandas.DataFrame()
     for calib_result in calib_results:
         condition=calib_result["Condition"]
@@ -1753,6 +2058,18 @@ def extract_proteomes_from_calibration_results(calib_results):
 
 
 def get_flux_distribution(simulation_outputs,result_object='Simulation_Results', run='Prokaryotic'):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    simulation_outputs : _type_
+        _description_
+    result_object : str, optional
+        _description_, by default 'Simulation_Results'
+    run : str, optional
+        _description_, by default 'Prokaryotic'
+    """
     out=pandas.DataFrame(columns=[sim_result["Condition"] for sim_result in simulation_outputs])
     for sim_result in simulation_outputs:
         if len(list(sim_result[result_object].keys()))>0:
@@ -1762,6 +2079,18 @@ def get_flux_distribution(simulation_outputs,result_object='Simulation_Results',
 
 
 def get_exchange_flux_distribution(simulation_outputs,result_object='Simulation_Results', run='Prokaryotic'):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    simulation_outputs : _type_
+        _description_
+    result_object : str, optional
+        _description_, by default 'Simulation_Results'
+    run : str, optional
+        _description_, by default 'Prokaryotic'
+    """
     out=pandas.DataFrame(columns=[sim_result["Condition"] for sim_result in simulation_outputs])
     for sim_result in simulation_outputs:
         if len(list(sim_result[result_object].keys()))>0:
@@ -1771,6 +2100,16 @@ def get_exchange_flux_distribution(simulation_outputs,result_object='Simulation_
 
 
 def extract_proteomes_from_simulation_results(simulation_outputs,type="Prokaryotic"):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    simulation_outputs : _type_
+        _description_
+    type : str, optional
+        _description_, by default "Prokaryotic"
+    """
     if type=="Prokaryotic":
         results_object="Simulation_Results"
     elif type=="Eukaryotic":

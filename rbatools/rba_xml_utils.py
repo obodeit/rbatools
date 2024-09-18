@@ -4,6 +4,18 @@ import numpy
 import json
 
 def inject_default_kapps(rba_session, default_kapp, default_transporter_kapp):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    rba_session : _type_
+        _description_
+    default_kapp : _type_
+        _description_
+    default_transporter_kapp : _type_
+        _description_
+    """
     if numpy.isfinite(default_kapp):
         rba_session.model.parameters.functions._elements_by_id['default_efficiency'].parameters._elements_by_id['CONSTANT'].value = default_kapp
     if numpy.isfinite(default_transporter_kapp):
@@ -60,6 +72,26 @@ def inject_specific_kapps(rba_session, specific_kapps, round_to_digits=0, min_va
 
 
 def inject_default_kapps_as_function(rba_session, default_kapps,transporter_coeff, round_to_digits,x_min,x_max,indep_variable="growth_rate"):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    rba_session : _type_
+        _description_
+    default_kapps : _type_
+        _description_
+    transporter_coeff : _type_
+        _description_
+    round_to_digits : _type_
+        _description_
+    x_min : _type_
+        _description_
+    x_max : _type_
+        _description_
+    indep_variable : str, optional
+        _description_, by default "growth_rate"
+    """
     model_dict=json.loads(str(default_kapps.loc["Regression","Model"]))
     respective_function_default=None
     respective_function_default_transport=None
@@ -111,6 +143,24 @@ def inject_process_capacities_as_function(rba_session, process_efficiencies, rou
 
 
 def inject_compartment_densities_as_function(rba_session, compartment_densities, round_to_digits,x_min,x_max,indep_variable="growth_rate"):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    rba_session : _type_
+        _description_
+    compartment_densities : _type_
+        _description_
+    round_to_digits : _type_
+        _description_
+    x_min : _type_
+        _description_
+    x_max : _type_
+        _description_
+    indep_variable : str, optional
+        _description_, by default "growth_rate"
+    """
     comp_den_param_map={den.compartment:str("fraction_protein_"+str(den.compartment)) for den in rba_session.model.density.target_densities._elements}
     for i in compartment_densities.index:
         if i in comp_den_param_map.keys():
@@ -146,6 +196,24 @@ def inject_compartment_densities_as_function(rba_session, compartment_densities,
 
 
 def inject_pg_fractions_as_function(rba_session, pg_fractions, round_to_digits,x_min,x_max,indep_variable="growth_rate"):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    rba_session : _type_
+        _description_
+    pg_fractions : _type_
+        _description_
+    round_to_digits : _type_
+        _description_
+    x_min : _type_
+        _description_
+    x_max : _type_
+        _description_
+    indep_variable : str, optional
+        _description_, by default "growth_rate"
+    """
     comp_pg_param_map={str(tar.value.split("nonenzymatic_proteins_")[1]):str("fraction_non_enzymatic_protein_"+tar.value.split("nonenzymatic_proteins_")[1]) for tar in rba_session.model.targets.target_groups._elements_by_id["translation_targets"].concentrations._elements}
     for i in pg_fractions.index:
         if i in comp_pg_param_map.keys():
@@ -230,6 +298,26 @@ def inject_estimated_efficiencies_as_functions_into_model(rba_session,
                                                           round_to_digits=2,
                                                           transporter_coeff=3):
     """
+    _summary_
+
+    Parameters
+    ----------
+    rba_session : _type_
+        _description_
+    specific_kapps : _type_, optional
+        _description_, by default None
+    default_kapps : _type_, optional
+        _description_, by default None
+    process_efficiencies : _type_, optional
+        _description_, by default None
+    compartment_densities : _type_, optional
+        _description_, by default None
+    pg_fractions : _type_, optional
+        _description_, by default None
+    round_to_digits : int, optional
+        _description_, by default 2
+    transporter_coeff : int, optional
+        _description_, by default 3
     """
     if compartment_densities is not None:
         inject_compartment_densities_as_function(rba_session=rba_session,compartment_densities=compartment_densities, round_to_digits=round_to_digits,x_min=0.05,x_max=0.3,indep_variable="growth_rate")

@@ -5,6 +5,18 @@ import numpy
 from rbatools.regression_utils import  do_lin_regression
 
 def sample_copy_numbers_from_proteome_replicates(Input_data,cols_to_draw_from,target_size=1):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    Input_data : _type_
+        _description_
+    cols_to_draw_from : _type_
+        _description_
+    target_size : int, optional
+        _description_, by default 1
+    """
     sample_set=set()
     dimension_too_draw=Input_data.shape[0]
     while len(sample_set)<target_size:
@@ -19,6 +31,26 @@ def sample_copy_numbers_from_proteome_replicates(Input_data,cols_to_draw_from,ta
 
 
 def sample_copy_numbers_from_residuals_old(Input_data,replicate_cols,mean_col,replicate_threshold=1,filter_list=[],target_size=1,reps_to_sample=3):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    Input_data : _type_
+        _description_
+    replicate_cols : _type_
+        _description_
+    mean_col : _type_
+        _description_
+    replicate_threshold : int, optional
+        _description_, by default 1
+    filter_list : list, optional
+        _description_, by default []
+    target_size : int, optional
+        _description_, by default 1
+    reps_to_sample : int, optional
+        _description_, by default 3
+    """
     data_to_use=pandas.DataFrame(columns=Input_data.columns)
     for i in list(Input_data.index):
         finite_count=0
@@ -73,6 +105,16 @@ def sample_copy_numbers_from_residuals_old(Input_data,replicate_cols,mean_col,re
 
 
 def check_quantile(val,quantiles):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    val : _type_
+        _description_
+    quantiles : _type_
+        _description_
+    """
     if not pandas.isna(val):
         for i in range(len(quantiles)):
             if i!=0:
@@ -85,12 +127,56 @@ def check_quantile(val,quantiles):
         return(numpy.nan)
 
 def generate_multiple_input_proteomes_from_mean(Input_data,mean_col,n):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    Input_data : _type_
+        _description_
+    mean_col : _type_
+        _description_
+    n : _type_
+        _description_
+    """
     out=pandas.DataFrame(index=list(Input_data.index))
     for i in range(n):
         out["run_{}_mean".format(i+1)]=Input_data[mean_col].copy()
     return(out)
 
 def sample_copy_numbers_from_residuals_quantiles(Input_data,replicate_cols,mean_col,replicate_threshold=1,filter_list=[],target_size=1,reps_to_sample=3,number_quantiles=1,transform_residuals=False,regression_type="lin",start_run_id=0,mean_no_noise=True,sample_mean=True):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    Input_data : _type_
+        _description_
+    replicate_cols : _type_
+        _description_
+    mean_col : _type_
+        _description_
+    replicate_threshold : int, optional
+        _description_, by default 1
+    filter_list : list, optional
+        _description_, by default []
+    target_size : int, optional
+        _description_, by default 1
+    reps_to_sample : int, optional
+        _description_, by default 3
+    number_quantiles : int, optional
+        _description_, by default 1
+    transform_residuals : bool, optional
+        _description_, by default False
+    regression_type : str, optional
+        _description_, by default "lin"
+    start_run_id : int, optional
+        _description_, by default 0
+    mean_no_noise : bool, optional
+        _description_, by default True
+    sample_mean : bool, optional
+        _description_, by default True
+    """
     out=pandas.DataFrame(index=list(Input_data.index))
     df_intermediate=pandas.DataFrame(index=list(Input_data.index))
     out["Gene"]=Input_data["Gene"]

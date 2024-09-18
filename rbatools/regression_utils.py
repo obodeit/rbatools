@@ -5,48 +5,220 @@ import scipy.signal
 from scipy.optimize import curve_fit
 
 def linear_function(x, a, b):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    x : _type_
+        _description_
+    a : _type_
+        _description_
+    b : _type_
+        _description_
+    """
     return((a*x)+b)
 
+
 def linear_function_without_intercept(x, a):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    x : _type_
+        _description_
+    a : _type_
+        _description_
+    """
     return((a*x))
 
+
 def quadratic_function(x, a, b,c):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    x : _type_
+        _description_
+    a : _type_
+        _description_
+    b : _type_
+        _description_
+    c : _type_
+        _description_
+    """
     return((a*x**2)+(b*x)+c)
 
 
 def eval_linear_function(x_in, a, b):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    x_in : _type_
+        _description_
+    a : _type_
+        _description_
+    b : _type_
+        _description_
+    """
     return([(a*x)+b for x in x_in])
 
+
 def eval_quadratic_function(x_in, a, b , c):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    x_in : _type_
+        _description_
+    a : _type_
+        _description_
+    b : _type_
+        _description_
+    c : _type_
+        _description_
+    """
     return([(a*x**2)+(b*x)+c for x in x_in])
 
 
 def logistic_function(x, y_max ,x0, k, y_min):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    x : _type_
+        _description_
+    y_max : _type_
+        _description_
+    x0 : _type_
+        _description_
+    k : _type_
+        _description_
+    y_min : _type_
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
     y = y_max / (1 + numpy.exp(-k*(x-x0)))+y_min
     return (y)
 
 
 def logistic_function_1st_derivative(x, y_max ,x_0, k):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    x : _type_
+        _description_
+    y_max : _type_
+        _description_
+    x_0 : _type_
+        _description_
+    k : _type_
+        _description_
+    """
     return((y_max*k*numpy.exp(-k*(x - x_0)))/((1 + numpy.exp(-k*(x-x_0)))**2))
 
 
 def logistic_function_2nd_derivative(x, y_max ,x_0, k):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    x : _type_
+        _description_
+    y_max : _type_
+        _description_
+    x_0 : _type_
+        _description_
+    k : _type_
+        _description_
+    """
     return(((numpy.exp(k*x_0)-numpy.exp(k*x))*numpy.exp(k*(x+x_0))*y_max*k**2)/((numpy.exp(k*x)+numpy.exp(k*x_0))**3))
 
 
 def eval_logistic_function(x_in,y_max,x0,k,y_min):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    x_in : _type_
+        _description_
+    y_max : _type_
+        _description_
+    x0 : _type_
+        _description_
+    k : _type_
+        _description_
+    y_min : _type_
+        _description_
+    """
     return([logistic_function(x=x,y_max=y_max,x0=x0,k=k,y_min=y_min) for x in x_in])
 
 
 def eval_logistic_function_2nd_derivative(x_in,y_max,x0,k):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    x_in : _type_
+        _description_
+    y_max : _type_
+        _description_
+    x0 : _type_
+        _description_
+    k : _type_
+        _description_
+    """
     return([logistic_function_2nd_derivative(x=x,y_max=y_max,x_0=x0,k=k) for x in x_in])
 
 
 def eval_logistic_function_1st_derivative(x_in,y_max,x0,k):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    x_in : _type_
+        _description_
+    y_max : _type_
+        _description_
+    x0 : _type_
+        _description_
+    k : _type_
+        _description_
+    """
     return([logistic_function_1st_derivative(x=x,y_max=y_max,x_0=x0,k=k) for x in x_in])
 
 
 def do_lin_regression(x_to_fit,y_to_fit,min_val=0,fit_intercept=True):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    x_to_fit : _type_
+        _description_
+    y_to_fit : _type_
+        _description_
+    min_val : int, optional
+        _description_, by default 0
+    fit_intercept : bool, optional
+        _description_, by default True
+    """
     if fit_intercept:
         if len(x_to_fit)>2:
             popt_lin, pcov_lin = curve_fit(linear_function, xdata=x_to_fit, ydata=y_to_fit)
@@ -69,6 +241,18 @@ def do_lin_regression(x_to_fit,y_to_fit,min_val=0,fit_intercept=True):
 
 
 def do_quadratic_regression(x_to_fit,y_to_fit,min_val):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    x_to_fit : _type_
+        _description_
+    y_to_fit : _type_
+        _description_
+    min_val : _type_
+        _description_
+    """
     if len(x_to_fit)>2:
         popt_quad, pcov_quad = curve_fit(quadratic_function, xdata=x_to_fit, ydata=y_to_fit)
         a=popt_quad[0]
@@ -90,6 +274,22 @@ def do_quadratic_regression(x_to_fit,y_to_fit,min_val):
 
 
 def do_log_regression(x_to_fit,y_to_fit,x_to_plot,max_val,min_val):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    x_to_fit : _type_
+        _description_
+    y_to_fit : _type_
+        _description_
+    x_to_plot : _type_
+        _description_
+    max_val : _type_
+        _description_
+    min_val : _type_
+        _description_
+    """
     try:
         p0 = [max(y_to_fit), numpy.median(x_to_fit),1,min(y_to_fit)]
         popt_log, pcov_lin = curve_fit(logistic_function, xdata=x_to_fit, ydata=y_to_fit,p0=p0)
@@ -246,6 +446,16 @@ def do_log_regression(x_to_fit,y_to_fit,x_to_plot,max_val,min_val):
 
 
 def quad_predictions(params,x_to_fit):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    params : _type_
+        _description_
+    x_to_fit : _type_
+        _description_
+    """
     x_to_use=[]
     for x in x_to_fit:
         prelim_x=x
@@ -269,6 +479,16 @@ def quad_predictions(params,x_to_fit):
 
 
 def lin_predictions(params,x_to_fit):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    params : _type_
+        _description_
+    x_to_fit : _type_
+        _description_
+    """
     x_to_use=[]
     for x in x_to_fit:
         prelim_x=x
@@ -292,6 +512,16 @@ def lin_predictions(params,x_to_fit):
 
 
 def calculate_rss(y_predicted,y_measured):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    y_predicted : _type_
+        _description_
+    y_measured : _type_
+        _description_
+    """
     if len(y_predicted)==len(y_measured):
         RSS=0
         for i in range(len(y_measured)):
@@ -302,6 +532,28 @@ def calculate_rss(y_predicted,y_measured):
 
 
 def do_regression(x_to_fit,y_to_fit,x_to_plot,max_val,min_val,monotonous_quadratic=False,total_x_range=(0,1),permit_quadratic_model=True):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    x_to_fit : _type_
+        _description_
+    y_to_fit : _type_
+        _description_
+    x_to_plot : _type_
+        _description_
+    max_val : _type_
+        _description_
+    min_val : _type_
+        _description_
+    monotonous_quadratic : bool, optional
+        _description_, by default False
+    total_x_range : tuple, optional
+        _description_, by default (0,1)
+    permit_quadratic_model : bool, optional
+        _description_, by default True
+    """
     y_max=max_val
     y_min=min_val
     x_max=total_x_range[1]
