@@ -97,6 +97,7 @@ def calibration_workflow(proteome,
         correction_results_compartement_sizes.to_csv(str(output_dir+'/Correction_overview_HackettNielsen_'+condition+'.csv'))
         return({"Densities_PGs":compartment_densities_and_PGs,
                 "Condition":condition})
+                
     if Compartment_sizes is not None:
         for i in Compartment_sizes.index:
             correction_results_compartement_sizes.loc[i,"new_protein_fraction"]=Compartment_sizes.loc[i,condition]
