@@ -34,17 +34,17 @@ def calibration_workflow(proteome,
 
     Parameters
     ----------
-    proteome : _type_
+    proteome : pandas.DataFrame
         _description_
-    condition : _type_
+    condition : str
         _description_
-    gene_ID_column : _type_
+    gene_ID_column : str
         _description_
-    definition_file : _type_
+    definition_file : pandas.DataFrame
         _description_
-    rba_session : _type_
+    rba_session : rbatools.rba_session.SessionRBA
         _description_
-    process_efficiency_estimation_input : _type_, optional
+    process_efficiency_estimation_input : pandas.DataFrame, optional
         _description_, by default None
     spec_kapps : _type_, optional
         _description_, by default None
@@ -64,7 +64,7 @@ def calibration_workflow(proteome,
         _description_, by default 0.00001
     feasible_stati : list, optional
         _description_, by default ["optimal","feasible","feasible_only_before_unscaling"]
-    min_kapp : _type_, optional
+    min_kapp : float, optional
         _description_, by default None
     print_outputs : bool, optional
         _description_, by default True
@@ -72,7 +72,7 @@ def calibration_workflow(proteome,
         _description_, by default 1
     use_mean_enzyme_composition_for_calibration : bool, optional
         _description_, by default False
-    max_kapp_threshold : _type_, optional
+    max_kapp_threshold : float, optional
         _description_, by default None
     output_dir : str, optional
         _description_, by default ""
@@ -97,7 +97,7 @@ def calibration_workflow(proteome,
         correction_results_compartement_sizes.to_csv(str(output_dir+'/Correction_overview_HackettNielsen_'+condition+'.csv'))
         return({"Densities_PGs":compartment_densities_and_PGs,
                 "Condition":condition})
-                
+
     if Compartment_sizes is not None:
         for i in Compartment_sizes.index:
             correction_results_compartement_sizes.loc[i,"new_protein_fraction"]=Compartment_sizes.loc[i,condition]
@@ -642,7 +642,7 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session, pro
     ----------
     growth_rate : _type_
         _description_
-    input : _type_
+    input : pandas.DataFrame
         _description_
     rba_session : _type_
         _description_
