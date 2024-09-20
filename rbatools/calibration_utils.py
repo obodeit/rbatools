@@ -93,7 +93,7 @@ def calibration_workflow(proteome,
                                              merged_compartments={'c': 'Ribosomes'},
                                              min_compartment_fraction=0.00000)
     ### define coeff as input ###
-   #correction_results_compartement_sizes['original_amino_acid_occupation']*=global_protein_scaling_coeff
+    #correction_results_compartement_sizes['original_amino_acid_occupation']*=global_protein_scaling_coeff
 
     rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
     if prelim_run:
