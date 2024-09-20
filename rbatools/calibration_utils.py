@@ -92,8 +92,8 @@ def calibration_workflow(proteome,
                                              merged_compartments={'c': 'Ribosomes'},
                                              min_compartment_fraction=0.00000)
     ### define coeff as input ###
-    correction_results_compartement_sizes['original_amino_acid_occupation']*=global_protein_scaling_coeff
-    proteome[condition]*=global_protein_scaling_coeff
+    #correction_results_compartement_sizes['original_amino_acid_occupation']*=global_protein_scaling_coeff
+    #proteome[condition]*=global_protein_scaling_coeff
 
     if prelim_run:
         compartment_densities_and_PGs = extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=correction_results_compartement_sizes,rows_to_exclude=["Ribosomes","Total"]+[i for i in correction_results_compartement_sizes.index if i.startswith("pg_")])
@@ -134,6 +134,7 @@ def calibration_workflow(proteome,
     else:
         process_efficiencies=import_process_efficiencies(input_data=process_efficiencies,rba_session=rba_session,condition=condition)
 
+    proteome[condition]*=global_protein_scaling_coeff
     ###
     process_efficiencies.to_csv(output_dir+'/ProcEffsOrig_{}.csv'.format(condition))
 
