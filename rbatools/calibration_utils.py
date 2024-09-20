@@ -81,6 +81,7 @@ def calibration_workflow(proteome,
     enzyme_efficiency_estimation_settings=enzyme_efficiency_estimation_settings_from_input(input=definition_file, condition=condition)
 
     t0 = time.time()
+    proteome[condition]*=global_protein_scaling_coeff
     correction_results_compartement_sizes = correction_pipeline(input=proteome,
                                              condition=condition,
                                              definition_file=definition_file,
@@ -91,6 +92,9 @@ def calibration_workflow(proteome,
                                              directly_corrected_compartments=['c', 'cM', 'erM', 'gM', 'm', 'mIM', 'mIMS', 'mOM', 'vM', 'x'],
                                              merged_compartments={'c': 'Ribosomes'},
                                              min_compartment_fraction=0.00000)
+    ### define coeff as input ###
+   #correction_results_compartement_sizes['original_amino_acid_occupation']*=global_protein_scaling_coeff
+
     rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
     if prelim_run:
         compartment_densities_and_PGs = extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=correction_results_compartement_sizes,rows_to_exclude=["Ribosomes","Total"]+[i for i in correction_results_compartement_sizes.index if i.startswith("pg_")])
@@ -129,8 +133,6 @@ def calibration_workflow(proteome,
     else:
         process_efficiencies=import_process_efficiencies(input_data=process_efficiencies,rba_session=rba_session,condition=condition)
 
-    ### define coeff as input ###
-    proteome[condition]*=global_protein_scaling_coeff
     ###
     process_efficiencies.to_csv(output_dir+'/ProcEffsOrig_{}.csv'.format(condition))
 
