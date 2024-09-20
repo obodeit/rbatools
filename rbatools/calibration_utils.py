@@ -81,7 +81,6 @@ def calibration_workflow(proteome,
     enzyme_efficiency_estimation_settings=enzyme_efficiency_estimation_settings_from_input(input=definition_file, condition=condition)
 
     t0 = time.time()
-    proteome[condition]*=global_protein_scaling_coeff
     correction_results_compartement_sizes = correction_pipeline(input=proteome,
                                              condition=condition,
                                              definition_file=definition_file,
@@ -93,9 +92,9 @@ def calibration_workflow(proteome,
                                              merged_compartments={'c': 'Ribosomes'},
                                              min_compartment_fraction=0.00000)
     ### define coeff as input ###
-    #correction_results_compartement_sizes['original_amino_acid_occupation']*=global_protein_scaling_coeff
+    correction_results_compartement_sizes['original_amino_acid_occupation']*=global_protein_scaling_coeff
+    proteome[condition]*=global_protein_scaling_coeff
 
-    rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
     if prelim_run:
         compartment_densities_and_PGs = extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=correction_results_compartement_sizes,rows_to_exclude=["Ribosomes","Total"]+[i for i in correction_results_compartement_sizes.index if i.startswith("pg_")])
         correction_results_compartement_sizes.to_csv(str(output_dir+'/Correction_overview_HackettNielsen_'+condition+'.csv'))
@@ -119,6 +118,8 @@ def calibration_workflow(proteome,
         correction_results_compartement_sizes.loc[i,"copy_number_scaling"]=abundance_coeff
     ###
     correction_results_compartement_sizes.to_csv(str(output_dir+'/Correction_overview_HackettNielsen_corrected_'+condition+'.csv'))
+
+    rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
     if process_efficiencies is None:
         if process_efficiency_estimation_input is not None:
             process_efficiencies = determine_apparent_process_efficiencies(growth_rate=growth_rate_from_input(input=definition_file,
