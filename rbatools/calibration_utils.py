@@ -79,7 +79,19 @@ def calibration_workflow(proteome,
     """
     correction_settings=machinery_efficiency_correction_settings_from_input(input=definition_file, condition=condition)
     enzyme_efficiency_estimation_settings=enzyme_efficiency_estimation_settings_from_input(input=definition_file, condition=condition)
-
+    print("---------------")
+    print("---------------")
+    print(proteome)
+    print("---------------")
+    print(proteome[condition])
+    proteome[condition]*=global_protein_scaling_coeff
+    print("---------------")
+    print(proteome)
+    print("---------------")
+    print(proteome[condition])
+    print("---------------")
+    print("---------------")
+    print("---------------")
     t0 = time.time()
     correction_results_compartement_sizes = correction_pipeline(input=proteome,
                                              condition=condition,
