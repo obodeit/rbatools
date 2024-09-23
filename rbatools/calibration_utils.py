@@ -150,49 +150,49 @@ def calibration_workflow(proteome,
                                                  condition=condition,
                                                  Compartment_sizes=Compartment_sizes,
                                                  PG_fractions=PG_fractions)
-    correction_results_compartement_sizes=proteome_correction_results["Proteome_summary"]
+    #correction_results_compartement_sizes=proteome_correction_results["Proteome_summary"]
     proteome=proteome_correction_results["Proteome"]
 
     #correction_results_compartement_sizes.to_csv(str(output_dir+'/Correction_overview_HackettNielsen_corrected_'+condition+'.csv'))
 
-    #if Compartment_sizes is None:
+    compartment_occupation_overview = build_proteome_overview(input=proteome, 
+                                                              condition=condition, 
+                                                              compartments_to_replace={},
+                                                              compartments_no_original_PG=[], 
+                                                              ribosomal_proteins_as_extra_compartment=False)
+    if (Compartment_sizes is not None) and (PG_fractions is not None):
+        compartment_densities_and_PGs=pandas.DataFrame()
+        for comp in list(Compartment_sizes.index):
+            compartment_densities_and_PGs.loc[comp,"Compartment_ID"]=comp
+            compartment_densities_and_PGs.loc[comp,"Density"]=Compartment_sizes.loc[comp,condition]
+            compartment_densities_and_PGs.loc[comp,"PG_fraction"]=PG_fractions.loc[comp,condition]
+    else:
+        compartment_densities_and_PGs = extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=compartment_occupation_overview,
+                                                                                                  rows_to_exclude=["Ribosomes","Total"]+[i for i in compartment_occupation_overview.index if i.startswith("pg_")])
 
-    compartment_occupation_overview=determine_compartment_occupation(Data_input,
-                                                                     Condition,
-                                                                     mass_col='AA_residues',
-                                                                     only_in_model=False,
-                                                                     compartments_to_replace={},
-                                                                     compartments_no_original_PG=[],
-                                                                     ribosomal_proteins_as_extra_compartment=False)
-
-    compartment_occupation_overview.to_csv(output_dir+'/CompOccupationOverview_{}.csv'.format(condition))
-    return(None)
     #### proteome , Compartment_sizes , total_amino_acid_abundance_in_proteome
-    if process_efficiencies is None:
+    if process_efficiencies is not None:
+        process_efficiencies=import_process_efficiencies(input_data=process_efficiencies,rba_session=rba_session,condition=condition)
+    else:
         if process_efficiency_estimation_input is not None:
             process_efficiencies = determine_apparent_process_efficiencies(growth_rate=growth_rate_from_input(input=definition_file,
                                                                            condition=condition),
                                                                            input=process_efficiency_estimation_input,
                                                                            rba_session=rba_session,
                                                                            protein_data=proteome.copy(),
-                                                                           proteome_summary=correction_results_compartement_sizes.copy(),
-                                                                           compartment_sizes=Compartment_sizes,
-                                                                           total_amino_acid_abundance_in_proteome=correction_results_compartement_sizes.loc['Total', 'original_amino_acid_occupation'],
+                                                                           compartment_densities_and_PGs=compartment_densities_and_PGs,
+                                                                           #total_amino_acid_abundance_in_proteome=correction_results_compartement_sizes.loc['Total', 'original_amino_acid_occupation'],
+                                                                           total_amino_acid_abundance_in_proteome=compartment_occupation_overview.loc['Total', 'original_amino_acid_occupation'],
                                                                            condition=condition,
                                                                            gene_id_col=gene_ID_column,
                                                                            fit_nucleotide_assembly_machinery=True)
-    else:
-        process_efficiencies=import_process_efficiencies(input_data=process_efficiencies,rba_session=rba_session,condition=condition)
 
     process_efficiencies.to_csv(output_dir+'/ProcEffsOrig_{}.csv'.format(condition))
 
-    compartment_densities_and_PGs = extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=correction_results_compartement_sizes,
-                                                                                              rows_to_exclude=["Ribosomes","Total"]+[i for i in correction_results_compartement_sizes.index if i.startswith("pg_")])
     if use_mean_enzyme_composition_for_calibration:
         generate_mean_enzyme_composition_model(rba_session,condition)
-
+            
     rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
-
     flux_bounds_fba=flux_bounds_from_input(input=definition_file,
                                            rba_session=rba_session, 
                                            condition=condition, 
@@ -255,11 +255,11 @@ def calibration_workflow(proteome,
     if spec_kapps is not None:
         Specific_Kapps=import_specific_enzyme_efficiencies(input_data=spec_kapps,rba_session=rba_session,condition=condition)
 
-    if default_kapps is None:
+    if default_kapps is not None:
+        Default_Kapps=import_default_enzyme_efficiencies(input_data=default_kapps,condition=condition,default_transporter_kapp_coefficient=transporter_multiplier)
+    else:
         spec_kapp_median=Specific_Kapps.loc[(Specific_Kapps['Kapp']!=0)&(pandas.isna(Specific_Kapps['Kapp'])==False),'Kapp'].median()
         Default_Kapps={"default_efficiency":spec_kapp_median,"default_transporter_efficiency":transporter_multiplier*spec_kapp_median}
-    else:
-        Default_Kapps=import_default_enzyme_efficiencies(input_data=default_kapps,condition=condition,default_transporter_kapp_coefficient=transporter_multiplier)
 
     flux_bounds_data=flux_bounds_from_input(input=definition_file,rba_session=rba_session, condition=condition, specific_exchanges=None, specific_directions=None,also_consider_iso_enzmes=True)
     Exchanges_to_impose={i:{"LB":flux_bounds_data.loc[i,"LB"],"UB":flux_bounds_data.loc[i,"UB"]} for i in list(flux_bounds_data["Reaction_ID"])}
@@ -497,7 +497,7 @@ def calibration_workflow(proteome,
             "Densities_PGs":compartment_densities_and_PGs,
             "Condition":condition,
             'Proteome': build_input_proteome_for_specific_kapp_estimation(proteome, condition),
-            'correction_results_compartement_sizes': correction_results_compartement_sizes,
+            #'correction_results_compartement_sizes': correction_results_compartement_sizes,
             'Default_Kapps': Default_Kapps_to_return,
             'Specific_Kapps': Specific_Kapps_to_return,
             'Process_Efficiencies': process_efficiencies_to_return,
@@ -687,7 +687,7 @@ def extract_compsizes_and_pgfractions_from_correction_summary(corrsummary,rows_t
     return(out)
 
 
-def determine_apparent_process_efficiencies(growth_rate, input, rba_session, proteome_summary,compartment_sizes,total_amino_acid_abundance_in_proteome, protein_data, condition, gene_id_col,fit_nucleotide_assembly_machinery=False):
+def determine_apparent_process_efficiencies(growth_rate, input, rba_session,compartment_densities_and_PGs,total_amino_acid_abundance_in_proteome, protein_data, condition, gene_id_col,fit_nucleotide_assembly_machinery=False):
     """
     _summary_
 
@@ -716,9 +716,7 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session, pro
         process_name = input.loc[i, 'Process_Name']
         process_client_compartments = input.loc[i, 'Client_Compartments'].split(' , ')
         constituting_proteins = {rba_session.get_protein_information(protein=i)['ProtoID']: rba_session.get_protein_information(protein=i)['AAnumber'] for i in rba_session.get_process_information(process=process_name)['Composition'].keys()}
-        #Total_client_fraction = sum([proteome_summary.loc[i, 'new_protein_fraction']
-        #                             for i in process_client_compartments])
-        Total_client_fraction = sum([compartment_sizes.loc[i,condition] for i in process_client_compartments])
+        Total_client_fraction = sum([compartment_densities_and_PGs.loc[i,"Density"] for i in process_client_compartments])
         
         n_AAs_in_machinery = 0
         machinery_size = 0
@@ -729,7 +727,6 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session, pro
                 machinery_size += constituting_proteins[i]
         # right reference amounth?
         if n_AAs_in_machinery > 0:
-            #relative_Protein_fraction_of_machinery = n_AAs_in_machinery / proteome_summary.loc['Total', 'original_amino_acid_occupation']
             relative_Protein_fraction_of_machinery = n_AAs_in_machinery / total_amino_acid_abundance_in_proteome
             specific_capacity = growth_rate*Total_client_fraction/relative_Protein_fraction_of_machinery
             apparent_capacity = specific_capacity*machinery_size
@@ -751,6 +748,7 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session, pro
         for machinery in machinery_production_fluxes.keys():
             process_info=rba_session.get_process_information(process=machinery)
             stoichiometrically_scaled_subunit_concentrations=[]
+            subunit_stoichiometries=[]
             for su in process_info["Composition"].keys():
                 protoProteinID=rba_session.get_protein_information(protein=su)["ProtoID"]
                 if protoProteinID in protein_data['ID']:
@@ -758,8 +756,10 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session, pro
                     scaled_copy_number=copy_number/process_info["Composition"][su]
                     if not pandas.isna(scaled_copy_number):
                         stoichiometrically_scaled_subunit_concentrations.append(scaled_copy_number)
+                        subunit_stoichiometries.append(process_info["Composition"][su])
             if len(stoichiometrically_scaled_subunit_concentrations)>0:
-                machinery_concentration=gmean(stoichiometrically_scaled_subunit_concentrations)
+                machinery_concentration=weighted_geometric_mean(data=stoichiometrically_scaled_subunit_concentrations,weights=subunit_stoichiometries)
+                #machinery_concentration=gmean(stoichiometrically_scaled_subunit_concentrations)
                 apparent_process_efficiency=machinery_production_fluxes[machinery]/machinery_concentration
                 process_efficiencies.loc[machinery, 'Process'] = process_info["ID"]
                 process_efficiencies.loc[machinery, 'Parameter'] = str( process_info["ID"]+'_apparent_efficiency')
