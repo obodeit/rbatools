@@ -31,6 +31,7 @@ def correct_compartment_fractions(proteome,condition,definition_file,
             "Condition":condition,
             "Proteome_summary":correction_results_compartement_sizes})
 
+
 def correct_proteome(correction_results_compartement_sizes,proteome,condition,Compartment_sizes,PG_fractions):
     for i in Compartment_sizes.index:
         correction_results_compartement_sizes.loc[i,"new_protein_fraction"]=Compartment_sizes.loc[i,condition]
@@ -50,6 +51,7 @@ def correct_proteome(correction_results_compartement_sizes,proteome,condition,Co
     return({"Proteome":proteome,
             "Condition":condition,
             "Proteome_summary":correction_results_compartement_sizes})
+
 
 def calibration_workflow(proteome,
                          condition,
@@ -120,7 +122,9 @@ def calibration_workflow(proteome,
     output_dir : str, optional
         _description_, by default ""
     """
-
+    
+    # IF comp sizes and pg fractions not provided: estimate.
+    # Otherwise don´t
     correction_settings=machinery_efficiency_correction_settings_from_input(input=definition_file, condition=condition)
     enzyme_efficiency_estimation_settings=enzyme_efficiency_estimation_settings_from_input(input=definition_file, condition=condition)
 
@@ -153,6 +157,16 @@ def calibration_workflow(proteome,
 
     #if Compartment_sizes is None:
 
+    compartment_occupation_overview=determine_compartment_occupation(Data_input,
+                                                                     Condition,
+                                                                     mass_col='AA_residues',
+                                                                     only_in_model=False,
+                                                                     compartments_to_replace={},
+                                                                     compartments_no_original_PG=[],
+                                                                     ribosomal_proteins_as_extra_compartment=False)
+
+    compartment_occupation_overview.to_csv(output_dir+'/CompOccupationOverview_{}.csv'.format(condition))
+    return(None)
     #### proteome , Compartment_sizes , total_amino_acid_abundance_in_proteome
     if process_efficiencies is None:
         if process_efficiency_estimation_input is not None:
