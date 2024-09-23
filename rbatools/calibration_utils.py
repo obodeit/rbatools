@@ -7,6 +7,49 @@ import numpy
 from scipy.stats.mstats import gmean
 from rbatools.other_utils import medium_concentrations_from_input , machinery_efficiency_correction_settings_from_input , enzyme_efficiency_estimation_settings_from_input , flux_bounds_from_input , growth_rate_from_input , proteome_fractions_from_input , perform_simulations , perform_simulations_fixed_Mu
 
+def correct_compartment_fractions(proteome,condition,definition_file,
+                                  compartments_to_replace,
+                                  compartments_no_original_PG,
+                                  fractions_entirely_replaced_with_expected_value,
+                                  directly_corrected_compartments,
+                                  imposed_compartment_fractions,
+                                  merged_compartments,
+                                  min_compartment_fraction):
+    correction_results_compartement_sizes = correction_pipeline(input=proteome,
+                                                condition=condition,
+                                                definition_file=definition_file,
+                                                compartments_to_replace=compartments_to_replace,
+                                                compartments_no_original_PG=compartments_no_original_PG,
+                                                fractions_entirely_replaced_with_expected_value=fractions_entirely_replaced_with_expected_value,
+                                                imposed_compartment_fractions=imposed_compartment_fractions,
+                                                directly_corrected_compartments=directly_corrected_compartments,
+                                                merged_compartments=merged_compartments,
+                                                min_compartment_fraction=min_compartment_fraction)
+
+    #correction_results_compartement_sizes.to_csv(str(output_dir+'/Correction_overview_HackettNielsen_'+condition+'.csv'))
+    return({"Densities_PGs":extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=correction_results_compartement_sizes,rows_to_exclude=["Ribosomes","Total"]+[i for i in correction_results_compartement_sizes.index if i.startswith("pg_")]),
+            "Condition":condition,
+            "Proteome_summary":correction_results_compartement_sizes})
+
+def correct_proteome(correction_results_compartement_sizes,proteome,condition,Compartment_sizes,PG_fractions):
+    for i in Compartment_sizes.index:
+        correction_results_compartement_sizes.loc[i,"new_protein_fraction"]=Compartment_sizes.loc[i,condition]
+        correction_results_compartement_sizes.loc[i,"new_PG_fraction"]=PG_fractions.loc[i,condition]
+
+    ### GENERALISE for all merged compartments###
+    for i in correction_results_compartement_sizes.index:
+        abundance_coeff=1
+        if i =="c":
+            abundance_coeff=(correction_results_compartement_sizes.loc[i,"new_protein_fraction"]*(1-correction_results_compartement_sizes.loc[i,"new_PG_fraction"])-correction_results_compartement_sizes.loc["Ribosomes","new_protein_fraction"])/(correction_results_compartement_sizes.loc[i,"original_protein_fraction"]*(1-correction_results_compartement_sizes.loc[i,"original_PG_fraction"]))
+        else:
+            abundance_coeff=(correction_results_compartement_sizes.loc[i,"new_protein_fraction"]*(1-correction_results_compartement_sizes.loc[i,"new_PG_fraction"]))/(correction_results_compartement_sizes.loc[i,"original_protein_fraction"]*(1-correction_results_compartement_sizes.loc[i,"original_PG_fraction"]))
+        proteome.loc[proteome["Location"]==i,condition]*=abundance_coeff
+        correction_results_compartement_sizes.loc[i,"copy_number_scaling"]=abundance_coeff
+    ###
+    #correction_results_compartement_sizes.to_csv(str(output_dir+'/Correction_overview_HackettNielsen_corrected_'+condition+'.csv'))
+    return({"Proteome":proteome,
+            "Condition":condition,
+            "Proteome_summary":correction_results_compartement_sizes})
 
 def calibration_workflow(proteome,
                          condition,
@@ -77,61 +120,40 @@ def calibration_workflow(proteome,
     output_dir : str, optional
         _description_, by default ""
     """
+
     correction_settings=machinery_efficiency_correction_settings_from_input(input=definition_file, condition=condition)
     enzyme_efficiency_estimation_settings=enzyme_efficiency_estimation_settings_from_input(input=definition_file, condition=condition)
-    print("---------------")
-    print("---------------")
-    print(proteome)
-    print("---------------")
-    print(proteome[condition])
-    proteome[condition]*=global_protein_scaling_coeff
-    print("---------------")
-    print(proteome)
-    print("---------------")
-    print(proteome[condition])
-    print("---------------")
-    print("---------------")
-    print("---------------")
-    t0 = time.time()
-    correction_results_compartement_sizes = correction_pipeline(input=proteome,
-                                             condition=condition,
-                                             definition_file=definition_file,
-                                             compartments_to_replace={'DEF':"c", 'DEFA':"c", 'Def':"c"},
-                                             compartments_no_original_PG=['n', 'Secreted'],
-                                             fractions_entirely_replaced_with_expected_value=['Ribosomes'],
-                                             imposed_compartment_fractions=proteome_fractions_from_input(input=definition_file, condition=condition),
-                                             directly_corrected_compartments=['c', 'cM', 'erM', 'gM', 'm', 'mIM', 'mIMS', 'mOM', 'vM', 'x'],
-                                             merged_compartments={'c': 'Ribosomes'},
-                                             min_compartment_fraction=0.00000)
-    ### define coeff as input ###
-    #correction_results_compartement_sizes['original_amino_acid_occupation']*=global_protein_scaling_coeff
-    #proteome[condition]*=global_protein_scaling_coeff
+
+    compartment_correction_results=correct_compartment_fractions(proteome,
+                                                                 condition,
+                                                                 definition_file,
+                                                                 compartments_to_replace={'DEF':"c", 'DEFA':"c", 'Def':"c"},
+                                                                 compartments_no_original_PG=['n', 'Secreted'],
+                                                                 fractions_entirely_replaced_with_expected_value=['Ribosomes'],
+                                                                 directly_corrected_compartments=['c', 'cM', 'erM', 'gM', 'm', 'mIM', 'mIMS', 'mOM', 'vM', 'x'],
+                                                                 imposed_compartment_fractions=proteome_fractions_from_input(input=definition_file, condition=condition),
+                                                                 merged_compartments={'c': 'Ribosomes'},
+                                                                 min_compartment_fraction=0.00000)
 
     if prelim_run:
-        compartment_densities_and_PGs = extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=correction_results_compartement_sizes,rows_to_exclude=["Ribosomes","Total"]+[i for i in correction_results_compartement_sizes.index if i.startswith("pg_")])
-        correction_results_compartement_sizes.to_csv(str(output_dir+'/Correction_overview_HackettNielsen_'+condition+'.csv'))
-        return({"Densities_PGs":compartment_densities_and_PGs,
-                "Condition":condition})
+        compartment_correction_results["Proteome_summary"].to_csv(str(output_dir+'/Correction_overview_HackettNielsen_'+condition+'.csv'))
+        return(compartment_correction_results)
 
-    if Compartment_sizes is not None:
-        for i in Compartment_sizes.index:
-            correction_results_compartement_sizes.loc[i,"new_protein_fraction"]=Compartment_sizes.loc[i,condition]
-            if i in PG_fractions.index:
-                correction_results_compartement_sizes.loc[i,"new_PG_fraction"]=PG_fractions.loc[i,condition]
+    t0 = time.time()
 
-    ### GENERALISE for all merged compartments###
-    for i in correction_results_compartement_sizes.index:
-        abundance_coeff=1
-        if i =="c":
-            abundance_coeff=(correction_results_compartement_sizes.loc[i,"new_protein_fraction"]*(1-correction_results_compartement_sizes.loc[i,"new_PG_fraction"])-correction_results_compartement_sizes.loc["Ribosomes","new_protein_fraction"])/(correction_results_compartement_sizes.loc[i,"original_protein_fraction"]*(1-correction_results_compartement_sizes.loc[i,"original_PG_fraction"]))
-        else:
-            abundance_coeff=(correction_results_compartement_sizes.loc[i,"new_protein_fraction"]*(1-correction_results_compartement_sizes.loc[i,"new_PG_fraction"]))/(correction_results_compartement_sizes.loc[i,"original_protein_fraction"]*(1-correction_results_compartement_sizes.loc[i,"original_PG_fraction"]))
-        proteome.loc[proteome["Location"]==i,condition]*=abundance_coeff
-        correction_results_compartement_sizes.loc[i,"copy_number_scaling"]=abundance_coeff
-    ###
-    correction_results_compartement_sizes.to_csv(str(output_dir+'/Correction_overview_HackettNielsen_corrected_'+condition+'.csv'))
+    proteome_correction_results=correct_proteome(correction_results_compartement_sizes=compartment_correction_results["Proteome_summary"],
+                                                 proteome=proteome,
+                                                 condition=condition,
+                                                 Compartment_sizes=Compartment_sizes,
+                                                 PG_fractions=PG_fractions)
+    correction_results_compartement_sizes=proteome_correction_results["Proteome_summary"]
+    proteome=proteome_correction_results["Proteome"]
 
-    rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
+    #correction_results_compartement_sizes.to_csv(str(output_dir+'/Correction_overview_HackettNielsen_corrected_'+condition+'.csv'))
+
+    #if Compartment_sizes is None:
+
+    #### proteome , Compartment_sizes , total_amino_acid_abundance_in_proteome
     if process_efficiencies is None:
         if process_efficiency_estimation_input is not None:
             process_efficiencies = determine_apparent_process_efficiencies(growth_rate=growth_rate_from_input(input=definition_file,
@@ -140,14 +162,14 @@ def calibration_workflow(proteome,
                                                                            rba_session=rba_session,
                                                                            protein_data=proteome.copy(),
                                                                            proteome_summary=correction_results_compartement_sizes.copy(),
+                                                                           compartment_sizes=Compartment_sizes,
+                                                                           total_amino_acid_abundance_in_proteome=correction_results_compartement_sizes.loc['Total', 'original_amino_acid_occupation'],
                                                                            condition=condition,
                                                                            gene_id_col=gene_ID_column,
                                                                            fit_nucleotide_assembly_machinery=True)
     else:
         process_efficiencies=import_process_efficiencies(input_data=process_efficiencies,rba_session=rba_session,condition=condition)
 
-    proteome[condition]*=global_protein_scaling_coeff
-    ###
     process_efficiencies.to_csv(output_dir+'/ProcEffsOrig_{}.csv'.format(condition))
 
     compartment_densities_and_PGs = extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=correction_results_compartement_sizes,
@@ -155,7 +177,8 @@ def calibration_workflow(proteome,
     if use_mean_enzyme_composition_for_calibration:
         generate_mean_enzyme_composition_model(rba_session,condition)
 
-        
+    rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
+
     flux_bounds_fba=flux_bounds_from_input(input=definition_file,
                                            rba_session=rba_session, 
                                            condition=condition, 
@@ -650,7 +673,7 @@ def extract_compsizes_and_pgfractions_from_correction_summary(corrsummary,rows_t
     return(out)
 
 
-def determine_apparent_process_efficiencies(growth_rate, input, rba_session, proteome_summary, protein_data, condition, gene_id_col,fit_nucleotide_assembly_machinery=False):
+def determine_apparent_process_efficiencies(growth_rate, input, rba_session, proteome_summary,compartment_sizes,total_amino_acid_abundance_in_proteome, protein_data, condition, gene_id_col,fit_nucleotide_assembly_machinery=False):
     """
     _summary_
 
@@ -679,8 +702,10 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session, pro
         process_name = input.loc[i, 'Process_Name']
         process_client_compartments = input.loc[i, 'Client_Compartments'].split(' , ')
         constituting_proteins = {rba_session.get_protein_information(protein=i)['ProtoID']: rba_session.get_protein_information(protein=i)['AAnumber'] for i in rba_session.get_process_information(process=process_name)['Composition'].keys()}
-        Total_client_fraction = sum([proteome_summary.loc[i, 'new_protein_fraction']
-                                     for i in process_client_compartments])
+        #Total_client_fraction = sum([proteome_summary.loc[i, 'new_protein_fraction']
+        #                             for i in process_client_compartments])
+        Total_client_fraction = sum([compartment_sizes.loc[i,condition] for i in process_client_compartments])
+        
         n_AAs_in_machinery = 0
         machinery_size = 0
         for i in constituting_proteins.keys():
@@ -690,7 +715,8 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session, pro
                 machinery_size += constituting_proteins[i]
         # right reference amounth?
         if n_AAs_in_machinery > 0:
-            relative_Protein_fraction_of_machinery = n_AAs_in_machinery / proteome_summary.loc['Total', 'original_amino_acid_occupation']
+            #relative_Protein_fraction_of_machinery = n_AAs_in_machinery / proteome_summary.loc['Total', 'original_amino_acid_occupation']
+            relative_Protein_fraction_of_machinery = n_AAs_in_machinery / total_amino_acid_abundance_in_proteome
             specific_capacity = growth_rate*Total_client_fraction/relative_Protein_fraction_of_machinery
             apparent_capacity = specific_capacity*machinery_size
             process_efficiencies.loc[process_name, 'Process'] = process_ID
