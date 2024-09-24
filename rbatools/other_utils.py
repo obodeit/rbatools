@@ -3,6 +3,211 @@ import numpy
 import copy
 from rbatools.rba_xml_utils import inject_estimated_efficiencies_into_model , inject_estimated_efficiencies_as_functions_into_model
 
+def correction_pipeline(input,
+                          condition,
+                          definition_file,
+                          compartments_to_replace,
+                          compartments_no_original_PG,
+                          fractions_entirely_replaced_with_expected_value,
+                          imposed_compartment_fractions,
+                          directly_corrected_compartments,
+                          merged_compartments,
+                          min_compartment_fraction):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    input : _type_
+        _description_
+    condition : _type_
+        _description_
+    definition_file : _type_
+        _description_
+    compartments_to_replace : _type_
+        _description_
+    compartments_no_original_PG : _type_
+        _description_
+    fractions_entirely_replaced_with_expected_value : _type_
+        _description_
+    imposed_compartment_fractions : _type_
+        _description_
+    directly_corrected_compartments : _type_
+        _description_
+    merged_compartments : _type_
+        _description_
+    min_compartment_fraction : _type_
+        _description_
+    """
+    out = build_proteome_overview(input=input, condition=condition, compartments_to_replace=compartments_to_replace,
+                                  compartments_no_original_PG=compartments_no_original_PG, ribosomal_proteins_as_extra_compartment=True)
+    factor_a=1/(1-sum([out.loc["pg_{}".format(i),"original_protein_fraction"] for i in compartments_no_original_PG]))
+    #factor_b=(1-sum([imposed_compartment_fractions[i] for i in fractions_entirely_replaced_with_expected_value]+[out.loc["Ribosomes","original_protein_fraction"]]))/(1-factor_a*out.loc["Ribosomes","original_protein_fraction"])
+    factor_b=(1-sum([imposed_compartment_fractions[i] for i in fractions_entirely_replaced_with_expected_value+compartments_no_original_PG]))/(1-factor_a*sum([out.loc[i,"original_protein_fraction"] for i in fractions_entirely_replaced_with_expected_value]))
+    factor_c=(1-sum([imposed_compartment_fractions[i] for i in fractions_entirely_replaced_with_expected_value+compartments_no_original_PG]))/(1-sum([imposed_compartment_fractions[i] for i in fractions_entirely_replaced_with_expected_value+compartments_no_original_PG])-factor_a*factor_b*sum([out.loc[i,"original_protein_fraction"] for i in compartments_no_original_PG]))
+    new_total=0
+    for i in out.index:
+        if i not in compartments_to_replace.keys():
+            if not i.startswith("pg_"):
+                if not i in ["Total"]:
+                    out.loc[i,"Factor_A"]=factor_a
+                    if not i in fractions_entirely_replaced_with_expected_value:
+                        out.loc[i,"Factor_B"]=factor_b
+                        if not i in compartments_no_original_PG:
+                            out.loc[i,"Factor_C"]=factor_c
+                            if i in merged_compartments.keys():
+                                out.loc[i,"new_protein_fraction"]=sum([imposed_compartment_fractions[j] for j in [merged_compartments[i]]])+out.loc[i,"original_protein_fraction"]*factor_a*factor_b*factor_c
+                                out.loc[i,"new_PG_fraction"]=out.loc[i,"original_PG_fraction"]*out.loc[i,"original_protein_fraction"]*factor_a*factor_b*factor_c/out.loc[i,"new_protein_fraction"]
+                                new_total+=out.loc[i,"new_protein_fraction"]
+                            else:
+                                out.loc[i,"new_protein_fraction"]=out.loc[i,"original_protein_fraction"]*factor_a*factor_b*factor_c
+                                out.loc[i,"new_PG_fraction"]=out.loc[i,"original_PG_fraction"]
+                                new_total+=out.loc[i,"new_protein_fraction"]
+                        else:
+                            out.loc[i,"new_protein_fraction"]=imposed_compartment_fractions[i]
+                            out.loc[i,"new_PG_fraction"]=1-(out.loc[i,"original_protein_fraction"]*factor_a*factor_b)/out.loc[i,"new_protein_fraction"]
+                            new_total+=out.loc[i,"new_protein_fraction"]
+                    else:
+                        out.loc[i,"new_protein_fraction"]=imposed_compartment_fractions[i]
+    out.loc["Total","new_protein_fraction"]=new_total
+    out["Location"]=out.index
+    return(out)
+
+
+def build_proteome_overview(input, condition, compartments_to_replace={'DEF':"c", 'DEFA':"c", 'Def':"c"}, compartments_no_original_PG=['n', 'Secreted'], ribosomal_proteins_as_extra_compartment=True):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    input : _type_
+        _description_
+    condition : _type_
+        _description_
+    compartments_to_replace : dict, optional
+        _description_, by default {'DEF':"c", 'DEFA':"c", 'Def':"c"}
+    compartments_no_original_PG : list, optional
+        _description_, by default ['n', 'Secreted']
+    ribosomal_proteins_as_extra_compartment : bool, optional
+        _description_, by default True
+    """
+    out = determine_compartment_occupation(Data_input=input, Condition=condition, compartments_to_replace=compartments_to_replace,
+                                           compartments_no_original_PG=compartments_no_original_PG, ribosomal_proteins_as_extra_compartment=ribosomal_proteins_as_extra_compartment, only_in_model=False)
+    out_in_model = determine_compartment_occupation(Data_input=input, Condition=condition, compartments_to_replace=compartments_to_replace,
+                                                    compartments_no_original_PG=compartments_no_original_PG, ribosomal_proteins_as_extra_compartment=ribosomal_proteins_as_extra_compartment, only_in_model=True)
+    for comp in out.index:
+        out.loc[comp,'original_protein_fraction'] = out.loc[comp,'original_amino_acid_occupation']/out.loc["Total",'original_amino_acid_occupation']
+        out['original_PG_fraction'] = 1-out_in_model['original_amino_acid_occupation'] / out['original_amino_acid_occupation']
+    return(out)
+
+
+def determine_compartment_occupation(Data_input,
+                                       Condition,
+                                       mass_col='AA_residues',
+                                       only_in_model=False,
+                                       compartments_to_replace={'DEF':"c"},
+                                       compartments_no_original_PG=[],
+                                       ribosomal_proteins_as_extra_compartment=True):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    Data_input : _type_
+        _description_
+    Condition : _type_
+        _description_
+    mass_col : str, optional
+        _description_, by default 'AA_residues'
+    only_in_model : bool, optional
+        _description_, by default False
+    compartments_to_replace : dict, optional
+        _description_, by default {'DEF':"c"}
+    compartments_no_original_PG : list, optional
+        _description_, by default []
+    ribosomal_proteins_as_extra_compartment : bool, optional
+        _description_, by default True
+    """
+    out=pandas.DataFrame()
+    if only_in_model:
+        Data_intermediate = Data_input.loc[Data_input['InModel'] >= 1,:]
+    else:
+        Data_intermediate=Data_input
+    Data=pandas.DataFrame()
+    for i in Data_intermediate.index:
+        for j in Data_intermediate.columns:
+            if j != "AA_abundance":
+                Data.loc[i,j]=Data_intermediate.loc[i,j]
+        Data.loc[i,"AA_abundance"]=Data_intermediate.loc[i,Condition]*Data_intermediate.loc[i,mass_col]
+
+    out.loc["Total","original_amino_acid_occupation"]=sum([i for i in list(Data["AA_abundance"]) if not pandas.isna(i)])
+    for i in compartments_to_replace.keys():
+        Data.loc[Data['Location'] == i,'Location']=compartments_to_replace[i]
+    for i in compartments_no_original_PG:
+        intermediate_Data_pg= Data.loc[(Data['Location'] == i) & (Data['InModel'] == 0)].copy()
+        out.loc["pg_{}".format(i),"original_amino_acid_occupation"]=sum([i for i in list(intermediate_Data_pg["AA_abundance"]) if not pandas.isna(i)])
+        intermediate_Data_non_pg= Data.loc[(Data['Location'] == i) & (Data['InModel'] == 1)].copy()
+        out.loc[i,"original_amino_acid_occupation"]=sum([i for i in list(intermediate_Data_non_pg["AA_abundance"]) if not pandas.isna(i)])
+    if ribosomal_proteins_as_extra_compartment:
+        Data_R = Data.loc[Data['IsRibosomal'] == 1].copy()
+        out.loc['Ribosomes', "original_amino_acid_occupation"] =sum([i for i in list(Data_R["AA_abundance"]) if not pandas.isna(i)])
+    for comp in list(set(list(Data['Location']))):
+        if comp in out.index:
+            continue
+        if ribosomal_proteins_as_extra_compartment:
+            intermediate_Data= Data.loc[(Data['Location'] == comp) & (Data['IsRibosomal'] == 0)].copy()
+        else:
+            intermediate_Data= Data.loc[Data['Location'] == comp].copy()
+        out.loc[comp, "original_amino_acid_occupation"] =sum([i for i in list(intermediate_Data["AA_abundance"]) if not pandas.isna(i)])
+    return(out)
+
+
+def correct_compartment_fractions(proteome,condition,definition_file,
+                                  compartments_to_replace,
+                                  compartments_no_original_PG,
+                                  fractions_entirely_replaced_with_expected_value,
+                                  directly_corrected_compartments,
+                                  imposed_compartment_fractions,
+                                  merged_compartments,
+                                  min_compartment_fraction):
+    correction_results_compartement_sizes = correction_pipeline(input=proteome,
+                                                condition=condition,
+                                                definition_file=definition_file,
+                                                compartments_to_replace=compartments_to_replace,
+                                                compartments_no_original_PG=compartments_no_original_PG,
+                                                fractions_entirely_replaced_with_expected_value=fractions_entirely_replaced_with_expected_value,
+                                                imposed_compartment_fractions=imposed_compartment_fractions,
+                                                directly_corrected_compartments=directly_corrected_compartments,
+                                                merged_compartments=merged_compartments,
+                                                min_compartment_fraction=min_compartment_fraction)
+
+    #correction_results_compartement_sizes.to_csv(str(output_dir+'/Correction_overview_HackettNielsen_'+condition+'.csv'))
+    return({"Densities_PGs":extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=correction_results_compartement_sizes,rows_to_exclude=["Ribosomes","Total"]+[i for i in correction_results_compartement_sizes.index if i.startswith("pg_")]),
+            "Proteome":proteome,
+            "Condition":condition,
+            "Proteome_summary":correction_results_compartement_sizes})
+
+
+def correct_proteome(correction_results_compartement_sizes,proteome,condition,Compartment_sizes,PG_fractions):
+    for i in Compartment_sizes.index:
+        correction_results_compartement_sizes.loc[i,"new_protein_fraction"]=Compartment_sizes.loc[i,condition]
+        correction_results_compartement_sizes.loc[i,"new_PG_fraction"]=PG_fractions.loc[i,condition]
+
+    ### GENERALISE for all merged compartments###
+    for i in correction_results_compartement_sizes.index:
+        abundance_coeff=1
+        if i =="c":
+            abundance_coeff=(correction_results_compartement_sizes.loc[i,"new_protein_fraction"]*(1-correction_results_compartement_sizes.loc[i,"new_PG_fraction"])-correction_results_compartement_sizes.loc["Ribosomes","new_protein_fraction"])/(correction_results_compartement_sizes.loc[i,"original_protein_fraction"]*(1-correction_results_compartement_sizes.loc[i,"original_PG_fraction"]))
+        else:
+            abundance_coeff=(correction_results_compartement_sizes.loc[i,"new_protein_fraction"]*(1-correction_results_compartement_sizes.loc[i,"new_PG_fraction"]))/(correction_results_compartement_sizes.loc[i,"original_protein_fraction"]*(1-correction_results_compartement_sizes.loc[i,"original_PG_fraction"]))
+        proteome.loc[proteome["Location"]==i,condition]*=abundance_coeff
+        correction_results_compartement_sizes.loc[i,"copy_number_scaling"]=abundance_coeff
+    ###
+    #correction_results_compartement_sizes.to_csv(str(output_dir+'/Correction_overview_HackettNielsen_corrected_'+condition+'.csv'))
+    return({"Proteome":proteome,
+            "Condition":condition,
+            "Proteome_summary":correction_results_compartement_sizes})
+
 
 def machinery_efficiency_correction_settings_from_input(input, condition):
     """
