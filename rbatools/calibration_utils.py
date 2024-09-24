@@ -5,7 +5,7 @@ import time
 import numpy
 #import json
 from scipy.stats.mstats import gmean
-from rbatools.other_utils import determine_compartment_occupation , correction_pipeline , build_proteome_overview , correct_proteome , correct_compartment_fractions , medium_concentrations_from_input , machinery_efficiency_correction_settings_from_input , enzyme_efficiency_estimation_settings_from_input , flux_bounds_from_input , growth_rate_from_input , proteome_fractions_from_input , perform_simulations , perform_simulations_fixed_Mu
+from rbatools.other_utils import extract_compsizes_and_pgfractions_from_correction_summary , build_proteome_overview , correct_proteome , correct_compartment_fractions , medium_concentrations_from_input , machinery_efficiency_correction_settings_from_input , enzyme_efficiency_estimation_settings_from_input , flux_bounds_from_input , growth_rate_from_input , proteome_fractions_from_input , perform_simulations , perform_simulations_fixed_Mu
 
 def calibration_workflow(proteome,
                          condition,
@@ -830,30 +830,8 @@ def calibration_workflow_2(proteome,
             'Process_Efficiencies_original': process_efficiencies_original})
 
 
-def extract_compsizes_and_pgfractions_from_correction_summary(corrsummary,rows_to_exclude):
-    """
-    _summary_
-
-    Parameters
-    ----------
-    corrsummary : _type_
-        _description_
-    rows_to_exclude : _type_
-        _description_
-    """
-    out=pandas.DataFrame()
-    for i in list(corrsummary.index):
-        if i in rows_to_exclude:
-            continue
-        else:
-            out.loc[i,"Compartment_ID"]=i
-            out.loc[i,"Density"]=corrsummary.loc[i,"new_protein_fraction"]
-            out.loc[i,"PG_fraction"]=corrsummary.loc[i,"new_PG_fraction"]
-    return(out)
-
-
 def determine_apparent_process_efficiencies(growth_rate, input, rba_session,compartment_densities_and_PGs,total_amino_acid_abundance_in_proteome, protein_data, condition,fit_nucleotide_assembly_machinery=False):
-     process_efficiencies = pandas.DataFrame()
+    process_efficiencies = pandas.DataFrame()
     for i in input.index:
         process_ID = input.loc[i, 'Process_ID']
         process_name = input.loc[i, 'Process_Name']
