@@ -3,6 +3,29 @@ import numpy
 import copy
 from rbatools.rba_xml_utils import inject_estimated_efficiencies_into_model , inject_estimated_efficiencies_as_functions_into_model
 
+
+def extract_compsizes_and_pgfractions_from_correction_summary(corrsummary,rows_to_exclude):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    corrsummary : _type_
+        _description_
+    rows_to_exclude : _type_
+        _description_
+    """
+    out=pandas.DataFrame()
+    for i in list(corrsummary.index):
+        if i in rows_to_exclude:
+            continue
+        else:
+            out.loc[i,"Compartment_ID"]=i
+            out.loc[i,"Density"]=corrsummary.loc[i,"new_protein_fraction"]
+            out.loc[i,"PG_fraction"]=corrsummary.loc[i,"new_PG_fraction"]
+    return(out)
+
+
 def correction_pipeline(input,
                           condition,
                           definition_file,
