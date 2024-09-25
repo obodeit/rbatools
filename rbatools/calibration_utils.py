@@ -862,7 +862,6 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session,comp
             process_efficiencies.loc[process_name, 'Process'] = process_ID
             process_efficiencies.loc[process_name, 'Parameter'] = str(process_ID+'_apparent_efficiency')
             process_efficiencies.loc[process_name, 'Value'] = median_process_efficiency
-    if fit_nucleotide_assembly_machinery:
     original_Mu=rba_session.Mu
     rba_session.set_growth_rate(growth_rate)
     machinery_production_fluxes=determine_macromolecule_synthesis_machinery_demand(rba_session)
