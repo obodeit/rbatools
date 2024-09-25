@@ -866,8 +866,8 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session,comp
     rba_session.set_growth_rate(growth_rate)
     machinery_production_fluxes=determine_macromolecule_synthesis_machinery_demand(rba_session)
     for machinery in machinery_production_fluxes.keys():
+        process_info=rba_session.get_process_information(process=machinery)
         if fit_nucleotide_assembly_machinery:
-            process_info=rba_session.get_process_information(process=machinery)
             stoichiometrically_scaled_subunit_concentrations=[]
             subunit_stoichiometries=[]
             for su in process_info["Composition"].keys():
@@ -885,10 +885,10 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session,comp
                 process_efficiencies.loc[machinery, 'Process'] = process_info["ID"]
                 process_efficiencies.loc[machinery, 'Parameter'] = str( process_info["ID"]+'_apparent_efficiency')
                 process_efficiencies.loc[machinery, 'Value'] = apparent_process_efficiency
-        else:
-            process_efficiencies.loc[machinery, 'Process'] = process_info["ID"]
-            process_efficiencies.loc[machinery, 'Parameter'] = str( process_info["ID"]+'_apparent_efficiency')
-            process_efficiencies.loc[machinery, 'Value'] = median_process_efficiency
+        #else:
+        #    process_efficiencies.loc[machinery, 'Process'] = process_info["ID"]
+        #    process_efficiencies.loc[machinery, 'Parameter'] = str( process_info["ID"]+'_apparent_efficiency')
+        #    process_efficiencies.loc[machinery, 'Value'] = median_process_efficiency
     rba_session.set_growth_rate(original_Mu)
     return(process_efficiencies)
 
