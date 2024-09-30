@@ -513,7 +513,7 @@ def calibration_workflow_2(proteome,
                                                                            #total_amino_acid_abundance_in_proteome=correction_results_compartement_sizes.loc['Total', 'original_amino_acid_occupation'],
                                                                            total_amino_acid_abundance_in_proteome=compartment_occupation_overview.loc['Total', 'original_amino_acid_occupation'],
                                                                            condition=condition,
-                                                                           fit_nucleotide_assembly_machinery=False)
+                                                                           fit_nucleotide_assembly_machinery=True)
 
         process_efficiencies.to_csv(output_dir+'/ProcEffsOrig_{}.csv'.format(condition))
     process_efficiencies_original=process_efficiencies.copy()
