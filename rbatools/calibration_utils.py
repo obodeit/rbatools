@@ -487,17 +487,21 @@ def calibration_workflow_2(proteome,
     # Otherwise don´t
     t0 = time.time()
 
+    rba_session.set_growth_rate(growth_rate_from_input(input=definition_file,condition=condition))
+
     compartment_occupation_overview = build_proteome_overview(input=proteome, 
                                                               condition=condition, 
                                                               compartments_to_replace={},
                                                               compartments_no_original_PG=[], 
                                                               ribosomal_proteins_as_extra_compartment=False)
+
     if (compartment_sizes is not None) and (pg_fractions is not None):
         compartment_densities_and_PGs=pandas.DataFrame()
         for comp in list(compartment_sizes.index):
             compartment_densities_and_PGs.loc[comp,"Compartment_ID"]=comp
             compartment_densities_and_PGs.loc[comp,"Density"]=compartment_sizes.loc[comp,condition]
             compartment_densities_and_PGs.loc[comp,"PG_fraction"]=pg_fractions.loc[comp,condition]
+    ### MOVE TO script level ###
     else:
         compartment_densities_and_PGs = extract_compsizes_and_pgfractions_from_correction_summary(corrsummary=compartment_occupation_overview,
                                                                                                   rows_to_exclude=["Ribosomes","Total"]+[i for i in compartment_occupation_overview.index if i.startswith("pg_")])
@@ -832,7 +836,7 @@ def calibration_workflow_2(proteome,
             'Specific_Kapps_original': Specific_Kapps_original,
             'Process_Efficiencies_original': process_efficiencies_original})
 
-
+# Maybe reformulate on protein level#
 def determine_apparent_process_efficiencies(growth_rate, input, rba_session,compartment_densities_and_PGs,total_amino_acid_abundance_in_proteome, protein_data, condition,fit_nucleotide_assembly_machinery=False):
     process_efficiencies = pandas.DataFrame()
     for i in input.index:
@@ -842,20 +846,25 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session,comp
         constituting_proteins = {rba_session.get_protein_information(protein=i)['ProtoID']: rba_session.get_protein_information(protein=i)['AAnumber'] for i in rba_session.get_process_information(process=process_name)['Composition'].keys()}
         Total_client_fraction = sum([compartment_densities_and_PGs.loc[i,"Density"] for i in process_client_compartments])
         
+        #MACHINERY COST???
         n_AAs_in_machinery = 0
         machinery_size = 0
         for i in constituting_proteins.keys(): # for protein in complex
             if i in protein_data['ID']:
                 n_AAs_in_machinery += protein_data.loc[protein_data['ID'] == i, condition].values[0] * protein_data.loc[protein_data['ID'] == i, 'AA_residues'].values[0]
-                machinery_size += constituting_proteins[i] #stoichiometry of protein in complex
-        # right reference amounth?
+                machinery_size += constituting_proteins[i] 
+        # right reference amount?
+
         if n_AAs_in_machinery > 0:
             relative_Protein_fraction_of_machinery = n_AAs_in_machinery / total_amino_acid_abundance_in_proteome #fraction of proteome, made up of complex nAA_complex/nAA_total
-            specific_capacity = growth_rate*Total_client_fraction/relative_Protein_fraction_of_machinery # k_app * nAA_complex/nAA_total = mu * nAA_clients/nAA_total
-            apparent_capacity = specific_capacity*machinery_size
+            #mmol_AA/(mmol_AA*h)
+            specific_capacity = growth_rate*Total_client_fraction/relative_Protein_fraction_of_machinery # k_spec * nAA_complex/nAA_total = mu * nAA_clients/nAA_total 
+                                                                                                         # k_spec = 
+            apparent_capacity = specific_capacity*machinery_size #mmol_AA/(mmol_Mach*h)
             process_efficiencies.loc[process_name, 'Process'] = process_ID
             process_efficiencies.loc[process_name, 'Parameter'] = str(process_ID+'_apparent_efficiency')
             process_efficiencies.loc[process_name, 'Value'] = apparent_capacity
+    
     ### DEFAULT PROCESS KAPP ###        
     median_process_efficiency=numpy.median(numpy.array(process_efficiencies["Value"]))
     for i in input.index:
@@ -868,11 +877,11 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session,comp
 
     ### NUCLEOTIDE ASSEMBLY PROCESS KAPPS ###        
     if fit_nucleotide_assembly_machinery:
-        original_Mu=rba_session.Mu
-        rba_session.set_growth_rate(growth_rate)
         machinery_production_fluxes=determine_macromolecule_synthesis_machinery_demand(rba_session)
+        #
         for machinery in machinery_production_fluxes.keys():
             process_info=rba_session.get_process_information(process=machinery)
+            #### rba_session proteome <-- input ####
             stoichiometrically_scaled_subunit_concentrations=[]
             subunit_stoichiometries=[]
             for su in process_info["Composition"].keys():
@@ -885,12 +894,12 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session,comp
                         subunit_stoichiometries.append(process_info["Composition"][su])
             if len(stoichiometrically_scaled_subunit_concentrations)>0:
                 machinery_concentration=weighted_geometric_mean(data=stoichiometrically_scaled_subunit_concentrations,weights=subunit_stoichiometries)
+            ####    
                 #machinery_concentration=gmean(stoichiometrically_scaled_subunit_concentrations)
                 apparent_process_efficiency=machinery_production_fluxes[machinery]/machinery_concentration
                 process_efficiencies.loc[machinery, 'Process'] = process_info["ID"]
                 process_efficiencies.loc[machinery, 'Parameter'] = str( process_info["ID"]+'_apparent_efficiency')
                 process_efficiencies.loc[machinery, 'Value'] = apparent_process_efficiency
-        rba_session.set_growth_rate(original_Mu)
     return(process_efficiencies)
 
 
