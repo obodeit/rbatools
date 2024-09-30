@@ -468,7 +468,8 @@ def calibration_workflow_2(proteome,
                          pg_fractions=None,
                          print_outputs=True,
                          output_dir=""):
-    
+
+    ### DEFINE THESE IN SETTINGS-CSV
     max_kapp_threshold=None
     min_kapp=None
     use_mean_enzyme_composition_for_calibration=False
@@ -477,6 +478,7 @@ def calibration_workflow_2(proteome,
     feasible_stati=["optimal","feasible"]
     #feasible_stati=["optimal","feasible","feasible_only_before_unscaling"]
 
+    ### SPECIFY THAT ALWAYS THE PROKARYOTIC RBA-ALGORITHM IS USED FOR CALIBRATION
     condition_to_look_up="Prokaryotic"
     growth_rate_to_look_up="Mu_prok"
     results_to_look_up="Simulation_Results"
@@ -528,6 +530,7 @@ def calibration_workflow_2(proteome,
         enzyme_efficiency_estimation_settings=enzyme_efficiency_estimation_settings_from_input(input=definition_file, condition=condition)
 
         rba_session.set_medium(medium_concentrations_from_input(input=definition_file, condition=condition))
+        
         flux_bounds_fba=flux_bounds_from_input(input=definition_file,
                                             rba_session=rba_session, 
                                             condition=condition, 
@@ -841,19 +844,19 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session,comp
         
         n_AAs_in_machinery = 0
         machinery_size = 0
-        for i in constituting_proteins.keys():
+        for i in constituting_proteins.keys(): # for protein in complex
             if i in protein_data['ID']:
-                n_AAs_in_machinery += protein_data.loc[protein_data['ID'] == i, condition].values[0] * \
-                    protein_data.loc[protein_data['ID'] == i, 'AA_residues'].values[0]
-                machinery_size += constituting_proteins[i]
+                n_AAs_in_machinery += protein_data.loc[protein_data['ID'] == i, condition].values[0] * protein_data.loc[protein_data['ID'] == i, 'AA_residues'].values[0]
+                machinery_size += constituting_proteins[i] #stoichiometry of protein in complex
         # right reference amounth?
         if n_AAs_in_machinery > 0:
-            relative_Protein_fraction_of_machinery = n_AAs_in_machinery / total_amino_acid_abundance_in_proteome
-            specific_capacity = growth_rate*Total_client_fraction/relative_Protein_fraction_of_machinery
+            relative_Protein_fraction_of_machinery = n_AAs_in_machinery / total_amino_acid_abundance_in_proteome #fraction of proteome, made up of complex nAA_complex/nAA_total
+            specific_capacity = growth_rate*Total_client_fraction/relative_Protein_fraction_of_machinery # k_app * nAA_complex/nAA_total = mu * nAA_clients/nAA_total
             apparent_capacity = specific_capacity*machinery_size
             process_efficiencies.loc[process_name, 'Process'] = process_ID
             process_efficiencies.loc[process_name, 'Parameter'] = str(process_ID+'_apparent_efficiency')
             process_efficiencies.loc[process_name, 'Value'] = apparent_capacity
+    ### DEFAULT PROCESS KAPP ###        
     median_process_efficiency=numpy.median(numpy.array(process_efficiencies["Value"]))
     for i in input.index:
         process_ID = input.loc[i, 'Process_ID']
@@ -862,12 +865,14 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session,comp
             process_efficiencies.loc[process_name, 'Process'] = process_ID
             process_efficiencies.loc[process_name, 'Parameter'] = str(process_ID+'_apparent_efficiency')
             process_efficiencies.loc[process_name, 'Value'] = median_process_efficiency
-    original_Mu=rba_session.Mu
-    rba_session.set_growth_rate(growth_rate)
-    machinery_production_fluxes=determine_macromolecule_synthesis_machinery_demand(rba_session)
-    for machinery in machinery_production_fluxes.keys():
-        process_info=rba_session.get_process_information(process=machinery)
-        if fit_nucleotide_assembly_machinery:
+
+    ### NUCLEOTIDE ASSEMBLY PROCESS KAPPS ###        
+    if fit_nucleotide_assembly_machinery:
+        original_Mu=rba_session.Mu
+        rba_session.set_growth_rate(growth_rate)
+        machinery_production_fluxes=determine_macromolecule_synthesis_machinery_demand(rba_session)
+        for machinery in machinery_production_fluxes.keys():
+            process_info=rba_session.get_process_information(process=machinery)
             stoichiometrically_scaled_subunit_concentrations=[]
             subunit_stoichiometries=[]
             for su in process_info["Composition"].keys():
@@ -885,11 +890,7 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session,comp
                 process_efficiencies.loc[machinery, 'Process'] = process_info["ID"]
                 process_efficiencies.loc[machinery, 'Parameter'] = str( process_info["ID"]+'_apparent_efficiency')
                 process_efficiencies.loc[machinery, 'Value'] = apparent_process_efficiency
-        #else:
-        #    process_efficiencies.loc[machinery, 'Process'] = process_info["ID"]
-        #    process_efficiencies.loc[machinery, 'Parameter'] = str( process_info["ID"]+'_apparent_efficiency')
-        #    process_efficiencies.loc[machinery, 'Value'] = median_process_efficiency
-    rba_session.set_growth_rate(original_Mu)
+        rba_session.set_growth_rate(original_Mu)
     return(process_efficiencies)
 
 
