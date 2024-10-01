@@ -26,6 +26,7 @@ def calibration_workflow_2(proteome,
     transporter_multiplier=1
     feasible_stati=["optimal","feasible"]
     #feasible_stati=["optimal","feasible","feasible_only_before_unscaling"]
+    
 
     ### SPECIFY THAT ALWAYS THE PROKARYOTIC RBA-ALGORITHM IS USED FOR CALIBRATION
     condition_to_look_up="Prokaryotic"
@@ -77,6 +78,7 @@ def calibration_workflow_2(proteome,
         generate_mean_enzyme_composition_model(rba_session,condition)
             
     correction_settings=machinery_efficiency_correction_settings_from_input(input=definition_file, condition=condition)
+    correction_settings['impose_directions_from_fba_during_correction']=False
 
     if spec_kapps is not None:
         Specific_Kapps=import_specific_enzyme_efficiencies(input_data=spec_kapps,rba_session=rba_session,condition=condition)
@@ -796,32 +798,33 @@ def determine_calibration_flux_distribution(rba_session,
         derive_bm_from_rbasolution=False
         derive_bm_from_targets=True
         original_medium = copy.deepcopy(rba_session.Medium)
-        rba_session.set_medium({i:100.0 for i in original_medium.keys()})
         original_density_constraint_signs=rba_session.Problem.get_constraint_types(constraints=[i for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names])
         rba_session.Problem.set_constraint_types({i:"E" for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names})
 
-        #solved1=rba_session.solve()
-        #if solved1:
-        #    derive_bm_from_rbasolution=True
-        #    derive_bm_from_targets=False
-        #    rba_session.Problem.set_constraint_types(original_density_constraint_signs)
-
-        solved2=rba_session.solve()
-        if solved2:
+        solved1=rba_session.solve()
+        if solved1:
             derive_bm_from_rbasolution=True
             derive_bm_from_targets=False
             rba_session.Problem.set_constraint_types(original_density_constraint_signs)
         else:
-            print("{} - Solution with equality density not obtained - Status: {}".format(condition,rba_session.Problem.SolutionStatus))
+            print("{} - Solution with equality density  and original medium not obtained - Status: {}".format(condition,rba_session.Problem.SolutionStatus))
+            rba_session.set_medium({i:100.0 for i in original_medium.keys()})
+            solved2=rba_session.solve()
             rba_session.Problem.set_constraint_types(original_density_constraint_signs)
-            rba_session.set_growth_rate(mu)
-            solved3=rba_session.solve()
-            if solved3:
+            if solved2:
                 derive_bm_from_rbasolution=True
                 derive_bm_from_targets=False
             else:
-                print("{} - Solution with inequality density not obtained - Status: {}".format(condition,rba_session.Problem.SolutionStatus))
+                print("{} - Solution with equality density not obtained - Status: {}".format(condition,rba_session.Problem.SolutionStatus))
+                rba_session.set_growth_rate(mu)
+                solved3=rba_session.solve()
+                if solved3:
+                    derive_bm_from_rbasolution=True
+                    derive_bm_from_targets=False
+                else:
+                    print("{} - Solution with inequality density not obtained - Status: {}".format(condition,rba_session.Problem.SolutionStatus))
 
+        
         rba_session.set_medium(original_medium)
         rba_session.build_fba_model(rba_derived_biomass_function=True,
                                     from_rba_solution=derive_bm_from_rbasolution,
