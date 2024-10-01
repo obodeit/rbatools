@@ -261,11 +261,11 @@ def machinery_efficiency_correction_settings_from_input(input, condition):
         if numpy.isfinite(value):
             out['fixed_growth_rate_global_scaling']=bool(value)
     
-    out['abjust_root_of_correction_coeffs_global_scaling']=False
+    out['adjust_root_of_correction_coeffs_global_scaling']=False
     if 'Global_scaling_adjust_roots_of_scaling_coefficient' in list(input['Type']):
         value=input.loc[input['Type'] == 'Global_scaling_adjust_roots_of_scaling_coefficient', condition].values[0]
         if numpy.isfinite(value):
-            out['abjust_root_of_correction_coeffs_global_scaling']=bool(value)
+            out['adjust_root_of_correction_coeffs_global_scaling']=bool(value)
 
     out['minimum_iteration_number']=2
     if 'Minimum_iteration_number_efficiency_correction' in list(input['Type']):
