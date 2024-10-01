@@ -527,9 +527,13 @@ def calibration_workflow_2(proteome,
     if use_mean_enzyme_composition_for_calibration:
         generate_mean_enzyme_composition_model(rba_session,condition)
             
+    correction_settings=machinery_efficiency_correction_settings_from_input(input=definition_file, condition=condition)
+
     if spec_kapps is not None:
         Specific_Kapps=import_specific_enzyme_efficiencies(input_data=spec_kapps,rba_session=rba_session,condition=condition)
-        fba_flux_directions_from_enzyme_efficiency_estimation={}
+        #fba_flux_directions_from_enzyme_efficiency_estimation={}
+        correction_settings['impose_directions_from_fba_during_correction']=False
+        # or raise error
     else:
         enzyme_efficiency_estimation_settings=enzyme_efficiency_estimation_settings_from_input(input=definition_file, condition=condition)
 
@@ -560,7 +564,7 @@ def calibration_workflow_2(proteome,
                                                                     condition=condition, 
                                                                     store_output=True,
                                                                     rxns_to_ignore_when_parsimonious=[],
-                                                                    use_bm_flux_of_one=True,
+                                                                    use_bm_flux_of_one=True, # False
                                                                     output_dir=output_dir)
 
         Specific_Kapps=Specific_Kapps_Results["Overview"]
@@ -568,7 +572,6 @@ def calibration_workflow_2(proteome,
             Specific_Kapps.loc[(Specific_Kapps['Kapp']<min_kapp)&(Specific_Kapps['Kapp']!=0)&(pandas.isna(Specific_Kapps['Kapp'])==False),'Kapp']=min_kapp
         Spec_Kapp_estim_FD=Specific_Kapps_Results["Flux_Distribution"]
 
-        correction_settings=machinery_efficiency_correction_settings_from_input(input=definition_file, condition=condition)
 
         fba_flux_directions_from_enzyme_efficiency_estimation={}
         if correction_settings['impose_directions_from_fba_during_correction']:
@@ -1259,8 +1262,15 @@ def determine_calibration_flux_distribution(rba_session,
         rba_session.set_medium({i:100.0 for i in original_medium.keys()})
         original_density_constraint_signs=rba_session.Problem.get_constraint_types(constraints=[i for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names])
         rba_session.Problem.set_constraint_types({i:"E" for i in rba_session.get_density_constraints() if i in rba_session.Problem.LP.row_names})
-        solved=rba_session.solve()
-        if solved:
+
+        #solved1=rba_session.solve()
+        #if solved1:
+        #    derive_bm_from_rbasolution=True
+        #    derive_bm_from_targets=False
+        #    rba_session.Problem.set_constraint_types(original_density_constraint_signs)
+
+        solved2=rba_session.solve()
+        if solved2:
             derive_bm_from_rbasolution=True
             derive_bm_from_targets=False
             rba_session.Problem.set_constraint_types(original_density_constraint_signs)
@@ -1268,8 +1278,8 @@ def determine_calibration_flux_distribution(rba_session,
             print("{} - Solution with equality density not obtained - Status: {}".format(condition,rba_session.Problem.SolutionStatus))
             rba_session.Problem.set_constraint_types(original_density_constraint_signs)
             rba_session.set_growth_rate(mu)
-            solved2=rba_session.solve()
-            if solved2:
+            solved3=rba_session.solve()
+            if solved3:
                 derive_bm_from_rbasolution=True
                 derive_bm_from_targets=False
             else:
@@ -1318,8 +1328,14 @@ def determine_calibration_flux_distribution(rba_session,
         rba_session.FBA.parsimonise(rxns_to_ignore_in_objective=rxns_to_ignore_when_parsimonious)
         rba_session.FBA.set_lb(rxn_LBs)
         rba_session.FBA.set_ub(rxn_UBs)
+        # explain
+        #set use_bm_flux_of_one to True by defualt (remove option at all)?
         if use_bm_flux_of_one:
+            # if 1: mu predicted = mu measured (reformulate to have perfect correspondence when BM-flux = mu_mrasured)
+            # 1.0 --> mu measured
+            # if FBA overpredicts imposed growth-rate:
             if BMfluxOld >= 1.0:
+                #impose imposed growth rate
                 rba_session.FBA.set_lb({BMfunction: 1.0})
                 rba_session.FBA.set_ub({BMfunction: 1.0})
                 rba_session.FBA.solve_lp()
