@@ -841,27 +841,27 @@ def estimate_specific_enzyme_efficiencies_new(rba_session,
         all_preselected_reaction_isoenzymes=[i for i in list([reaction_enzyme]+rba_session.get_enzyme_information(reaction_enzyme)['Isozymes']) if i in pre_selected_enzymes]
         if len(all_preselected_reaction_isoenzymes)<1:
             continue
-        all_fluxes_specific_network={reaction:reaction_flux}
+        all_fluxes_specific_network={reaction:abs(reaction_flux)}
         all_isoenzyme_concentrations_specific_network={}
         all_isoenzyme_concentrations_specific_network_scaled_by_flux={}
         all_catalytic_activities_in_pseudo_complex=[]
         for isoenzyme in all_preselected_reaction_isoenzymes:
             all_catalytic_activities_in_pseudo_complex.append(isoenzyme)
-            total_flux_isoenzyme_all_catalytic_activities=reaction_flux
+            total_flux_isoenzyme_all_catalytic_activities=abs(reaction_flux)
             for other_catalytic_activity_enzyme in rba_session.get_enzyme_information(isoenzyme)['IdenticalEnzymes']:
                 all_catalytic_activities_in_pseudo_complex.append(other_catalytic_activity_enzyme)
                 associated_reaction=rba_session.get_enzyme_information(other_catalytic_activity_enzyme)["Reaction"]
                 for isoreaction in list([associated_reaction]+rba_session.get_reaction_information(associated_reaction)['Twins']):
                     if isoreaction in nonzero_flux_reactions:
                         isoreaction_flux=FluxDistribution.loc[isoreaction,'FluxValues']
-                        all_fluxes_specific_network[isoreaction]=isoreaction_flux
-                        total_flux_isoenzyme_all_catalytic_activities+=isoreaction_flux
+                        all_fluxes_specific_network[isoreaction]=abs(isoreaction_flux)
+                        total_flux_isoenzyme_all_catalytic_activities+=abs(isoreaction_flux)
             isoenzyme_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
                                                                              machinery_composition=rba_session.get_enzyme_information(isoenzyme)["Subunits"],
                                                                              proteomicsData=proteomicsData,
                                                                              proto_proteins=False)
             all_isoenzyme_concentrations_specific_network[isoenzyme]=isoenzyme_concentration
-            all_isoenzyme_concentrations_specific_network_scaled_by_flux[isoenzyme]=isoenzyme_concentration*reaction_flux/(total_flux_isoenzyme_all_catalytic_activities)
+            all_isoenzyme_concentrations_specific_network_scaled_by_flux[isoenzyme]=isoenzyme_concentration*abs(reaction_flux)/(total_flux_isoenzyme_all_catalytic_activities)
 
         if pseudocomplex_method=='old':
             concentration_pseudo_complex=gmean(numpy.array(list(all_isoenzyme_concentrations_specific_network.values())))
@@ -869,7 +869,7 @@ def estimate_specific_enzyme_efficiencies_new(rba_session,
 
         if pseudocomplex_method=='new':
             concentration_pseudo_complex=sum(list(all_isoenzyme_concentrations_specific_network_scaled_by_flux.values()))
-            flux_pseudo_complex=reaction_flux
+            flux_pseudo_complex=abs(reaction_flux)
 
         # 5.5 ...#
         if (flux_pseudo_complex!=0) and numpy.isfinite(flux_pseudo_complex) and (concentration_pseudo_complex!=0) and numpy.isfinite(concentration_pseudo_complex):
