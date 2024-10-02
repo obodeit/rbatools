@@ -834,33 +834,41 @@ def estimate_specific_enzyme_efficiencies_new(rba_session,
     for reaction in nonzero_flux_reactions:
         if reaction not in rba_session.get_reactions():
             continue
-        reaction_flux=FluxDistribution.loc[reaction,'FluxValues']
         reaction_enzyme=rba_session.get_reaction_information(reaction)['Enzyme']
         if reaction_enzyme not in rba_session.get_enzymes():
             continue
         all_preselected_reaction_isoenzymes=[i for i in list([reaction_enzyme]+rba_session.get_enzyme_information(reaction_enzyme)['Isozymes']) if i in pre_selected_enzymes]
         if len(all_preselected_reaction_isoenzymes)<1:
             continue
-        all_fluxes_specific_network={reaction:abs(reaction_flux)}
-        all_isoenzyme_concentrations_specific_network={}
-        all_isoenzyme_concentrations_specific_network_scaled_by_flux={}
-        all_catalytic_activities_in_pseudo_complex=[]
-        for isoenzyme in all_preselected_reaction_isoenzymes:
+        
+        reaction_flux=FluxDistribution.loc[reaction,'FluxValues']
+
+        all_isoenzyme_concentrations_specific_network_scaled_by_flux={} #isoenzymes of rxn and their allocated share of concentration{}
+
+        all_fluxes_specific_network={reaction:abs(reaction_flux)} # all rxns in network and their fluxes (needed for old way)
+        all_isoenzyme_concentrations_specific_network={} #isoenzymes of rxn and their concentration (needed for old way)
+        all_catalytic_activities_in_pseudo_complex=[] #name of all (iso)enzymes in network (needed only for output info)
+
+        for isoenzyme in all_preselected_reaction_isoenzymes: # all (preselected) isoenzymes of rxn 
             all_catalytic_activities_in_pseudo_complex.append(isoenzyme)
-            total_flux_isoenzyme_all_catalytic_activities=abs(reaction_flux)
+            total_flux_isoenzyme_all_catalytic_activities=abs(reaction_flux) # for concentration partitioning, other fluxes added later
+            # iterate over other catalytic activities of isoenzyme:
             for other_catalytic_activity_enzyme in rba_session.get_enzyme_information(isoenzyme)['IdenticalEnzymes']:
                 all_catalytic_activities_in_pseudo_complex.append(other_catalytic_activity_enzyme)
                 associated_reaction=rba_session.get_enzyme_information(other_catalytic_activity_enzyme)["Reaction"]
+                # iterate over all isorxns of it:
                 for isoreaction in list([associated_reaction]+rba_session.get_reaction_information(associated_reaction)['Twins']):
-                    if isoreaction in nonzero_flux_reactions:
+                    if isoreaction in nonzero_flux_reactions: # does it carry flux?
                         isoreaction_flux=FluxDistribution.loc[isoreaction,'FluxValues']
                         all_fluxes_specific_network[isoreaction]=abs(isoreaction_flux)
-                        total_flux_isoenzyme_all_catalytic_activities+=abs(isoreaction_flux)
+                        total_flux_isoenzyme_all_catalytic_activities+=abs(isoreaction_flux) # added for concentration partitioning
+            #determine isoenzyme-concentration
             isoenzyme_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
                                                                              machinery_composition=rba_session.get_enzyme_information(isoenzyme)["Subunits"],
                                                                              proteomicsData=proteomicsData,
                                                                              proto_proteins=False)
             all_isoenzyme_concentrations_specific_network[isoenzyme]=isoenzyme_concentration
+            #record allocated concentration partition by flux partitioning:
             all_isoenzyme_concentrations_specific_network_scaled_by_flux[isoenzyme]=isoenzyme_concentration*abs(reaction_flux)/(total_flux_isoenzyme_all_catalytic_activities)
 
         if pseudocomplex_method=='old':
