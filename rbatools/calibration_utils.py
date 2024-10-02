@@ -78,7 +78,7 @@ def calibration_workflow_2(proteome,
         generate_mean_enzyme_composition_model(rba_session,condition)
             
     correction_settings=machinery_efficiency_correction_settings_from_input(input=definition_file, condition=condition)
-    correction_settings['impose_directions_from_fba_during_correction']=False
+    #correction_settings['impose_directions_from_fba_during_correction']=False
 
     if spec_kapps is not None:
         Specific_Kapps=import_specific_enzyme_efficiencies(input_data=spec_kapps,rba_session=rba_session,condition=condition)
@@ -114,8 +114,8 @@ def calibration_workflow_2(proteome,
                                                                     store_output=True,
                                                                     rxns_to_ignore_when_parsimonious=[],
                                                                     use_bm_flux_of_one=True, # False
-                                                                    output_dir=output_dir,
-                                                                    pseudocomplex_method='old')
+                                                                    pseudocomplex_method='new',
+                                                                    output_dir=output_dir)
 
         Specific_Kapps=Specific_Kapps_Results["Overview"]
         
@@ -832,8 +832,12 @@ def estimate_specific_enzyme_efficiencies_new(rba_session,
     #############################
     overview_out = pandas.DataFrame()
     for reaction in nonzero_flux_reactions:
+        if reaction not in rba_session.get_reactions():
+            continue
         reaction_flux=FluxDistribution.loc[reaction,'FluxValues']
         reaction_enzyme=rba_session.get_reaction_information(reaction)['Enzyme']
+        if reaction_enzyme not in rba_session.get_enzymes():
+            continue
         all_preselected_reaction_isoenzymes=[i for i in list([reaction_enzyme]+rba_session.get_enzyme_information(reaction_enzyme)['Isozymes']) if i in pre_selected_enzymes]
         if len(all_preselected_reaction_isoenzymes)<1:
             continue
@@ -846,7 +850,7 @@ def estimate_specific_enzyme_efficiencies_new(rba_session,
             total_flux_isoenzyme_all_catalytic_activities=reaction_flux
             for other_catalytic_activity_enzyme in rba_session.get_enzyme_information(isoenzyme)['IdenticalEnzymes']:
                 all_catalytic_activities_in_pseudo_complex.append(other_catalytic_activity_enzyme)
-                associated_reaction=rba_session.get_enzyme_information(other_catalytic_activity_enzyme)["Reaction"]:
+                associated_reaction=rba_session.get_enzyme_information(other_catalytic_activity_enzyme)["Reaction"]
                 for isoreaction in list([associated_reaction]+rba_session.get_reaction_information(associated_reaction)['Twins']):
                     if isoreaction in nonzero_flux_reactions:
                         isoreaction_flux=FluxDistribution.loc[isoreaction,'FluxValues']
@@ -910,20 +914,22 @@ def estimate_specific_enzyme_efficiencies_new(rba_session,
                     reaction_already_considered_in_previous_estimation=True
                     break
                 isoenzyme=rba_session.get_reaction_information(isoreaction)["Enzyme"]
+                if isoenzyme not in rba_session.get_enzymes():
+                    continue
                 for other_catalytic_activity_enzyme in rba_session.get_enzyme_information(isoenzyme)['IdenticalEnzymes']:
                     if other_catalytic_activity_enzyme in list(overview_out["Enzyme_ID"]):
-                        #if overview_out.loc[overview_out["Enzyme_ID"]==other_catalytic_activity_enzyme,'Comment'] == 'estimated':
-                        respective_kapp=overview_out.loc[overview_out["Enzyme_ID"]==other_catalytic_activity_enzyme,'Kapp']
+                        respective_kapp=float(overview_out.loc[overview_out["Enzyme_ID"]==other_catalytic_activity_enzyme,'Kapp'].values[0])
                         if numpy.isfinite(respective_kapp):
-                            enzymes_to_infer_kapp_from[other_catalytic_activity_enzyme]=respective_kapp
+                            if respective_kapp != 0:
+                                enzyme_kapps_to_infer_kapp_from[other_catalytic_activity_enzyme]=respective_kapp                        
             if reaction_already_considered_in_previous_estimation:
                 continue
-            if len(list(enzymes_to_infer_kapp_from.keys()))>0:
+            if len(list(enzyme_kapps_to_infer_kapp_from.keys()))>0:
                 for isoreaction in list([reaction]+rba_session.get_reaction_information(reaction)["Twins"]):
                     overview_out.loc[isoreaction,"Enzyme_ID"]=rba_session.get_reaction_information(isoreaction)["Enzyme"]
-                    overview_out.loc[isoreaction,'Kapp'] = numpy.mean(list(enzymes_to_infer_kapp_from.values()))
+                    overview_out.loc[isoreaction,'Kapp'] = numpy.mean(list(enzyme_kapps_to_infer_kapp_from.values()))
                     overview_out.loc[isoreaction, 'Comment'] = 'inferred from other enzymes'
-                    overview_out.loc[isoreaction,"Enzymes inferred from"]=" , ".join(list(enzymes_to_infer_kapp_from.keys()))
+                    overview_out.loc[isoreaction,"Enzymes inferred from"]=" , ".join(list(enzyme_kapps_to_infer_kapp_from.keys()))
 
     #############################
  
