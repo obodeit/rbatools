@@ -157,6 +157,9 @@ def _determine_compartment(subunits, model, enzymes):
     out = []
     if len(subunits.keys()) > 0:
         for s in subunits.keys():
-            ind = enzymes.index(s)
-            out.append(model.proteins.macromolecules._elements[ind].__dict__['compartment'])
+            try:
+                ind = enzymes.index(s)
+                out.append(model.proteins.macromolecules._elements[ind].__dict__['compartment'])
+            except:
+                pass
     return(list(numpy.unique(out)))
