@@ -38,6 +38,7 @@ calibration_workflow()
                 inject_default_kapps_as_function()
                 inject_process_capacities_as_function()
         perform_simulations_fixed_Mu()
+            medium_concentrations_from_input
             generate_compartment_size_and_pg_input()
             generate_process_efficiency_input()
             generate_default_kapp_input()
