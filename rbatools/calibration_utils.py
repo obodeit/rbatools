@@ -78,7 +78,8 @@ def calibration_workflow_2(proteome,
         generate_mean_enzyme_composition_model(rba_session,condition)
             
     correction_settings=machinery_efficiency_correction_settings_from_input(input=definition_file, condition=condition)
-    #correction_settings['impose_directions_from_fba_during_correction']=False
+    
+    correction_settings['impose_directions_from_fba_during_correction']=False
 
     if spec_kapps is not None:
         Specific_Kapps=import_specific_enzyme_efficiencies(input_data=spec_kapps,rba_session=rba_session,condition=condition)
