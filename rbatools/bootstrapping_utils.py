@@ -4,106 +4,6 @@ import numpy
 #from sklearn.linear_model import LinearRegression
 from rbatools.regression_utils import  do_lin_regression
 
-def sample_copy_numbers_from_proteome_replicates(Input_data,cols_to_draw_from,target_size=1):
-    """
-    _summary_
-
-    Parameters
-    ----------
-    Input_data : _type_
-        _description_
-    cols_to_draw_from : _type_
-        _description_
-    target_size : int, optional
-        _description_, by default 1
-    """
-    sample_set=set()
-    dimension_too_draw=Input_data.shape[0]
-    while len(sample_set)<target_size:
-        sample_set.add(tuple(numpy.random.choice(a=cols_to_draw_from,size=dimension_too_draw,replace=True)))
-    out=pandas.DataFrame(index=list(Input_data.index))
-    out["Gene"]=Input_data["Gene"]
-    count=0
-    for sample in list(sample_set):
-        count+=1
-        out["run_{}".format(count)]=[Input_data.loc[list(Input_data.index)[i],sample[i]] for i in list(range(len(sample)))]
-    return(out)
-
-
-def sample_copy_numbers_from_residuals_old(Input_data,replicate_cols,mean_col,replicate_threshold=1,filter_list=[],target_size=1,reps_to_sample=3):
-    """
-    _summary_
-
-    Parameters
-    ----------
-    Input_data : _type_
-        _description_
-    replicate_cols : _type_
-        _description_
-    mean_col : _type_
-        _description_
-    replicate_threshold : int, optional
-        _description_, by default 1
-    filter_list : list, optional
-        _description_, by default []
-    target_size : int, optional
-        _description_, by default 1
-    reps_to_sample : int, optional
-        _description_, by default 3
-    """
-    data_to_use=pandas.DataFrame(columns=Input_data.columns)
-    for i in list(Input_data.index):
-        finite_count=0
-        for j in replicate_cols:
-            if not pandas.isna(Input_data.loc[i,j]):
-                finite_count+=1
-        if finite_count>=replicate_threshold:
-            if len(filter_list)>0:
-                if i in filter_list:
-                    data_to_use.loc[i,:]=Input_data.loc[i,:]
-            else:
-                data_to_use.loc[i,:]=Input_data.loc[i,:]
-
-    all_residuals=[]
-    for i in replicate_cols:
-        data_to_use["Log__{}".format(i)]=[numpy.log10(j) for j in list(data_to_use[i])]
-    for i in data_to_use.index:
-        vals=[]
-        for j in replicate_cols:
-            if not pandas.isna(data_to_use.loc[i,j]):
-                vals.append(numpy.log10(data_to_use.loc[i,j]))
-        data_to_use.loc[i,"Log__mean"]=numpy.mean(vals)
-    for i in replicate_cols:
-        data_to_use["Residual__{}".format(i)]=data_to_use["Log__{}".format(i)]-data_to_use["Log__mean"]
-        all_residuals+=list([j for j in list(data_to_use["Residual__{}".format(i)]) if not pandas.isna(j)])
-
-    for i in Input_data.index:
-        vals=[]
-        for j in replicate_cols:
-            if not pandas.isna(Input_data.loc[i,j]):
-                vals.append(numpy.log10(Input_data.loc[i,j]))
-        Input_data.loc[i,"Log__mean"]=numpy.mean(vals)
-    dimension_too_draw=Input_data.shape[0]
-    out=pandas.DataFrame(index=list(Input_data.index))
-    out["Gene"]=Input_data["Gene"]
-    count=0
-    df_intermediate=pandas.DataFrame(index=list(Input_data.index))
-    df_intermediate["LogMean"]=Input_data["Log__mean"]
-    out["mean_noNoise"]=[10**j for j in list(df_intermediate["LogMean"])]
-    for run in list(range(target_size)):
-        count+=1
-        for rep in range(reps_to_sample):
-            df_intermediate["LogRes_{}".format(rep+1)]=list(numpy.random.choice(a=all_residuals,size=dimension_too_draw,replace=True))
-            df_intermediate["Sampled_{}".format(rep+1)]=df_intermediate["LogMean"]+df_intermediate["LogRes_{}".format(rep+1)]
-        for i in list(df_intermediate.index):
-            sampled_reps=[]
-            for rep in range(reps_to_sample):
-                sampled_reps.append(10**df_intermediate.loc[i,"Sampled_{}".format(rep+1)])
-            df_intermediate.loc[i,"Sampled_Mean_abs"]=numpy.nanmean(sampled_reps)
-        out["run_{}".format(count)]=list(df_intermediate["Sampled_Mean_abs"])
-    return(out)
-
-
 def check_quantile(val,quantiles):
     """
     _summary_
@@ -126,23 +26,6 @@ def check_quantile(val,quantiles):
     else:
         return(numpy.nan)
 
-def generate_multiple_input_proteomes_from_mean(Input_data,mean_col,n):
-    """
-    _summary_
-
-    Parameters
-    ----------
-    Input_data : _type_
-        _description_
-    mean_col : _type_
-        _description_
-    n : _type_
-        _description_
-    """
-    out=pandas.DataFrame(index=list(Input_data.index))
-    for i in range(n):
-        out["run_{}_mean".format(i+1)]=Input_data[mean_col].copy()
-    return(out)
 
 def sample_copy_numbers_from_residuals_quantiles(Input_data,replicate_cols,mean_col,replicate_threshold=1,filter_list=[],target_size=1,reps_to_sample=3,number_quantiles=1,transform_residuals=False,regression_type="lin",start_run_id=0,mean_no_noise=True,sample_mean=True):
     """
@@ -283,9 +166,10 @@ def sample_copy_numbers_from_residuals_quantiles(Input_data,replicate_cols,mean_
             dummyDF_sample["SampleLogRep_{}__run_{}".format(rep+1,count)]=df_intermediate["SampleLogRep_{}__run_{}".format(rep+1,count)]
         out["MeanSampledResidual__run_{}".format(count)]=dummyDF_residual.mean(axis=1,skipna=True)
         out["MeanSampleLog__run_{}".format(count)]=dummyDF_sample.mean(axis=1,skipna=True)
-        out["run_{}".format(count)]=[10**i for i in out["MeanSampleLog__run_{}".format(count)]]
-        out2["run_{}".format(count)]=out["run_{}".format(count)]
+        out["sample_{}".format(count)]=[10**i for i in out["MeanSampleLog__run_{}".format(count)]]
+        out2["sample_{}".format(count)]=out["sample_{}".format(count)]
     if sample_mean:
         out["Mean_of_log_samples"]=out.loc[:,[col for col in out.columns if col.startswith("MeanSampleLog__run_")]].mean(axis=1)
+    out2["Gene"]=list(out2.index)
     return(out2)
 
