@@ -24,8 +24,8 @@ def calibration_workflow_2(proteome,
     use_mean_enzyme_composition_for_calibration=False
     Mu_approx_precision=0.0000001
     transporter_multiplier=1
-    feasible_stati=["optimal","feasible"]
-    #feasible_stati=["optimal","feasible","feasible_only_before_unscaling"]
+    #feasible_stati=["optimal","feasible"]
+    feasible_stati=["optimal","feasible","feasible_only_before_unscaling"]
     
 
     ### SPECIFY THAT ALWAYS THE PROKARYOTIC RBA-ALGORITHM IS USED FOR CALIBRATION
