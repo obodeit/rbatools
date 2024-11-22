@@ -37,6 +37,7 @@ def main():
     t0=time.time()
     for i in range(5):
         mumax=Session.find_max_growth_rate(precision=0.000001)
+        print("Run:{} - {} - {}".format(i,mumax,time.time()-t0))
     print("Elapsed time: {}".format(time.time()-t0))
     print("Optimal growth-rate: {}".format(mumax))
 
