@@ -1225,6 +1225,9 @@ class _SolverCPLEX(_Solver):
         cpxLP.set_results_stream(None)
         cpxLP.set_log_stream(None)
         cpxLP.set_warning_stream(None)
+
+        cpxLP.parameters.threads.set(1)
+
         self.cplexLP = cpxLP
 
     def solve_lp(self):
