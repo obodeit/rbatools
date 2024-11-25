@@ -71,7 +71,7 @@ def calibration_workflow_2(proteome,
                                                                            condition=condition,
                                                                            fit_nucleotide_assembly_machinery=True)
 
-        process_efficiencies.to_csv(output_dir+'/ProcEffsOrig_{}.csv'.format(condition))
+        #process_efficiencies.to_csv(output_dir+'/ProcEffsOrig_{}.csv'.format(condition))
     process_efficiencies_original=process_efficiencies.copy()
 
     if use_mean_enzyme_composition_for_calibration:
@@ -139,7 +139,7 @@ def calibration_workflow_2(proteome,
                             elif flux_value>0:
                                 fba_flux_directions_from_enzyme_efficiency_estimation.update({iso_rxn:{"LB":0,"UB":numpy.nan}})
 
-        Specific_Kapps.to_csv(output_dir+'/Specific_Kapps_Hackett__{}.csv'.format(condition), sep=";", decimal=",")
+        #Specific_Kapps.to_csv(output_dir+'/Specific_Kapps_Hackett__{}.csv'.format(condition), sep=";", decimal=",")
 
         ## NEW
         #if enzyme_efficiency_estimation_settings['use_target_biomass_function']:
@@ -557,7 +557,7 @@ def estimate_specific_enzyme_efficiencies(rba_session,
                                                              condition=condition,
                                                              use_bm_flux_of_one=use_bm_flux_of_one
                                                              )
-    FluxDistribution.to_csv(output_dir+'/Calib_FluxDist_'+condition+'_.csv', sep=';')
+    #FluxDistribution.to_csv(output_dir+'/Calib_FluxDist_'+condition+'_.csv', sep=';')
 
     # describe what setting mean
     ### INCORPORATE ANA´s REMARK ON NOT ELIMINATING ISOENZYMES WITH SUs ONLY PRESENT IN THIS ISOENZYMES ###
@@ -741,11 +741,11 @@ def estimate_specific_enzyme_efficiencies(rba_session,
     overview_out.sort_index(inplace=True)
 
     # 8: ...#
-    if store_output:
-        if condition is not None:
-            overview_out.to_csv(output_dir+'/SpecKapp_Network_overview_'+condition+'_.csv', sep=';')
-        else:
-            overview_out.to_csv(output_dir+'/SpecKapp_Network_overview_.csv', sep=';')
+    #if store_output:
+    #    if condition is not None:
+    #        overview_out.to_csv(output_dir+'/SpecKapp_Network_overview_'+condition+'_.csv', sep=';')
+    #    else:
+    #        overview_out.to_csv(output_dir+'/SpecKapp_Network_overview_.csv', sep=';')
     # 9: ...#
     return({"Overview":overview_out,"Flux_Distribution":FluxDistribution})
 
@@ -794,7 +794,7 @@ def estimate_specific_enzyme_efficiencies_new(rba_session,
                                                              condition=condition,
                                                              use_bm_flux_of_one=use_bm_flux_of_one
                                                              )
-    FluxDistribution.to_csv(output_dir+'/Calib_FluxDist_'+condition+'_.csv', sep=';')
+    #FluxDistribution.to_csv(output_dir+'/Calib_FluxDist_'+condition+'_.csv', sep=';')
 
     # describe what setting mean
     ### INCORPORATE ANA´s REMARK ON NOT ELIMINATING ISOENZYMES WITH SUs ONLY PRESENT IN THIS ISOENZYMES ###
@@ -949,11 +949,11 @@ def estimate_specific_enzyme_efficiencies_new(rba_session,
     overview_out.sort_index(inplace=True)
 
     # 8: ...#
-    if store_output:
-        if condition is not None:
-            overview_out.to_csv(output_dir+'/SpecKapp_Network_overview_'+condition+'_.csv', sep=';')
-        else:
-            overview_out.to_csv(output_dir+'/SpecKapp_Network_overview_.csv', sep=';')
+    #if store_output:
+    #    if condition is not None:
+    #        overview_out.to_csv(output_dir+'/SpecKapp_Network_overview_'+condition+'_.csv', sep=';')
+    #    else:
+    #        overview_out.to_csv(output_dir+'/SpecKapp_Network_overview_.csv', sep=';')
     # 9: ...#
     return({"Overview":overview_out,"Flux_Distribution":FluxDistribution})
 
