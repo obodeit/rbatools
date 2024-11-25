@@ -27,7 +27,7 @@ def check_quantile(val,quantiles):
         return(numpy.nan)
 
 
-def sample_copy_numbers_from_residuals_quantiles(Input_data,replicate_cols,mean_col,replicate_threshold=1,filter_list=[],target_size=1,reps_to_sample=3,number_quantiles=1,transform_residuals=False,regression_type="lin",start_run_id=0,mean_no_noise=True,sample_mean=True):
+def sample_copy_numbers_from_residuals_quantiles(Input_data,replicate_cols,mean_col,replicate_threshold=1,filter_list=[],target_size=1,start_sample=0,reps_to_sample=3,number_quantiles=1,transform_residuals=False,regression_type="lin",start_run_id=0,mean_no_noise=True,sample_mean=True):
     """
     _summary_
 
@@ -149,7 +149,7 @@ def sample_copy_numbers_from_residuals_quantiles(Input_data,replicate_cols,mean_
         out2=pandas.DataFrame(index=list(out.index))
         #out2["mean_noNoise"]=out["mean_noNoise"]
         out2["mean_noNoise"]=out[mean_col]
-    for run in list(range(target_size)):
+    for run in list(range(start_sample,start_sample+target_size)):
         count+=1
         dummyDF_residual=pandas.DataFrame(index=list(Input_data.index))
         dummyDF_sample=pandas.DataFrame(index=list(Input_data.index))
