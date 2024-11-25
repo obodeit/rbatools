@@ -2178,8 +2178,7 @@ def build_dataset_annotations(input, ID_column, Uniprot, Compartment_Annotations
     out = pandas.DataFrame()
     for g in list(input[ID_column]):
         out.loc[g, 'ID'] = g
-        matches = [i for i in list(Uniprot.loc[pandas.isna(
-            Uniprot['Gene names']) == False, 'Gene names']) if g in i]
+        matches = [i for i in list(Uniprot.loc[pandas.isna(Uniprot['Gene names']) == False, 'Gene names']) if g in i]
         mass_prot = numpy.nan
         if len(matches) > 0:
             mass_prot = len(Uniprot.loc[Uniprot['Gene names'] == matches[0], 'Sequence'].values[0])
