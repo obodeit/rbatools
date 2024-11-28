@@ -35,8 +35,7 @@ def sample_copy_numbers_from_residuals_quantiles(Input_data,
                                                  start_sample=0,
                                                  number_quantiles=1,
                                                  transform_residuals=False,
-                                                 regression_type="lin",
-                                                 start_run_id=0):
+                                                 regression_type="lin"):
     """
     _summary_
 
@@ -58,8 +57,6 @@ def sample_copy_numbers_from_residuals_quantiles(Input_data,
         _description_, by default False
     regression_type : str, optional
         _description_, by default "lin"
-    start_run_id : int, optional
-        _description_, by default 0
     """
 
     samples_df=pandas.DataFrame(index=list(Input_data.index))
@@ -124,7 +121,7 @@ def sample_copy_numbers_from_residuals_quantiles(Input_data,
         samples_df["mean_noNoise"]=Input_data[mean_col]
         samples_df["log_mean_noNoise"]=[10**ifor i in list(empirical_data_df.loc["Log__mean"])]
 
-    count=start_run_id
+    count=start_sample
     for run in list(range(start_sample,start_sample+target_size)):
         count+=1
         intermediate_sampling_DF=pandas.DataFrame(index=list(empirical_data_df.index))
