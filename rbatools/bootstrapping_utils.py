@@ -119,7 +119,7 @@ def sample_copy_numbers_from_residuals_quantiles(Input_data,
 
     if mean_col in list(Input_data.columns):
         samples_df["mean_noNoise"]=Input_data[mean_col]
-        samples_df["log_mean_noNoise"]=[10**i for i in list(empirical_data_df.loc["Log__mean"])]
+        samples_df["log_mean_noNoise"]=[10**i for i in list(empirical_data_df["Log__mean"])]
 
     count=start_sample
     for run in list(range(start_sample,start_sample+target_size)):
