@@ -27,7 +27,16 @@ def check_quantile(val,quantiles):
         return(numpy.nan)
 
 
-def sample_copy_numbers_from_residuals_quantiles(Input_data,replicate_cols,mean_col,replicate_threshold=1,filter_list=[],target_size=1,start_sample=0,reps_to_sample=3,number_quantiles=1,transform_residuals=False,regression_type="lin",start_run_id=0,mean_no_noise=True,sample_mean=True):
+def sample_copy_numbers_from_residuals_quantiles(Input_data,
+                                                 replicate_cols,
+                                                 mean_col,
+                                                 replicate_threshold=1,
+                                                 target_size=1,
+                                                 start_sample=0,
+                                                 number_quantiles=1,
+                                                 transform_residuals=False,
+                                                 regression_type="lin",
+                                                 start_run_id=0):
     """
     _summary_
 
@@ -41,12 +50,8 @@ def sample_copy_numbers_from_residuals_quantiles(Input_data,replicate_cols,mean_
         _description_
     replicate_threshold : int, optional
         _description_, by default 1
-    filter_list : list, optional
-        _description_, by default []
     target_size : int, optional
         _description_, by default 1
-    reps_to_sample : int, optional
-        _description_, by default 3
     number_quantiles : int, optional
         _description_, by default 1
     transform_residuals : bool, optional
@@ -55,121 +60,85 @@ def sample_copy_numbers_from_residuals_quantiles(Input_data,replicate_cols,mean_
         _description_, by default "lin"
     start_run_id : int, optional
         _description_, by default 0
-    mean_no_noise : bool, optional
-        _description_, by default True
-    sample_mean : bool, optional
-        _description_, by default True
     """
-    out=pandas.DataFrame(index=list(Input_data.index))
-    df_intermediate=pandas.DataFrame(index=list(Input_data.index))
-    out["Gene"]=Input_data["Gene"]
-    out[mean_col]=Input_data[mean_col]
+
+    samples_df=pandas.DataFrame(index=list(Input_data.index))
+    samples_df["Gene"]=Input_data["Gene"]
+
+    sampled_replicates_df=pandas.DataFrame(index=list(Input_data.index))
+    sampled_replicates_df["Gene"]=Input_data["Gene"]
+
+    empirical_data_df=pandas.DataFrame(index=list(Input_data.index))
 
     for i in Input_data.index:
         vals=[]
         for j in replicate_cols:
-            Input_data.loc[i,"Log__{}".format(j)]=numpy.log10(Input_data.loc[i,j])
-            if not pandas.isna(Input_data.loc[i,j]):
-                vals.append(numpy.log10(Input_data.loc[i,j]))
-        Input_data.loc[i,"Log__mean"]=numpy.nanmean(vals)
-        Input_data.loc[i,"Log__sdev"]=numpy.nanstd(vals)
+            empirical_data_df.loc[i,"Log__{}".format(j)]=numpy.log10(Input_data.loc[i,j])
+            vals.append(numpy.log10(Input_data.loc[i,j]))
+        empirical_data_df.loc[i,"Log__mean"]=numpy.nanmean(vals)
+        empirical_data_df.loc[i,"Log__sdev"]=numpy.nanstd(vals)
 
     if number_quantiles>1:
-        quantiles=list(numpy.quantile(a=list(Input_data.loc[pandas.isna(Input_data["Log__mean"])==False,"Log__mean"]),q=[i/number_quantiles for i in list(range(number_quantiles+1))]))
-        Input_data["Quantile"]=[check_quantile(val=i,quantiles=quantiles) for i in list(Input_data["Log__mean"])]
+        quantiles=list(numpy.quantile(a=list(empirical_data_df.loc[pandas.isna(empirical_data_df["Log__mean"])==False,"Log__mean"]),q=[i/number_quantiles for i in list(range(number_quantiles+1))]))
+        empirical_data_df["Quantile"]=[check_quantile(val=i,quantiles=quantiles) for i in list(empirical_data_df["Log__mean"])]
     else:
-        Input_data["Quantile"]=[1]*Input_data.shape[0]
-    out["Quantile"]=Input_data["Quantile"]
-
-    df_intermediate["LogMean"]=Input_data["Log__mean"]
-    df_intermediate["LogSdev"]=Input_data["Log__sdev"]
-    out["mean_Log_noNoise"]=df_intermediate["LogMean"]
-    out["sdev_Log_noNoise"]=df_intermediate["LogSdev"]
-    #out["mean_noNoise"]=[10**j for j in list(df_intermediate["LogMean"])]
-
-    data_to_use=pandas.DataFrame(columns=Input_data.columns)
+        empirical_data_df["Quantile"]=[1]*empirical_data_df.shape[0]
+    
     for i in list(Input_data.index):
         finite_count=0
         for j in replicate_cols:
             if not pandas.isna(Input_data.loc[i,j]):
                 finite_count+=1
-        Input_data.loc[i,"Number_quantified_replicates"]=finite_count
-        out.loc[i,"Number_quantified_replicates"]=finite_count
-        if finite_count>=replicate_threshold:
-            if not pandas.isna(Input_data.loc[i,"Quantile"]):
-                if len(filter_list)>0:
-                    if i in filter_list:
-                        data_to_use.loc[i,:]=Input_data.loc[i,:]
-                else:
-                    data_to_use.loc[i,:]=Input_data.loc[i,:]
+        empirical_data_df.loc[i,"Number_quantified_replicates"]=finite_count
 
     if transform_residuals:
         if regression_type=="lin":
-        # do linear regression of standard deviation over replicates of protein
-            #x_reg = numpy.reshape(numpy.array(list(data_to_use["Log__mean"])), (len(list(data_to_use["Log__mean"])), 1))
-            #y_reg = numpy.reshape(numpy.array(list(data_to_use["Log__sdev"])), (len(list(data_to_use["Log__sdev"])), 1))
-            #regressor = LinearRegression(fit_intercept=True)
-            #regressor.fit(x_reg, y_reg)
-            #slope_sdev=regressor.coef_[0][0]
-            #offset_sdev=regressor.intercept_[0]
-            lin_regression_results=do_lin_regression(x_to_fit=list(data_to_use["Log__mean"]),y_to_fit=list(data_to_use["Log__sdev"]),fit_intercept=True)
+            lin_regression_results=do_lin_regression(x_to_fit=list(empirical_data_df.loc[(empirical_data_df["Number_quantified_replicates"]>=replicate_threshold),"Log__mean"]),
+                                                     y_to_fit=list(empirical_data_df.loc[(empirical_data_df["Number_quantified_replicates"]>=replicate_threshold),"Log__sdev"]),
+                                                     fit_intercept=True)
             slope_sdev=lin_regression_results["A"]
             offset_sdev=lin_regression_results["B"]
-            data_to_use["Fitted_Stdev"]=[offset_sdev+slope_sdev*data_to_use.loc[i,"Log__mean"] for i in data_to_use.index]
-            df_intermediate["Fitted_Stdev"]=[offset_sdev+slope_sdev*df_intermediate.loc[i,"LogMean"] for i in df_intermediate.index]
+            empirical_data_df["Fitted_Stdev"]=[offset_sdev+slope_sdev*empirical_data_df.loc[i,"Log__mean"] for i in empirical_data_df.index]
         elif regression_type=="inverse_lin":
-            #x_reg = numpy.reshape(numpy.array(list(data_to_use.loc[data_to_use["Log__sdev"]!=0,"Log__mean"])), (len(list(data_to_use.loc[data_to_use["Log__sdev"]!=0,"Log__mean"])), 1))
-            #y_reg = numpy.reshape(numpy.array([1/i for i in list(data_to_use.loc[data_to_use["Log__sdev"]!=0,"Log__sdev"])]), (len(list(data_to_use.loc[data_to_use["Log__sdev"]!=0,"Log__sdev"])), 1))
-            #regressor = LinearRegression(fit_intercept=True)
-            #regressor.fit(x_reg, y_reg)
-            #slope_sdev=regressor.coef_[0][0]
-            #offset_sdev=regressor.intercept_[0]
-            lin_regression_results=do_lin_regression(x_to_fit=list(data_to_use.loc[data_to_use["Log__sdev"]!=0,"Log__mean"]),y_to_fit=[1/i for i in list(data_to_use.loc[data_to_use["Log__sdev"]!=0,"Log__sdev"])],fit_intercept=True)
+            lin_regression_results=do_lin_regression(x_to_fit=list(empirical_data_df.loc[(empirical_data_df["Log__sdev"]!=0)&(empirical_data_df["Number_quantified_replicates"]>=replicate_threshold),"Log__mean"]),
+                                                     y_to_fit=[1/i for i in list(empirical_data_df.loc[(empirical_data_df["Log__sdev"]!=0)&(empirical_data_df["Number_quantified_replicates"]>=replicate_threshold),"Log__sdev"])],
+                                                     fit_intercept=True)
             slope_sdev=lin_regression_results["A"]
             offset_sdev=lin_regression_results["B"]
-            data_to_use["Fitted_Stdev"]=[1/(offset_sdev+slope_sdev*data_to_use.loc[i,"Log__mean"]) for i in data_to_use.index]
-            df_intermediate["Fitted_Stdev"]=[1/(offset_sdev+slope_sdev*df_intermediate.loc[i,"LogMean"]) for i in df_intermediate.index]
-        out["Fitted_Stdev"]=df_intermediate["Fitted_Stdev"]
+            empirical_data_df["Fitted_Stdev"]=[1/(offset_sdev+slope_sdev*empirical_data_df.loc[i,"Log__mean"]) for i in empirical_data_df.index]
 
-    all_residuals={i:[] for i in list(set(list(data_to_use["Quantile"]))) if not pandas.isna(i)}
-    #all_residuals[numpy.nan]=[]
-    for quantile in list(set(list(data_to_use["Quantile"]))):
+    all_residuals={i:[] for i in list(set(list(empirical_data_df["Quantile"]))) if not pandas.isna(i)}
+    for quantile in list(set(list(empirical_data_df["Quantile"]))):
         if not pandas.isna(quantile):
             for i in replicate_cols:
-                data_to_use.loc[data_to_use["Quantile"]==quantile,"Residual_empirical__{}".format(i)]=data_to_use.loc[data_to_use["Quantile"]==quantile,"Log__{}".format(i)]-data_to_use.loc[data_to_use["Quantile"]==quantile,"Log__mean"]
+                empirical_data_df.loc[empirical_data_df["Quantile"]==quantile,"Residual_empirical__{}".format(i)]=empirical_data_df.loc[empirical_data_df["Quantile"]==quantile,"Log__{}".format(i)]-empirical_data_df.loc[empirical_data_df["Quantile"]==quantile,"Log__mean"]
+                residual_col_prefix="Residual_empirical__"
                 if transform_residuals:
-                    data_to_use.loc[data_to_use["Quantile"]==quantile,"Residual_empirical__{}".format(i)]/=data_to_use.loc[data_to_use["Quantile"]==quantile,"Fitted_Stdev"]
-                all_residuals[quantile]+=list([j for j in list(data_to_use.loc[data_to_use["Quantile"]==quantile,"Residual_empirical__{}".format(i)]) if not pandas.isna(j)])
+                    residual_col_prefix="Residual_empirical_scaled__"
+                    empirical_data_df.loc[empirical_data_df["Quantile"]==quantile,"Residual_empirical_scaled__{}".format(i)]=empirical_data_df.loc[empirical_data_df["Quantile"]==quantile,"{}{}".format(residual_col_prefix,i)]/empirical_data_df.loc[empirical_data_df["Quantile"]==quantile,"Fitted_Stdev"]
+                
+                
+                all_residuals[quantile]+=list([j for j in list(empirical_data_df.loc[empirical_data_df["Quantile"]==quantile,"{}{}".format(residual_col_prefix,i)]) if not pandas.isna(j)])
+
+    if mean col in list(Input_data.columns):
+        samples_df["mean_noNoise"]=Input_data[mean_col]
+        samples_df["log_mean_noNoise"]=[10**ifor i in list(empirical_data_df.loc["Log__mean"])]
 
     count=start_run_id
-    if mean_no_noise:
-        for i in replicate_cols:
-            for  j in data_to_use.index:
-                out.loc[j,"Residual_empirical__{}".format(i)]=data_to_use.loc[j,"Residual_empirical__{}".format(i)]
-        out2=pandas.DataFrame(index=list(out.index))
-        #out2["mean_noNoise"]=out["mean_noNoise"]
-        out2["mean_noNoise"]=out[mean_col]
     for run in list(range(start_sample,start_sample+target_size)):
         count+=1
-        dummyDF_residual=pandas.DataFrame(index=list(Input_data.index))
-        dummyDF_sample=pandas.DataFrame(index=list(Input_data.index))
-        sample_count=0
-        for rep in range(reps_to_sample):
-            sample_count+=1
-            df_intermediate.loc[(pandas.isna(Input_data["Quantile"])==False)&(Input_data["Number_quantified_replicates"]>=sample_count),"SampledResidual"]=[list(numpy.random.choice(a=all_residuals[Input_data.loc[protein,"Quantile"]],size=1,replace=True))[0] for protein in df_intermediate.loc[(pandas.isna(Input_data["Quantile"])==False)&(Input_data["Number_quantified_replicates"]>=sample_count),:].index]
+        intermediate_sampling_DF=pandas.DataFrame(index=list(empirical_data_df.index))
+
+        for rep in range(len(replicate_cols)):
+            intermediate_sampling_DF.loc[(pandas.isna(empirical_data_df["Quantile"])==False)&(empirical_data_df["Number_quantified_replicates"]>=replicate_threshold),"sampled_residual"]=[list(numpy.random.choice(a=all_residuals[empirical_data_df.loc[protein,"Quantile"]],size=1,replace=True))[0] for protein in intermediate_sampling_DF.loc[(pandas.isna(empirical_data_df["Quantile"])==False)&(empirical_data_df["Number_quantified_replicates"]>=replicate_threshold),:].index]
             if transform_residuals:
-                df_intermediate.loc[(pandas.isna(Input_data["Quantile"])==False)&(Input_data["Number_quantified_replicates"]>=sample_count),"SampledResidual"]*=df_intermediate.loc[(pandas.isna(Input_data["Quantile"])==False)&(Input_data["Number_quantified_replicates"]>=sample_count),"Fitted_Stdev"]
-            df_intermediate["SampleLogRep_{}__run_{}".format(rep+1,count)]=df_intermediate["SampledResidual"]+df_intermediate["LogMean"]
-            out["SampledResidual_{}__run_{}".format(rep+1,count)]=df_intermediate["SampledResidual"]
-            out["SampleLogRep_{}__run_{}".format(rep+1,count)]=df_intermediate["SampleLogRep_{}__run_{}".format(rep+1,count)]
-            dummyDF_residual["SampledResidual_{}__run_{}".format(rep+1,count)]=df_intermediate["SampledResidual"]
-            dummyDF_sample["SampleLogRep_{}__run_{}".format(rep+1,count)]=df_intermediate["SampleLogRep_{}__run_{}".format(rep+1,count)]
-        out["MeanSampledResidual__run_{}".format(count)]=dummyDF_residual.mean(axis=1,skipna=True)
-        out["MeanSampleLog__run_{}".format(count)]=dummyDF_sample.mean(axis=1,skipna=True)
-        out["sample_{}".format(count)]=[10**i for i in out["MeanSampleLog__run_{}".format(count)]]
-        out2["sample_{}".format(count)]=out["sample_{}".format(count)]
-    if sample_mean:
-        out["Mean_of_log_samples"]=out.loc[:,[col for col in out.columns if col.startswith("MeanSampleLog__run_")]].mean(axis=1)
-    out2["Gene"]=list(out2.index)
-    return(out2)
+                intermediate_sampling_DF.loc[(pandas.isna(empirical_data_df["Quantile"])==False)&(empirical_data_df["Number_quantified_replicates"]>=replicate_threshold),"sampled_residual"]*=intermediate_sampling_DF.loc[(pandas.isna(empirical_data_df["Quantile"])==False)&(empirical_data_df["Number_quantified_replicates"]>=replicate_threshold),"Fitted_Stdev"]
+            
+            intermediate_sampling_DF["sample_{}_log_rep_{}".format(rep+1,count)]=intermediate_sampling_DF["sampled_residual"]+empirical_data_df["Log__mean"]
+            sampled_replicates_df["sample_{}_log_rep_{}".format(rep+1,count)]=intermediate_sampling_DF["sample_{}_log_rep_{}".format(rep+1,count)]
+
+        sampled_replicates_df["sample_{}_log_mean".format(count)]=list(intermediate_sampling_DF.mean(axis=1,skipna=True))
+        samples_df["sample_{}".format(count)]=[10**i for i in list(intermediate_sampling_DF.mean(axis=1,skipna=True))]
+        
+    return({"empirical_data":empirical_data_df,"sampled_replicates":sampled_replicates_df,"samples":samples_df})
 
