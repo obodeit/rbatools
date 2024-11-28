@@ -117,7 +117,7 @@ def sample_copy_numbers_from_residuals_quantiles(Input_data,
                 
                 all_residuals[quantile]+=list([j for j in list(empirical_data_df.loc[empirical_data_df["Quantile"]==quantile,"{}{}".format(residual_col_prefix,i)]) if not pandas.isna(j)])
 
-    if mean col in list(Input_data.columns):
+    if mean_col in list(Input_data.columns):
         samples_df["mean_noNoise"]=Input_data[mean_col]
         samples_df["log_mean_noNoise"]=[10**ifor i in list(empirical_data_df.loc["Log__mean"])]
 
