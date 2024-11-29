@@ -122,9 +122,7 @@ def sample_copy_numbers_from_residuals_quantiles(Input_data,
         samples_df["mean_noNoise"]=Input_data[mean_col]
         samples_df["log_mean_noNoise"]=[10**i for i in list(empirical_data_df["Log__mean"])]
 
-    count=start_sample
     for run in list(range(start_sample,start_sample+target_size)):
-        count+=1
         intermediate_sampling_DF=pandas.DataFrame(index=list(empirical_data_df.index))
 
         for rep in range(len(replicate_cols)):
@@ -133,11 +131,11 @@ def sample_copy_numbers_from_residuals_quantiles(Input_data,
                 intermediate_sampling_DF.loc[(pandas.isna(empirical_data_df["Quantile"])==False)&(empirical_data_df["Number_quantified_replicates"]>=replicate_threshold),"sampled_residual"]*=intermediate_sampling_DF.loc[(pandas.isna(empirical_data_df["Quantile"])==False)&(empirical_data_df["Number_quantified_replicates"]>=replicate_threshold),"Fitted_Stdev"]
             
             rep_sample=list(intermediate_sampling_DF["sampled_residual"]+empirical_data_df["Log__mean"])
-            intermediate_sampling_DF["sample_{}_log_rep_{}".format(rep+1,count)]=rep_sample
-            sampled_replicates_df["sample_{}_log_rep_{}".format(rep+1,count)]=rep_sample
+            intermediate_sampling_DF["sample_{}_log_rep_{}".format(run,rep+1)]=rep_sample
+            sampled_replicates_df["sample_{}_log_rep_{}".format(run,rep+1)]=rep_sample
 
-        sampled_replicates_df["sample_{}_log_mean".format(count)]=list(intermediate_sampling_DF.mean(axis=1,skipna=True))
-        samples_df["sample_{}".format(count)]=[10**i for i in list(intermediate_sampling_DF.mean(axis=1,skipna=True))]
+        sampled_replicates_df["sample_{}_log_mean".format(run)]=list(intermediate_sampling_DF.mean(axis=1,skipna=True))
+        samples_df["sample_{}".format(run)]=[10**i for i in list(intermediate_sampling_DF.mean(axis=1,skipna=True))]
         
     return({"empirical_data":empirical_data_df,"sampled_replicates":sampled_replicates_df,"samples":samples_df})
 
