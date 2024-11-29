@@ -133,7 +133,7 @@ def sample_copy_numbers_from_residuals_quantiles(Input_data,
             rep_sample=list(intermediate_sampling_DF["sampled_residual"]+empirical_data_df["Log__mean"])
             intermediate_sampling_DF["sample_{}_log_rep_{}".format(run,rep+1)]=rep_sample
             sampled_replicates_df["sample_{}_log_rep_{}".format(run,rep+1)]=rep_sample
-
+        print(intermediate_sampling_DF)
         sampled_replicates_df["sample_{}_log_mean".format(run)]=list(intermediate_sampling_DF.mean(axis=1,skipna=True))
         samples_df["sample_{}".format(run)]=[10**i for i in list(intermediate_sampling_DF.mean(axis=1,skipna=True))]
         
