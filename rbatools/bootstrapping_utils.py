@@ -66,6 +66,7 @@ def sample_copy_numbers_from_residuals_quantiles(Input_data,
     sampled_replicates_df["Gene"]=Input_data["Gene"]
 
     empirical_data_df=pandas.DataFrame(index=list(Input_data.index))
+    empirical_data_df["Gene"]=Input_data["Gene"]
 
     for i in Input_data.index:
         vals=[]
