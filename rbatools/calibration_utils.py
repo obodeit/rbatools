@@ -397,7 +397,6 @@ def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,com
     for process in rba_session.get_processes():
         if process in list(input['Process_Name']):
             process_info=rba_session.get_process_information(process)
-            print(process_info)
             complex_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
                                                                                 machinery_composition=process_info["Composition"],
                                                                                 proteomicsData=build_input_proteome_for_specific_kapp_estimation(protein_data, condition),
