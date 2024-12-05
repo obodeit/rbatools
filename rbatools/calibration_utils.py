@@ -61,6 +61,7 @@ def calibration_workflow_2(proteome,
     else:
         if process_efficiency_estimation_input is not None:
             process_efficiencies = determine_apparent_process_efficiencies_2(growth_rate=growth_rate_from_input(input=definition_file,condition=condition), 
+                                                                             input=process_efficiency_estimation_input,
                                                                              rba_session=rba_session,
                                                                              compartment_densities_and_pg=compartment_densities_and_PGs, 
                                                                              protein_data=proteome.copy(),
@@ -382,7 +383,7 @@ def calculate_default_enzyme_efficiency_as_median_over_specific_efficiencies(spe
     spec_kapp_median=numpy.median(specific_enzyme_efficiencies.loc[(specific_enzyme_efficiencies['Kapp']!=0)&(pandas.isna(specific_enzyme_efficiencies['Kapp'])==False),'Kapp'].unique())
     return({"default_efficiency":spec_kapp_median,"default_transporter_efficiency":transporter_multiplier*spec_kapp_median})
 
-def determine_apparent_process_efficiencies_2(growth_rate, rba_session,compartment_densities_and_pg, protein_data, condition,fit_nucleotide_assembly_machinery=False):
+def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,compartment_densities_and_pg, protein_data, condition,fit_nucleotide_assembly_machinery=False):
 
     for comp in list(compartment_densities_and_pg['Compartment_ID']):
         rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_pg.loc[compartment_densities_and_pg['Compartment_ID'] == comp, 'Density'].values[0]
@@ -394,13 +395,14 @@ def determine_apparent_process_efficiencies_2(growth_rate, rba_session,compartme
 
     process_machinery_concentrations={}
     for process in rba_session.get_processes():
-        process_info=rba_session.get_process_information(process)
-        print(process_info)
-        complex_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
-                                                                             machinery_composition=process_info["Composition"],
-                                                                             proteomicsData=build_input_proteome_for_specific_kapp_estimation(protein_data, condition),
-                                                                             proto_proteins=False)
-        process_machinery_concentrations[process]=complex_concentration
+        if process in list(input['Process_Name']):
+            process_info=rba_session.get_process_information(process)
+            print(process_info)
+            complex_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
+                                                                                machinery_composition=process_info["Composition"],
+                                                                                proteomicsData=build_input_proteome_for_specific_kapp_estimation(protein_data, condition),
+                                                                                proto_proteins=False)
+            process_machinery_concentrations[process]=complex_concentration
 
     effective_client_protein_aa_concentrations={}
     for protein in rba_session.get_proteins():
