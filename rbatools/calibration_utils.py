@@ -60,16 +60,22 @@ def calibration_workflow_2(proteome,
         process_efficiencies=import_process_efficiencies(input_data=process_efficiencies,rba_session=rba_session,condition=condition)
     else:
         if process_efficiency_estimation_input is not None:
-            process_efficiencies = determine_apparent_process_efficiencies(growth_rate=growth_rate_from_input(input=definition_file,
-                                                                           condition=condition),
-                                                                           input=process_efficiency_estimation_input,
-                                                                           rba_session=rba_session,
-                                                                           protein_data=proteome.copy(),
-                                                                           compartment_densities_and_PGs=compartment_densities_and_PGs,
-                                                                           #total_amino_acid_abundance_in_proteome=correction_results_compartement_sizes.loc['Total', 'original_amino_acid_occupation'],
-                                                                           total_amino_acid_abundance_in_proteome=compartment_occupation_overview.loc['Total', 'original_amino_acid_occupation'],
-                                                                           condition=condition,
-                                                                           fit_nucleotide_assembly_machinery=True)
+            process_efficiencies = determine_apparent_process_efficiencies_2(growth_rate=growth_rate_from_input(input=definition_file,condition=condition), 
+                                                                             rba_session=rba_session,
+                                                                             compartment_densities_and_pg=compartment_densities_and_PGs, 
+                                                                             protein_data=proteome.copy(),
+                                                                             condition=condition,
+                                                                             fit_nucleotide_assembly_machinery=False)
+            
+            #process_efficiencies = determine_apparent_process_efficiencies(growth_rate=growth_rate_from_input(input=definition_file,condition=condition),
+            #                                                               input=process_efficiency_estimation_input,
+            #                                                               rba_session=rba_session,
+            #                                                               protein_data=proteome.copy(),
+            #                                                               compartment_densities_and_PGs=compartment_densities_and_PGs,
+            #                                                               #total_amino_acid_abundance_in_proteome=correction_results_compartement_sizes.loc['Total', 'original_amino_acid_occupation'],
+            #                                                               total_amino_acid_abundance_in_proteome=compartment_occupation_overview.loc['Total', 'original_amino_acid_occupation'],
+            #                                                               condition=condition,
+            #                                                               fit_nucleotide_assembly_machinery=True)
 
         #process_efficiencies.to_csv(output_dir+'/ProcEffsOrig_{}.csv'.format(condition))
     process_efficiencies_original=process_efficiencies.copy()
@@ -375,6 +381,78 @@ def calculate_default_enzyme_efficiency_as_median_over_specific_efficiencies(spe
     spec_kapp_median=specific_enzyme_efficiencies.loc[(specific_enzyme_efficiencies['Kapp']!=0)&(pandas.isna(specific_enzyme_efficiencies['Kapp'])==False),'Kapp'].median()
     return({"default_efficiency":spec_kapp_median,"default_transporter_efficiency":transporter_multiplier*spec_kapp_median})
 
+
+def determine_apparent_process_efficiencies_2(growth_rate, rba_session,compartment_densities_and_pg, protein_data, condition,fit_nucleotide_assembly_machinery=False):
+
+    for comp in list(compartment_densities_and_pg['Compartment_ID']):
+        rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_pg.loc[compartment_densities_and_pg['Compartment_ID'] == comp, 'Density'].values[0]
+        rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = 0.0
+    rba_session.rebuild_from_model()
+    rba_session.set_growth_rate(mu)
+
+    protoprotein_isoprotein_map = rba_session.ModelStructure.ProteinInfo.return_protein_iso_form_map()
+
+    process_machinery_concentrations={}
+    for process in rba_session.get_processes():
+        process_info=rba_session.get_process_information(process)
+    
+        complex_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
+                                                                             machinery_composition=rba_session.get_process_information(process)["Subunits"],
+                                                                             proteomicsData=proteomicsData,
+                                                                             proto_proteins=False)
+        process_machinery_concentrations[process]=complex_concentration
+
+    effective_client_protein_aa_concentrations={}
+    for protein in rba_session.get_proteins():
+        protein_info=rba_session.get_protein_information(protein=protein)
+        proto_id=protein_info['ProtoID']
+        if proto_id in list(protein_data['ID']):
+            concentration_proto_protein=protein_data.loc[protein_data['ID'] == i, condition].values[0]
+            protoprotein_isoform_distribution={}
+            for isoform in protoprotein_isoprotein_map[proto_id]:
+                protoprotein_isoform_distribution[isoform]=compartment_densities_and_pg.loc[protein_info['Compartment'],"Density"]
+            compartment_fraction_sum_all_isoforms=sum(list(protoprotein_isoform_distribution.values()))
+            for isoform in protoprotein_isoform_distribution.keys():
+                effective_concentration_isoform=concentration_proto_protein*protoprotein_isoform_distribution[isoform]/compartment_fraction_sum_all_isoforms
+                for process_required in protein_info['ProcessRequirements'].keys():
+                    if process_required in effective_client_protein_aa_concentrations.keys():
+                        effective_client_protein_aa_concentrations[process_required]+=effective_concentration_isoform*protein_info['ProcessRequirements'][process_required]
+                    else:
+                        effective_client_protein_aa_concentrations[process_required]=effective_concentration_isoform*protein_info['ProcessRequirements'][process_required]
+    
+    protein_targets={rba_session.get_target_information(i)["TargetEntity"]:rba_session.get_current_parameter_value(rba_session.get_target_information(i)["TargetParameterID"]) for i in rba_session.get_targets() if rba_session.get_target_information(i)["TargetEntity"] in rba_session.get_proteins()}
+    for protein in protein_targets.keys():
+        protein_info=rba_session.get_protein_information(protein=protein)
+        concentration_target_protein=protein_targets[protein]
+        for process_required in protein_info['ProcessRequirements'].keys():
+            if process_required in effective_client_protein_aa_concentrations.keys():
+                effective_client_protein_aa_concentrations[process_required]+=concentration_target_protein*protein_info['ProcessRequirements'][process_required]
+            else:
+                effective_client_protein_aa_concentrations[process_required]=concentration_target_protein*protein_info['ProcessRequirements'][process_required]
+
+    efficiencies_processing_machineries={i:growth_rate*effective_client_protein_aa_concentrations[i]/process_machinery_concentrations[i] for i in effective_client_protein_aa_concentrations.keys() if i in process_machinery_concentrations.keys()}
+
+    median_process_efficiency=numpy.median(numpy.array(list(efficiencies_processing_machineries.values())))
+
+    ### NUCLEOTIDE ASSEMBLY PROCESS KAPPS ###        
+    if fit_nucleotide_assembly_machinery:
+        machinery_production_fluxes=determine_nucleotide_synthesis_machinery_demand(rba_session)
+        for machinery in machinery_production_fluxes.keys():
+            if machinery in process_machinery_concentrations.keys():
+                if machinery_production_fluxes[machinery]!=0:
+                    efficiencies_processing_machineries[machinery]=machinery_production_fluxes[machinery]/process_machinery_concentrations[machinery]
+                    
+    for process in process_machinery_concentrations.keys():
+        if process not in efficiencies_processing_machineries.keys():
+            efficiencies_processing_machineries[process]=median_process_efficiency
+    
+    process_efficiencies = pandas.DataFrame()
+    for process_name in efficiencies_processing_machineries.keys():
+        process_info=rba_session.get_process_information(process_name)
+        process_efficiencies.loc[process_name, 'Process'] = process_info["ID"]
+        process_efficiencies.loc[process_name, 'Parameter'] = str(process_info["ID"]+'_apparent_efficiency')
+        process_efficiencies.loc[process_name, 'Value'] = efficiencies_processing_machineries[process_name]
+
 # Maybe reformulate on protein level#
 def determine_apparent_process_efficiencies(growth_rate, input, rba_session,compartment_densities_and_PGs,total_amino_acid_abundance_in_proteome, protein_data, condition,fit_nucleotide_assembly_machinery=False):
     process_efficiencies = pandas.DataFrame()
@@ -416,7 +494,7 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session,comp
 
     ### NUCLEOTIDE ASSEMBLY PROCESS KAPPS ###        
     if fit_nucleotide_assembly_machinery:
-        machinery_production_fluxes=determine_macromolecule_synthesis_machinery_demand(rba_session)
+        machinery_production_fluxes=determine_nucleotide_synthesis_machinery_demand(rba_session)
         #
         for machinery in machinery_production_fluxes.keys():
             process_info=rba_session.get_process_information(process=machinery)
@@ -442,7 +520,7 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session,comp
     return(process_efficiencies)
 
 
-def determine_macromolecule_synthesis_machinery_demand(rba_session):
+def determine_nucleotide_synthesis_machinery_demand(rba_session):
     """
     _summary_
 
