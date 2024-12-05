@@ -389,7 +389,7 @@ def determine_apparent_process_efficiencies_2(growth_rate, rba_session,compartme
         rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_pg.loc[compartment_densities_and_pg['Compartment_ID'] == comp, 'Density'].values[0]
         rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = 0.0
     rba_session.rebuild_from_model()
-    rba_session.set_growth_rate(mu)
+    rba_session.set_growth_rate(growth_rate)
 
     protoprotein_isoprotein_map = rba_session.ModelStructure.ProteinInfo.return_protein_iso_form_map()
 
