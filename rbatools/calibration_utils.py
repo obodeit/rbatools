@@ -478,10 +478,11 @@ def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,com
     print(efficiencies_processing_machineries)
     print(".................................")
 
-    for process in process_machinery_concentrations.keys():
-        if process not in efficiencies_processing_machineries.keys():
-            print(process)
-            efficiencies_processing_machineries[process]=median_process_efficiency
+    for process in rba_session.get_processes():
+        if process in list(input['Process_Name']):
+            if process not in efficiencies_processing_machineries.keys():
+                print(process)
+                efficiencies_processing_machineries[process]=median_process_efficiency
     
     process_efficiencies = pandas.DataFrame()
     for process_name in efficiencies_processing_machineries.keys():
