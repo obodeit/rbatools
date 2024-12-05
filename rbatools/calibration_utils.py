@@ -406,7 +406,8 @@ def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,com
                                                                                 machinery_composition=process_info["Composition"],
                                                                                 proteomicsData=build_input_proteome_for_specific_kapp_estimation(protein_data, condition),
                                                                                 proto_proteins=False)
-            process_machinery_concentrations[process]=complex_concentration
+            if (numpy.isfinte(complex_concentration))and(complex_concentration>0):
+                process_machinery_concentrations[process]=complex_concentration
 
     effective_client_protein_aa_concentrations={}
     for protein in rba_session.get_proteins():
