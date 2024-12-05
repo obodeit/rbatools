@@ -458,9 +458,11 @@ def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,com
 
     ### NUCLEOTIDE ASSEMBLY PROCESS KAPPS ###        
     if fit_nucleotide_assembly_machinery:
+        print("Nuc assembly fitting")
         machinery_production_fluxes=determine_nucleotide_synthesis_machinery_demand(rba_session)
         for machinery in machinery_production_fluxes.keys():
-            if machinery in process_machinery_concentrations.keys():
+            print(machinery)
+            if machinery not in process_machinery_concentrations.keys():
                 if machinery_production_fluxes[machinery]!=0:
                     efficiencies_processing_machineries[machinery]=machinery_production_fluxes[machinery]/process_machinery_concentrations[machinery]
                     
