@@ -409,7 +409,7 @@ def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,com
         protein_info=rba_session.get_protein_information(protein=protein)
         proto_id=protein_info['ProtoID']
         if proto_id in list(protein_data['ID']):
-            concentration_proto_protein=protein_data.loc[protein_data['ID'] == i, condition].values[0]
+            concentration_proto_protein=protein_data.loc[protein_data['ID'] == proto_id, condition].values[0]
             protoprotein_isoform_distribution={}
             for isoform in protoprotein_isoprotein_map[proto_id]:
                 protoprotein_isoform_distribution[isoform]=compartment_densities_and_pg.loc[protein_info['Compartment'],"Density"]
