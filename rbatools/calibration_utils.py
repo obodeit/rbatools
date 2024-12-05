@@ -399,7 +399,7 @@ def determine_apparent_process_efficiencies_2(growth_rate, rba_session,compartme
     
         complex_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
                                                                              machinery_composition=process_info["Composition"],
-                                                                             proteomicsData=proteomicsData,
+                                                                             proteomicsData=protein_data,
                                                                              proto_proteins=False)
         process_machinery_concentrations[process]=complex_concentration
 
