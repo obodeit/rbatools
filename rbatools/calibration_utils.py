@@ -409,6 +409,10 @@ def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,com
             if (numpy.isfinte(complex_concentration))and(complex_concentration>0):
                 process_machinery_concentrations[process]=complex_concentration
 
+    print(1)
+    print(process_machinery_concentrations)
+    print(".................................")
+
     effective_client_protein_aa_concentrations={}
     for protein in rba_session.get_proteins():
         protein_info=rba_session.get_protein_information(protein=protein)
@@ -426,6 +430,9 @@ def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,com
                         effective_client_protein_aa_concentrations[process_required]+=effective_concentration_isoform*protein_info['ProcessRequirements'][process_required]
                     else:
                         effective_client_protein_aa_concentrations[process_required]=effective_concentration_isoform*protein_info['ProcessRequirements'][process_required]
+    print(2)
+    print(effective_client_protein_aa_concentrations)
+    print(".................................")
     
     protein_targets={rba_session.get_target_information(i)["TargetEntity"]:rba_session.get_current_parameter_value(rba_session.get_target_information(i)["TargetParameterID"]) for i in rba_session.get_targets() if rba_session.get_target_information(i)["TargetEntity"] in rba_session.get_proteins()}
     for protein in protein_targets.keys():
@@ -437,8 +444,16 @@ def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,com
             else:
                 effective_client_protein_aa_concentrations[process_required]=concentration_target_protein*protein_info['ProcessRequirements'][process_required]
 
+    print(3)
+    print(effective_client_protein_aa_concentrations)
+    print(".................................")
+    
     efficiencies_processing_machineries={i:growth_rate*effective_client_protein_aa_concentrations[i]/process_machinery_concentrations[i] for i in effective_client_protein_aa_concentrations.keys() if i in process_machinery_concentrations.keys()}
 
+    print(4)
+    print(efficiencies_processing_machineries)
+    print(".................................")
+    
     median_process_efficiency=numpy.median(numpy.array(list(efficiencies_processing_machineries.values())))
 
     ### NUCLEOTIDE ASSEMBLY PROCESS KAPPS ###        
