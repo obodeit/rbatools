@@ -472,8 +472,8 @@ def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,com
                                                                                         proto_proteins=False)
                     print(complex_concentration)
                     if (numpy.isfinite(complex_concentration))and(complex_concentration>0):
-                        efficiencies_processing_machineries[machinery]=machinery_production_fluxes[machinery]/process_machinery_concentrations[machinery]
-                    
+                        efficiencies_processing_machineries[process]=machinery_production_fluxes[process]/complex_concentration
+              
     print(5)
     print(efficiencies_processing_machineries)
     print(".................................")
