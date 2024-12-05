@@ -79,6 +79,7 @@ def calibration_workflow_2(proteome,
             #                                                               fit_nucleotide_assembly_machinery=True)
 
         #process_efficiencies.to_csv(output_dir+'/ProcEffsOrig_{}.csv'.format(condition))
+    print(process_efficiencies)
     process_efficiencies_original=process_efficiencies.copy()
 
     if use_mean_enzyme_composition_for_calibration:
