@@ -79,11 +79,6 @@ def calibration_workflow_2(proteome,
                                                                            fit_nucleotide_assembly_machinery=True)
 
         #process_efficiencies.to_csv(output_dir+'/ProcEffsOrig_{}.csv'.format(condition))
-    print("")
-    print(process_efficiencies_old)
-    print("")
-    print(process_efficiencies)
-    print("")
     process_efficiencies_original=process_efficiencies.copy()
 
     if use_mean_enzyme_composition_for_calibration:
@@ -409,10 +404,6 @@ def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,com
             if (numpy.isfinite(complex_concentration))and(complex_concentration>0):
                 process_machinery_concentrations[process]=complex_concentration
 
-    print(1)
-    print(process_machinery_concentrations)
-    print(".................................")
-
     effective_client_protein_aa_concentrations={}
     for protein in rba_session.get_proteins():
         protein_info=rba_session.get_protein_information(protein=protein)
@@ -430,9 +421,6 @@ def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,com
                         effective_client_protein_aa_concentrations[process_required]+=effective_concentration_isoform*protein_info['ProcessRequirements'][process_required]
                     else:
                         effective_client_protein_aa_concentrations[process_required]=effective_concentration_isoform*protein_info['ProcessRequirements'][process_required]
-    print(2)
-    print(effective_client_protein_aa_concentrations)
-    print(".................................")
     
     protein_targets={rba_session.get_target_information(i)["TargetEntity"]:rba_session.get_current_parameter_value(rba_session.get_target_information(i)["TargetParameterID"]) for i in rba_session.get_targets() if rba_session.get_target_information(i)["TargetEntity"] in rba_session.get_proteins()}
     for protein in protein_targets.keys():
@@ -443,45 +431,28 @@ def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,com
                 effective_client_protein_aa_concentrations[process_required]+=concentration_target_protein*protein_info['ProcessRequirements'][process_required]
             else:
                 effective_client_protein_aa_concentrations[process_required]=concentration_target_protein*protein_info['ProcessRequirements'][process_required]
-
-    print(3)
-    print(effective_client_protein_aa_concentrations)
-    print(".................................")
     
     efficiencies_processing_machineries={i:growth_rate*effective_client_protein_aa_concentrations[i]/process_machinery_concentrations[i] for i in effective_client_protein_aa_concentrations.keys() if i in process_machinery_concentrations.keys()}
-
-    print(4)
-    print(efficiencies_processing_machineries)
-    print(".................................")
     
     median_process_efficiency=numpy.median(numpy.array(list(efficiencies_processing_machineries.values())))
 
     ### NUCLEOTIDE ASSEMBLY PROCESS KAPPS ###        
     if fit_nucleotide_assembly_machinery:
-        print("Nuc assembly fitting")
         machinery_production_fluxes=determine_nucleotide_synthesis_machinery_demand(rba_session)
         for process in machinery_production_fluxes.keys():
             if (numpy.isfinite(machinery_production_fluxes[process]))and(machinery_production_fluxes[process]>0):
-                print(process)
-                print(machinery_production_fluxes[process])
                 if process not in process_machinery_concentrations.keys():
                     process_info=rba_session.get_process_information(process)
                     complex_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
                                                                                         machinery_composition=process_info["Composition"],
                                                                                         proteomicsData=build_input_proteome_for_specific_kapp_estimation(protein_data, condition),
                                                                                         proto_proteins=False)
-                    print(complex_concentration)
                     if (numpy.isfinite(complex_concentration))and(complex_concentration>0):
                         efficiencies_processing_machineries[process]=machinery_production_fluxes[process]/complex_concentration
               
-    print(5)
-    print(efficiencies_processing_machineries)
-    print(".................................")
-
     for process in rba_session.get_processes():
         if process in list(input['Process_Name']):
             if process not in efficiencies_processing_machineries.keys():
-                print(process)
                 efficiencies_processing_machineries[process]=median_process_efficiency
     
     process_efficiencies = pandas.DataFrame()
