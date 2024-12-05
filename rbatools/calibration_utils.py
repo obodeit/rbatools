@@ -378,7 +378,8 @@ def calibration_workflow_2(proteome,
             'Process_Efficiencies_original': process_efficiencies_original})
 
 def calculate_default_enzyme_efficiency_as_median_over_specific_efficiencies(specific_enzyme_efficiencies,transporter_multiplier=1):
-    spec_kapp_median=specific_enzyme_efficiencies.loc[(specific_enzyme_efficiencies['Kapp']!=0)&(pandas.isna(specific_enzyme_efficiencies['Kapp'])==False),'Kapp'].median()
+    #spec_kapp_median=specific_enzyme_efficiencies.loc[(specific_enzyme_efficiencies['Kapp']!=0)&(pandas.isna(specific_enzyme_efficiencies['Kapp'])==False),'Kapp'].median()
+    spec_kapp_median=numpy.median(specific_enzyme_efficiencies.loc[(specific_enzyme_efficiencies['Kapp']!=0)&(pandas.isna(specific_enzyme_efficiencies['Kapp'])==False),'Kapp'].unique())
     return({"default_efficiency":spec_kapp_median,"default_transporter_efficiency":transporter_multiplier*spec_kapp_median})
 
 
