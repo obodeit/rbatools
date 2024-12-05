@@ -393,6 +393,7 @@ def determine_apparent_process_efficiencies_2(growth_rate, rba_session,compartme
 
     protoprotein_isoprotein_map = rba_session.ModelStructure.ProteinInfo.return_protein_iso_form_map()
 
+    print(protein_data)
     process_machinery_concentrations={}
     for process in rba_session.get_processes():
         process_info=rba_session.get_process_information(process)
