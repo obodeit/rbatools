@@ -464,6 +464,10 @@ def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,com
                 if machinery_production_fluxes[machinery]!=0:
                     efficiencies_processing_machineries[machinery]=machinery_production_fluxes[machinery]/process_machinery_concentrations[machinery]
                     
+    print(5)
+    print(efficiencies_processing_machineries)
+    print(".................................")
+
     for process in process_machinery_concentrations.keys():
         if process not in efficiencies_processing_machineries.keys():
             efficiencies_processing_machineries[process]=median_process_efficiency
