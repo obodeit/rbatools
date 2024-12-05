@@ -460,11 +460,19 @@ def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,com
     if fit_nucleotide_assembly_machinery:
         print("Nuc assembly fitting")
         machinery_production_fluxes=determine_nucleotide_synthesis_machinery_demand(rba_session)
-        for machinery in machinery_production_fluxes.keys():
-            print(machinery)
-            if machinery not in process_machinery_concentrations.keys():
-                if machinery_production_fluxes[machinery]!=0:
-                    efficiencies_processing_machineries[machinery]=machinery_production_fluxes[machinery]/process_machinery_concentrations[machinery]
+        for process in machinery_production_fluxes.keys():
+            if (numpy.isfinite(machinery_production_fluxes[process]))and(machinery_production_fluxes[process]>0):
+                print(process)
+                print(machinery_production_fluxes[process])
+                if process not in process_machinery_concentrations.keys():
+                    process_info=rba_session.get_process_information(process)
+                    complex_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
+                                                                                        machinery_composition=process_info["Composition"],
+                                                                                        proteomicsData=build_input_proteome_for_specific_kapp_estimation(protein_data, condition),
+                                                                                        proto_proteins=False)
+                    print(complex_concentration)
+                    if (numpy.isfinite(complex_concentration))and(complex_concentration>0):
+                        efficiencies_processing_machineries[machinery]=machinery_production_fluxes[machinery]/process_machinery_concentrations[machinery]
                     
     print(5)
     print(efficiencies_processing_machineries)
