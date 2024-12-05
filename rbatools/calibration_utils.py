@@ -66,7 +66,7 @@ def calibration_workflow_2(proteome,
                                                                              compartment_densities_and_pg=compartment_densities_and_PGs, 
                                                                              protein_data=proteome.copy(),
                                                                              condition=condition,
-                                                                             fit_nucleotide_assembly_machinery=False)
+                                                                             fit_nucleotide_assembly_machinery=True)
             
             process_efficiencies_old = determine_apparent_process_efficiencies(growth_rate=growth_rate_from_input(input=definition_file,condition=condition),
                                                                            input=process_efficiency_estimation_input,
