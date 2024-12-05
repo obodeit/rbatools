@@ -453,6 +453,7 @@ def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,com
         process_efficiencies.loc[process_name, 'Process'] = process_info["ID"]
         process_efficiencies.loc[process_name, 'Parameter'] = str(process_info["ID"]+'_apparent_efficiency')
         process_efficiencies.loc[process_name, 'Value'] = efficiencies_processing_machineries[process_name]
+    return(process_efficiencies)
 
 # Maybe reformulate on protein level#
 def determine_apparent_process_efficiencies(growth_rate, input, rba_session,compartment_densities_and_PGs,total_amino_acid_abundance_in_proteome, protein_data, condition,fit_nucleotide_assembly_machinery=False):
