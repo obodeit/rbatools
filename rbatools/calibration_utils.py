@@ -382,7 +382,6 @@ def calculate_default_enzyme_efficiency_as_median_over_specific_efficiencies(spe
     spec_kapp_median=numpy.median(specific_enzyme_efficiencies.loc[(specific_enzyme_efficiencies['Kapp']!=0)&(pandas.isna(specific_enzyme_efficiencies['Kapp'])==False),'Kapp'].unique())
     return({"default_efficiency":spec_kapp_median,"default_transporter_efficiency":transporter_multiplier*spec_kapp_median})
 
-
 def determine_apparent_process_efficiencies_2(growth_rate, rba_session,compartment_densities_and_pg, protein_data, condition,fit_nucleotide_assembly_machinery=False):
 
     for comp in list(compartment_densities_and_pg['Compartment_ID']):
@@ -393,14 +392,13 @@ def determine_apparent_process_efficiencies_2(growth_rate, rba_session,compartme
 
     protoprotein_isoprotein_map = rba_session.ModelStructure.ProteinInfo.return_protein_iso_form_map()
 
-    print(protein_data)
     process_machinery_concentrations={}
     for process in rba_session.get_processes():
         process_info=rba_session.get_process_information(process)
     
         complex_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
                                                                              machinery_composition=process_info["Composition"],
-                                                                             proteomicsData=protein_data,
+                                                                             proteomicsData=build_input_proteome_for_specific_kapp_estimation(protein_data, condition),
                                                                              proto_proteins=False)
         process_machinery_concentrations[process]=complex_concentration
 
