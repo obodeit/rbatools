@@ -2169,8 +2169,14 @@ def build_model_compartment_map(rba_session):
     rba_session : _type_
         _description_
     """
-    out = {rba_session.get_protein_information(protein=i)['ProtoID']: rba_session.get_protein_information(protein=i)['Compartment'] for i in list(
-        rba_session.get_proteins())}
+    out={}
+    for i in list(rba_session.get_proteins()):
+        proto_id=rba_session.get_protein_information(protein=i)['ProtoID']
+        if proto_id in out.keys():
+            out[proto_id].append(rba_session.get_protein_information(protein=i)['Compartment'])
+        else:
+            out[proto_id]=[rba_session.get_protein_information(protein=i)['Compartment']]
+    #out = {rba_session.get_protein_information(protein=i)['ProtoID']: rba_session.get_protein_information(protein=i)['Compartment'] for i in list(rba_session.get_proteins())}
     return(out)
 
 
@@ -2193,9 +2199,8 @@ def build_compartment_annotations(Compartment_Annotations_external, model_protei
     Compartment_Annotations_internal = pandas.DataFrame()
     internal_protein_ids=list(model_protein_compartment_map.keys())
     Compartment_Annotations_internal['ID'] = internal_protein_ids
-    Compartment_Annotations_internal['ModelComp'] = [model_protein_compartment_map[i] for i in internal_protein_ids]
-    Compartment_Annotations = pandas.concat(
-        [Compartment_Annotations_internal, Compartment_Annotations_external.loc[Compartment_Annotations_external['modelproteinannotation'] == 0, ['ID', 'ModelComp']]], axis=0)
+    Compartment_Annotations_internal['ModelComp'] = [" ; ".join(model_protein_compartment_map[i]) for i in internal_protein_ids]
+    Compartment_Annotations = pandas.concat([Compartment_Annotations_internal, Compartment_Annotations_external.loc[Compartment_Annotations_external['modelproteinannotation'] == 0, ['ID', 'ModelComp']]], axis=0)
     return(Compartment_Annotations)
 
 
