@@ -122,6 +122,7 @@ def build_proteome_overview(input, condition, compartments_to_replace={'DEF':"c"
     print(":::::::::::::::::::::::::::::::::")
     print(":::::::::::::::::::::::::::::::::")
     print(input)
+    print(input.columns)
     print(":::::::::::::::::::::::::::::::::")
     print(":::::::::::::::::::::::::::::::::")
     print(":::::::::::::::::::::::::::::::::")
