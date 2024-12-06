@@ -250,6 +250,14 @@ def correct_compartment_fractions(proteome,condition,definition_file,
 
 
 def correct_proteome(correction_results_compartement_sizes,proteome,condition,Compartment_sizes,PG_fractions):
+    print("---------------------------------------")
+    print("---------------------------------------")
+    print(condition)
+    print(proteome)
+    print(proteome.columns)
+    print("---------------------------------------")
+    print("---------------------------------------")
+
     for i in Compartment_sizes.index:
         correction_results_compartement_sizes.loc[i,"new_protein_fraction"]=Compartment_sizes.loc[i,condition]
         correction_results_compartement_sizes.loc[i,"new_PG_fraction"]=PG_fractions.loc[i,condition]
