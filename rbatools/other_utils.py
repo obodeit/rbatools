@@ -118,6 +118,13 @@ def build_proteome_overview(input, condition, compartments_to_replace={'DEF':"c"
     ribosomal_proteins_as_extra_compartment : bool, optional
         _description_, by default True
     """
+    print(":::::::::::::::::::::::::::::::::")
+    print(":::::::::::::::::::::::::::::::::")
+    print(":::::::::::::::::::::::::::::::::")
+    print(input)
+    print(":::::::::::::::::::::::::::::::::")
+    print(":::::::::::::::::::::::::::::::::")
+    print(":::::::::::::::::::::::::::::::::")
     out = determine_compartment_occupation(Data_input=input, Condition=condition, compartments_to_replace=compartments_to_replace,
                                            compartments_no_original_PG=compartments_no_original_PG, ribosomal_proteins_as_extra_compartment=ribosomal_proteins_as_extra_compartment, only_in_model=False)
     out_in_model = determine_compartment_occupation(Data_input=input, Condition=condition, compartments_to_replace=compartments_to_replace,
@@ -2186,8 +2193,7 @@ def build_dataset_annotations(input, ID_column, Uniprot, Compartment_Annotations
             mass_prot = len(Uniprot.loc[Uniprot['Gene names'] == matches[0], 'Sequence'].values[0])
         out.loc[g, 'AA_residues'] = mass_prot
         if g in list(Compartment_Annotations['ID']):
-            out.loc[g, 'Location'] = Compartment_Annotations.loc[Compartment_Annotations['ID']
-                                                                 == g, 'ModelComp'].values[0]
+            out.loc[g, 'Location'] = Compartment_Annotations.loc[Compartment_Annotations['ID'] == g, 'ModelComp'].values[0]
         in_model = 0
         if g in model_protein_compartment_map.keys():
             in_model = 1
