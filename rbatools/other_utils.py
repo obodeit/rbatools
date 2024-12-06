@@ -250,7 +250,7 @@ def correct_compartment_fractions(proteome,condition,definition_file,
             "Proteome_summary":correction_results_compartement_sizes})
 
 
-def correct_proteome(correction_results_compartement_sizes,proteome,condition,Compartment_sizes,PG_fractions):
+def correct_proteome(correction_results_compartement_sizes,proteome,condition,Compartment_sizes,PG_fractions,compartments_to_replace):
 
     for i in Compartment_sizes.index:
         correction_results_compartement_sizes.loc[i,"new_protein_fraction"]=Compartment_sizes.loc[i,condition]
@@ -263,7 +263,12 @@ def correct_proteome(correction_results_compartement_sizes,proteome,condition,Co
         abundance_coeff=1
         
         compartment_specific_correction_coeffs=[]
-        for compartment in proteome.loc[protein,"Location"].split(" ; "):
+        for location in proteome.loc[protein,"Location"].split(" ; "):
+            if location in compartments_to_replace.keys():
+                compartment=compartments_to_replace[location]
+            else:
+                compartment=location
+            
             if compartment =="c":
                 compartment_specific_abundance_coeff=(correction_results_compartement_sizes.loc[compartment,"new_protein_fraction"]*(1-correction_results_compartement_sizes.loc[compartment,"new_PG_fraction"])-correction_results_compartement_sizes.loc["Ribosomes","new_protein_fraction"])/(correction_results_compartement_sizes.loc[compartment,"original_protein_fraction"]*(1-correction_results_compartement_sizes.loc[compartment,"original_PG_fraction"]))
             else:
