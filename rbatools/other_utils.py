@@ -160,6 +160,7 @@ def determine_compartment_occupation(Data_input,
         Data_intermediate = Data_input.loc[Data_input['InModel'] >= 1,:]
     else:
         Data_intermediate=Data_input
+
     Data=pandas.DataFrame()
     for i in Data_intermediate.index:
         for j in Data_intermediate.columns:
@@ -2149,8 +2150,9 @@ def build_compartment_annotations(Compartment_Annotations_external, model_protei
         else:
             Compartment_Annotations_external.loc[i, 'modelproteinannotation'] = 0
     Compartment_Annotations_internal = pandas.DataFrame()
-    Compartment_Annotations_internal['ID'] = list(model_protein_compartment_map.keys())
-    Compartment_Annotations_internal['ModelComp'] = list(model_protein_compartment_map.values())
+    internal_protein_ids=list(model_protein_compartment_map.keys())
+    Compartment_Annotations_internal['ID'] = internal_protein_ids
+    Compartment_Annotations_internal['ModelComp'] = [model_protein_compartment_map[i] for i in internal_protein_ids]
     Compartment_Annotations = pandas.concat(
         [Compartment_Annotations_internal, Compartment_Annotations_external.loc[Compartment_Annotations_external['modelproteinannotation'] == 0, ['ID', 'ModelComp']]], axis=0)
     return(Compartment_Annotations)
