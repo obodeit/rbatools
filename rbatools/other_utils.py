@@ -136,13 +136,35 @@ def build_proteome_overview(input, condition, compartments_to_replace={'DEF':"c"
     return(out)
 
 
+def split_protein_abundance_by_location(input_DF,mass_col):
+    out=pandas.DataFrame(columns=input_DF.columns)
+    new_index=0
+    for i in list(input_DF.index):
+        if " ; " in input_DF.loc[i,"Location"]:
+            location_str=str(input_DF.loc[i,"Location"])
+            locations=location_str.split(" ; ")
+            for loc in locations:
+                for col in input_DF.columns:
+                    if col in ['ID','InModel',mass_col,'IsRibosomal']:
+                        out.loc[new_index,col]=input_DF.loc[i,col]
+                    elif col in ['Location']:
+                        out.loc[new_index,col]=loc
+                    else:
+                        out.loc[new_index,col]=input_DF.loc[i,col]/len(locations)
+        else:
+            out.loc[new_index,:]=input_DF.loc[i,:]
+        new_index+=1
+    return(out)
+
+
 def determine_compartment_occupation(Data_input,
                                        Condition,
                                        mass_col='AA_residues',
                                        only_in_model=False,
                                        compartments_to_replace={'DEF':"c"},
                                        compartments_no_original_PG=[],
-                                       ribosomal_proteins_as_extra_compartment=True):
+                                       ribosomal_proteins_as_extra_compartment=True,
+                                       split_multi_compartment_proteins=True):
     """
     _summary_
 
@@ -165,9 +187,17 @@ def determine_compartment_occupation(Data_input,
     """
     out=pandas.DataFrame()
     if only_in_model:
-        Data_intermediate = Data_input.loc[Data_input['InModel'] >= 1,:]
+        if split_multi_compartment_proteins:
+            Data_intermediate = split_protein_abundance_by_location(input_DF=Data_input.loc[Data_input['InModel'] >= 1,:],
+                                                                    mass_col=mass_col)
+        else:
+            Data_intermediate = Data_input.loc[Data_input['InModel'] >= 1,:]
     else:
-        Data_intermediate=Data_input
+        if split_multi_compartment_proteins:
+            Data_intermediate = split_protein_abundance_by_location(input_DF=Data_input,
+                                                                    mass_col=mass_col)
+        else:
+            Data_intermediate=Data_input
 
     Data=pandas.DataFrame()
     for i in Data_intermediate.index:
@@ -175,18 +205,21 @@ def determine_compartment_occupation(Data_input,
             if j != "AA_abundance":
                 Data.loc[i,j]=Data_intermediate.loc[i,j]
         Data.loc[i,"AA_abundance"]=Data_intermediate.loc[i,Condition]*Data_intermediate.loc[i,mass_col]
-
     out.loc["Total","original_amino_acid_occupation"]=sum([i for i in list(Data["AA_abundance"]) if not pandas.isna(i)])
+
     for i in compartments_to_replace.keys():
         Data.loc[Data['Location'] == i,'Location']=compartments_to_replace[i]
+
     for i in compartments_no_original_PG:
         intermediate_Data_pg= Data.loc[(Data['Location'] == i) & (Data['InModel'] == 0)].copy()
         out.loc["pg_{}".format(i),"original_amino_acid_occupation"]=sum([i for i in list(intermediate_Data_pg["AA_abundance"]) if not pandas.isna(i)])
         intermediate_Data_non_pg= Data.loc[(Data['Location'] == i) & (Data['InModel'] == 1)].copy()
         out.loc[i,"original_amino_acid_occupation"]=sum([i for i in list(intermediate_Data_non_pg["AA_abundance"]) if not pandas.isna(i)])
+
     if ribosomal_proteins_as_extra_compartment:
         Data_R = Data.loc[Data['IsRibosomal'] == 1].copy()
         out.loc['Ribosomes', "original_amino_acid_occupation"] =sum([i for i in list(Data_R["AA_abundance"]) if not pandas.isna(i)])
+
     for comp in list(set(list(Data['Location']))):
         if comp in out.index:
             continue
