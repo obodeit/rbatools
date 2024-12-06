@@ -118,14 +118,6 @@ def build_proteome_overview(input, condition, compartments_to_replace={'DEF':"c"
     ribosomal_proteins_as_extra_compartment : bool, optional
         _description_, by default True
     """
-    print(":::::::::::::::::::::::::::::::::")
-    print(":::::::::::::::::::::::::::::::::")
-    print(":::::::::::::::::::::::::::::::::")
-    print(input)
-    print(input.columns)
-    print(":::::::::::::::::::::::::::::::::")
-    print(":::::::::::::::::::::::::::::::::")
-    print(":::::::::::::::::::::::::::::::::")
     out = determine_compartment_occupation(Data_input=input, Condition=condition, compartments_to_replace=compartments_to_replace,
                                            compartments_no_original_PG=compartments_no_original_PG, ribosomal_proteins_as_extra_compartment=ribosomal_proteins_as_extra_compartment, only_in_model=False)
     out_in_model = determine_compartment_occupation(Data_input=input, Condition=condition, compartments_to_replace=compartments_to_replace,
