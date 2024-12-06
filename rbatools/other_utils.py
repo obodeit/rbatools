@@ -1,6 +1,7 @@
 import pandas
 import numpy
 import copy
+from scipy.stats.mstats import gmean
 from rbatools.rba_xml_utils import inject_estimated_efficiencies_into_model , inject_estimated_efficiencies_as_functions_into_model
 
 
@@ -250,13 +251,43 @@ def correct_compartment_fractions(proteome,condition,definition_file,
 
 
 def correct_proteome(correction_results_compartement_sizes,proteome,condition,Compartment_sizes,PG_fractions):
-    print("---------------------------------------")
-    print("---------------------------------------")
-    print(condition)
-    print(proteome)
-    print(proteome.columns)
-    print("---------------------------------------")
-    print("---------------------------------------")
+
+    for i in Compartment_sizes.index:
+        correction_results_compartement_sizes.loc[i,"new_protein_fraction"]=Compartment_sizes.loc[i,condition]
+        correction_results_compartement_sizes.loc[i,"new_PG_fraction"]=PG_fractions.loc[i,condition]
+
+    ### GENERALISE for all merged compartments###
+    corrected_proteome=pandas.DataFrame(index=proteome.index,columns=proteome.columns)
+    for protein in proteome.index:
+        
+        abundance_coeff=1
+        
+        compartment_specific_correction_coeffs=[]
+        for compartment in proteome.loc[protein,"Location"].split(" ; "):
+            if compartment =="c":
+                compartment_specific_abundance_coeff=(correction_results_compartement_sizes.loc[compartment,"new_protein_fraction"]*(1-correction_results_compartement_sizes.loc[compartment,"new_PG_fraction"])-correction_results_compartement_sizes.loc["Ribosomes","new_protein_fraction"])/(correction_results_compartement_sizes.loc[compartment,"original_protein_fraction"]*(1-correction_results_compartement_sizes.loc[compartment,"original_PG_fraction"]))
+            else:
+                compartment_specific_abundance_coeff=(correction_results_compartement_sizes.loc[compartment,"new_protein_fraction"]*(1-correction_results_compartement_sizes.loc[compartment,"new_PG_fraction"]))/(correction_results_compartement_sizes.loc[compartment,"original_protein_fraction"]*(1-correction_results_compartement_sizes.loc[compartment,"original_PG_fraction"]))
+            if (numpy.isfinite(compartment_specific_abundance_coeff)) and (compartment_specific_abundance_coeff>0):
+                compartment_specific_correction_coeffs.append(compartment_specific_abundance_coeff)            
+                correction_results_compartement_sizes.loc[i,"copy_number_scaling"]=compartment_specific_abundance_coeff
+
+        if len(compartment_specific_correction_coeffs)>0:
+            abundance_coeff=gmean(compartment_specific_correction_coeffs)
+        
+        for col in proteome.columns:
+            if col not in [condition]:
+                corrected_proteome.loc[protein,col]=proteome.loc[protein,col]
+            corrected_proteome.loc[protein,condition]=proteome.loc[protein,condition]*abundance_coeff
+            
+    ###
+    #correction_results_compartement_sizes.to_csv(str(output_dir+'/Correction_overview_HackettNielsen_corrected_'+condition+'.csv'))
+    return({"Proteome":corrected_proteome,
+            "Condition":condition,
+            "Proteome_summary":correction_results_compartement_sizes})
+
+
+def correct_proteome_old(correction_results_compartement_sizes,proteome,condition,Compartment_sizes,PG_fractions):
 
     for i in Compartment_sizes.index:
         correction_results_compartement_sizes.loc[i,"new_protein_fraction"]=Compartment_sizes.loc[i,condition]
