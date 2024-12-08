@@ -1863,7 +1863,9 @@ def efficiency_correction(enzyme_efficiencies,
     # iterate over enzymes with determined SU misprediction factors
     for enzyme in subunit_misprediction_factors_enzymes.keys():
         #calculate complex misprediction factor as kapp-correction coeff
-        enzyme_correction_coefficients[enzyme]=numpy.power(weighted_geometric_mean(data=subunit_misprediction_factors_enzymes[enzyme],weights=subunit_stoichiometries_enzymes[enzyme]),1/n_th_root_mispred)
+        #enzyme_correction_coefficients[enzyme]=numpy.power(weighted_geometric_mean(data=subunit_misprediction_factors_enzymes[enzyme],weights=subunit_stoichiometries_enzymes[enzyme]),1/n_th_root_mispred)
+        # try this:
+        enzyme_correction_coefficients[enzyme]=numpy.power(weighted_harmonic_mean(data=subunit_misprediction_factors_enzymes[enzyme],weights=subunit_stoichiometries_enzymes[enzyme]),1/n_th_root_mispred)
     
     enzymes_already_handled=[]
     for enzyme in enzyme_correction_coefficients.keys():
@@ -1896,8 +1898,10 @@ def efficiency_correction(enzyme_efficiencies,
         # iterate over enzymes with determined SU misprediction factors
         for enzyme in subunit_misprediction_factors_default_efficiency_enzymes.keys():
             if enzyme not in list(enzyme_efficiencies["Enzyme_ID"]):
-               #calculate complex misprediction factor as kapp-correction coeff
-               default_efficiency_enzyme_correction_coefficients[enzyme]=numpy.power(weighted_geometric_mean(data=subunit_misprediction_factors_default_efficiency_enzymes[enzyme],weights=subunit_stoichiometries_default_efficiency_enzymes[enzyme]),1/n_th_root_mispred)
+                #calculate complex misprediction factor as kapp-correction coeff
+                #default_efficiency_enzyme_correction_coefficients[enzyme]=numpy.power(weighted_geometric_mean(data=subunit_misprediction_factors_default_efficiency_enzymes[enzyme],weights=subunit_stoichiometries_default_efficiency_enzymes[enzyme]),1/n_th_root_mispred)
+                # try this:
+                default_efficiency_enzyme_correction_coefficients[enzyme]=numpy.power(weighted_harmonic_mean(data=subunit_misprediction_factors_default_efficiency_enzymes[enzyme],weights=subunit_stoichiometries_default_efficiency_enzymes[enzyme]),1/n_th_root_mispred)
 
         for enzyme in default_efficiency_enzyme_correction_coefficients.keys():
             if enzyme not in enzymes_already_handled:
@@ -1945,7 +1949,10 @@ def efficiency_correction(enzyme_efficiencies,
     for process in subunit_misprediction_factors_processes.keys():
         if process in list(process_efficiencies.index):
             #process_correction_coefficients[process]=numpy.power(numpy.median(subunit_misprediction_factors_processes[process]),1/n_th_root_mispred)
-            process_correction_coefficients[process]=numpy.power(weighted_geometric_mean(data=subunit_misprediction_factors_processes[process],weights=subunit_stoichiometries_processes[process]),1/n_th_root_mispred)
+            #process_correction_coefficients[process]=numpy.power(weighted_geometric_mean(data=subunit_misprediction_factors_processes[process],weights=subunit_stoichiometries_processes[process]),1/n_th_root_mispred)
+            # try this:
+            process_correction_coefficients[process]=numpy.power(weighted_harmonic_mean(data=subunit_misprediction_factors_processes[process],weights=subunit_stoichiometries_processes[process]),1/n_th_root_mispred)
+
     for process in process_correction_coefficients.keys():
         correction_coeff=process_correction_coefficients[process]
         old_efficiency=process_efficiencies.loc[process,"Value"]
@@ -2079,6 +2086,26 @@ def weighted_geometric_mean(data,weights=None):
         for i in range(len(data)):
             value*=(data[i]**weights[i])
         out=value**(1/(sum(weights)))
+    return(out)
+
+def weighted_harmonic_mean(data,weights=None):
+    """
+    _summary_
+
+    Parameters
+    ----------
+    data : _type_
+        _description_
+    weights : _type_, optional
+        _description_, by default None
+    """
+    if weights is None:
+        denominator=sum([1/i for i in data])
+        enumerator=len(data)
+    else:
+        denominator=sum(weights[i]/data[i] for i in range(len(data)))
+        enumerator=sum(weights)
+    out=enumerator/denominator
     return(out)
 
 
