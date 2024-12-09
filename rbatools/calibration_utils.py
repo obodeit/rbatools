@@ -68,15 +68,15 @@ def calibration_workflow_2(proteome,
                                                                              condition=condition,
                                                                              fit_nucleotide_assembly_machinery=True)
             
-            process_efficiencies_old = determine_apparent_process_efficiencies(growth_rate=growth_rate_from_input(input=definition_file,condition=condition),
-                                                                           input=process_efficiency_estimation_input,
-                                                                           rba_session=rba_session,
-                                                                           protein_data=proteome.copy(),
-                                                                           compartment_densities_and_PGs=compartment_densities_and_PGs,
-                                                                           #total_amino_acid_abundance_in_proteome=correction_results_compartement_sizes.loc['Total', 'original_amino_acid_occupation'],
-                                                                           total_amino_acid_abundance_in_proteome=compartment_occupation_overview.loc['Total', 'original_amino_acid_occupation'],
-                                                                           condition=condition,
-                                                                           fit_nucleotide_assembly_machinery=True)
+            #process_efficiencies_old = determine_apparent_process_efficiencies(growth_rate=growth_rate_from_input(input=definition_file,condition=condition),
+            #                                                               input=process_efficiency_estimation_input,
+            #                                                               rba_session=rba_session,
+            #                                                               protein_data=proteome.copy(),
+            #                                                               compartment_densities_and_PGs=compartment_densities_and_PGs,
+            #                                                               #total_amino_acid_abundance_in_proteome=correction_results_compartement_sizes.loc['Total', 'original_amino_acid_occupation'],
+            #                                                               total_amino_acid_abundance_in_proteome=compartment_occupation_overview.loc['Total', 'original_amino_acid_occupation'],
+            #                                                               condition=condition,
+            #                                                               fit_nucleotide_assembly_machinery=True)
 
         #process_efficiencies.to_csv(output_dir+'/ProcEffsOrig_{}.csv'.format(condition))
     process_efficiencies_original=process_efficiencies.copy()
@@ -1793,6 +1793,14 @@ def efficiency_correction(enzyme_efficiencies,
             proto_protein_isoform_map[proto_protein_ID].append(i)
         else:
             proto_protein_isoform_map[proto_protein_ID]=[i]
+    
+    print("---------------------")
+    print("---------------------")
+    print(proto_protein_isoform_map)
+    print("---------------------")
+    print(rba_session.ModelStructure.ProteinInfo.return_protein_iso_form_map())
+    print("---------------------")
+    print("---------------------")
 
     enzyme_efficiencies_out=enzyme_efficiencies.copy() 
     process_efficiencies_out=process_efficiencies.copy()
