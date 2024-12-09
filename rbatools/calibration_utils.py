@@ -1786,21 +1786,15 @@ def efficiency_correction(enzyme_efficiencies,
     
     # for each protoprotein generate list of isoforms
     # {Protein1:[Protein1_c,Protein1_m],Protein2:[Protein2_n]}
-    proto_protein_isoform_map={} 
-    for i in rba_session.get_proteins():
-        proto_protein_ID=rba_session.get_protein_information(protein=i)["ProtoID"]
-        if proto_protein_ID in proto_protein_isoform_map:
-            proto_protein_isoform_map[proto_protein_ID].append(i)
-        else:
-            proto_protein_isoform_map[proto_protein_ID]=[i]
+    proto_protein_isoform_map=rba_session.ModelStructure.ProteinInfo.return_protein_iso_form_map()
+    #proto_protein_isoform_map={} 
+    #for i in rba_session.get_proteins():
+    #    proto_protein_ID=rba_session.get_protein_information(protein=i)["ProtoID"]
+    #    if proto_protein_ID in proto_protein_isoform_map:
+    #        proto_protein_isoform_map[proto_protein_ID].append(i)
+    #    else:
+    #        proto_protein_isoform_map[proto_protein_ID]=[i]
     
-    print("---------------------")
-    print("---------------------")
-    print(proto_protein_isoform_map)
-    print("---------------------")
-    print(rba_session.ModelStructure.ProteinInfo.return_protein_iso_form_map())
-    print("---------------------")
-    print("---------------------")
 
     enzyme_efficiencies_out=enzyme_efficiencies.copy() 
     process_efficiencies_out=process_efficiencies.copy()
