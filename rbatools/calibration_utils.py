@@ -222,20 +222,7 @@ def calibration_workflow_2(proteome,
                 efficiencies_over_correction_iterations.append({"Specific_Kapps":Specific_Kapps.copy(),"Default_Kapps":Default_Kapps.copy(),"Process_Efficiencies":process_efficiencies.copy()})
 
                 #build_input_proteome_for_specific_kapp_estimation(protein_data, condition)
-                """
                 KappCorrectionResults=efficiency_correction_new(enzyme_efficiencies=Specific_Kapps,
-                                                                simulation_results=Simulation_results[results_to_look_up],
-                                                                protein_data=build_input_proteome_for_specific_kapp_estimation(proteome, condition),
-                                                                rba_session=rba_session,
-                                                                condition_to_look_up=condition_to_look_up,
-                                                                default_enzyme_efficiencies=Default_Kapps,
-                                                                tolerance=None,
-                                                                n_th_root_mispred=1,
-                                                                process_efficiencies=process_efficiencies,
-                                                                correct_default_kapp_enzymes=True,
-                                                                only_consider_misprediction_for_predicted_nonzero_enzymes=True)
-                """
-                KappCorrectionResults=efficiency_correction(enzyme_efficiencies=Specific_Kapps,
                                                                 simulation_results=Simulation_results[results_to_look_up],
                                                                 protein_data=build_input_proteome_for_specific_kapp_estimation(proteome, condition),
                                                                 rba_session=rba_session,
