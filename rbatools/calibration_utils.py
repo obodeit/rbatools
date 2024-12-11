@@ -1833,9 +1833,6 @@ def efficiency_correction_new(enzyme_efficiencies,
                                     enzyme_efficiencies_out.loc[respective_reaction,"Enzyme_ID"]=enzyme
                                     enzyme_efficiencies_out.loc[respective_reaction,"Flux"]=flux_direction
                                     enzyme_efficiencies_out.loc[respective_reaction,"Comment"]="Corrected Default"
-
-            current_efficiency=enzyme_efficiencies.loc[enzyme_efficiencies["Enzyme_ID"]==enzyme,"Kapp"].values[0]
-            updated_efficiency=current_efficiency*machinery_misprediction_coefficient
          
     process_correction_coefficients={}
     for process in rba_session.get_processes():
