@@ -1793,10 +1793,10 @@ def efficiency_correction_new(enzyme_efficiencies,
                     current_efficiency=enzyme_efficiencies.loc[enzyme_efficiencies["Enzyme_ID"]==enzyme,"Kapp"].values[0]
                     updated_efficiency=current_efficiency*machinery_misprediction_coefficient
                     if tolerance is None:
-                        enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Enzyme_ID"]==iso_enzyme_to_consider,"Kapp"]=updated_efficiency
+                        enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Enzyme_ID"]==enzyme,"Kapp"]=updated_efficiency
                         enzyme_correction_coefficients[enzyme]=machinery_misprediction_coefficient
                     else:
-                        if abs(numpy.log(tolerance)) <= abs(numpy.log(correction_coeff)):
+                        if abs(numpy.log(tolerance)) <= abs(numpy.log(machinery_misprediction_coefficient)):
                             enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Enzyme_ID"]==enzyme,"Kapp"]=updated_efficiency
                             enzyme_correction_coefficients[enzyme]=machinery_misprediction_coefficient
         else:
