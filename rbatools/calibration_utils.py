@@ -1837,6 +1837,8 @@ def efficiency_correction_new(enzyme_efficiencies,
     process_correction_coefficients={}
     for process in rba_session.get_processes():
         machinery_composition=rba_session.get_process_information(process)['Composition']
+        print(process)
+        print(machinery_composition)
         measured_machinery_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
                                                                                 machinery_composition=machinery_composition,
                                                                                 proteomicsData=protein_data,
