@@ -221,6 +221,20 @@ def calibration_workflow_2(proteome,
                 process_efficiencies=results_global_scaling["process_efficiencies"]
                 efficiencies_over_correction_iterations.append({"Specific_Kapps":Specific_Kapps.copy(),"Default_Kapps":Default_Kapps.copy(),"Process_Efficiencies":process_efficiencies.copy()})
 
+                #build_input_proteome_for_specific_kapp_estimation(protein_data, condition)
+                """
+                KappCorrectionResults=efficiency_correction_new(enzyme_efficiencies=Specific_Kapps,
+                                                                simulation_results=Simulation_results[results_to_look_up],
+                                                                protein_data=build_input_proteome_for_specific_kapp_estimation(proteome, condition),
+                                                                rba_session=rba_session,
+                                                                condition_to_look_up=condition_to_look_up,
+                                                                default_enzyme_efficiencies=Default_Kapps,
+                                                                tolerance=None,
+                                                                n_th_root_mispred=1,
+                                                                process_efficiencies=process_efficiencies,
+                                                                correct_default_kapp_enzymes=True,
+                                                                only_consider_misprediction_for_predicted_nonzero_enzymes=True)
+                """
                 KappCorrectionResults=efficiency_correction(enzyme_efficiencies=Specific_Kapps,
                                                                 simulation_results=Simulation_results[results_to_look_up],
                                                                 protein_data=build_input_proteome_for_specific_kapp_estimation(proteome, condition),
@@ -1833,9 +1847,6 @@ def efficiency_correction_new(enzyme_efficiencies,
                                     enzyme_efficiencies_out.loc[respective_reaction,"Flux"]=flux_direction
                                     enzyme_efficiencies_out.loc[respective_reaction,"Comment"]="Corrected Default"
 
-
-
-
             current_efficiency=enzyme_efficiencies.loc[enzyme_efficiencies["Enzyme_ID"]==enzyme,"Kapp"].values[0]
             updated_efficiency=current_efficiency*machinery_misprediction_coefficient
          
@@ -1915,7 +1926,7 @@ def efficiency_correction(enzyme_efficiencies,
         _description_, by default False
     """
     print(process_efficiencies)
-    
+
     # for each protoprotein, determine predicted anbundance as sum over all predicted isoforms
     # {Protein1:Abundance1,Protein2:Abundance2}
     predicted_proto_protein_quantities={} 
