@@ -1788,7 +1788,7 @@ def efficiency_correction_new(enzyme_efficiencies,
         enzyme_composition=rba_session.get_enzyme_information(enzyme)['Subunits']
         measured_machinery_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
                                                                                 machinery_composition=enzyme_composition,
-                                                                                proteomicsData=build_input_proteome_for_specific_kapp_estimation(protein_data, condition),
+                                                                                proteomicsData=protein_data,
                                                                                 proto_proteins=False)
 
         predicted_machinery_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
@@ -1855,7 +1855,7 @@ def efficiency_correction_new(enzyme_efficiencies,
         machinery_composition=rba_session.get_process_information(process)['Composition']
         measured_machinery_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
                                                                                 machinery_composition=machinery_composition,
-                                                                                proteomicsData=build_input_proteome_for_specific_kapp_estimation(protein_data, condition),
+                                                                                proteomicsData=protein_data,
                                                                                 proto_proteins=False)
 
         predicted_machinery_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
