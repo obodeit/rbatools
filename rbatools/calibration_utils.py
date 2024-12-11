@@ -1912,8 +1912,6 @@ def efficiency_correction(enzyme_efficiencies,
     only_consider_misprediction_for_predicted_nonzero_enzymes : bool, optional
         _description_, by default False
     """
-    print(process_efficiencies)
-
     # for each protoprotein, determine predicted anbundance as sum over all predicted isoforms
     # {Protein1:Abundance1,Protein2:Abundance2}
     predicted_proto_protein_quantities={} 
