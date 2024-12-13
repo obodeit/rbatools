@@ -33,7 +33,7 @@ class ProteinBlock(InformationBlock):
            'AssociatedTarget' : Wheter protein represents a (translation) target.
     """
 
-    def from_files(self, model, IDmap, Info, UniprotData='Not There'):
+    def from_files(self, model, IDmap, location_separator=None, UniprotData='Not There'):
         """
         Derive reaction-info from RBA-model.
 
@@ -62,14 +62,20 @@ class ProteinBlock(InformationBlock):
                      'weight': ' ',
                      'length': ' '}
             protoid = Prots[i]
-            if Prots[i].endswith(')'):
-                if '_(' in Prots[i]:
-                    protoid = Prots[i].split('_(')[0]
-            else:
+            ###
+            if location_separator is not None:
                 if not Prots[i].startswith('average_protein'):
-                    protoid = Prots[i].rsplit('_', 1)[0]
-                else:
-                    protoid = Prots[i]
+                    protoid = Prots[i].rsplit(location_separator, 1)[0]
+
+            ###
+            #if Prots[i].endswith(')'):
+            #    if '_(' in Prots[i]:
+            #        protoid = Prots[i].split('_(')[0]
+            #else:
+            #    if not Prots[i].startswith('average_protein'):
+            #        protoid = Prots[i].rsplit('_', 1)[0]
+            #    else:
+            #        protoid = Prots[i]
             if type(UniprotData) is pandas.core.frame.DataFrame:
                 genes = _mine_uniprot_file(UniprotData, IDmap, protoid)
             index += 1
