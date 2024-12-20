@@ -80,7 +80,6 @@ class ModelStructureRBA(object):
     MuDependencies : list
         List of constraint_IDs, which are affected by the growth-rate
     """
-
     def from_files(self, xml_dir:str,rba_model=None,verbose=True):
         """
         Generates model-structure object from model-files and provided auxilliary information.
@@ -94,6 +93,7 @@ class ModelStructureRBA(object):
         UniprotFile = _import_uniprot_file(xml_dir,verbose=verbose)
         GeneMap = _import_gene_annotations(xml_dir,verbose=verbose)
         Info = _import_model_info(xml_dir,verbose=verbose)
+        Protein_Info=_import_protein_info(xml_dir,verbose=verbose)
         SBMLfile = str('Not There')
         if Info['Value']['SBML-file'] != 'Not Provided':
             SBMLfile = _import_sbml_file(xml_dir, str(Info['Value']['SBML-file']),verbose=verbose)
@@ -120,7 +120,7 @@ class ModelStructureRBA(object):
         ProcessInfo.from_files(model, Info)
         ReactionInfo.from_files(model, Info, ReactionAnnotations, SBMLfile, MetaboliteInfo)
         EnzymeInfo.from_files(model, Info)
-        ProteinInfo.from_files(model, GeneMap, Info, UniprotFile)
+        ProteinInfo.from_files(model, GeneMap, location_separator=Protein_Info["location_separator"], UniprotData=UniprotFile)
         MacromoleculeInfo.from_files(model)
         CompartmentInfo.from_files(model, Info)
 
@@ -1025,8 +1025,25 @@ def _import_metabolite_annotations(xml_dir,verbose=True):
         return(out)
     else:
         if verbose:
-            print('WARNING: No Reaction-annotation file "MetaboliteAnnotations.csv" provided.\n' + ' Continuing without additional information...\n')
+            print('WARNING: No Metabolite-annotation file "MetaboliteAnnotations.csv" provided.\n' + ' Continuing without additional information...\n')
         return(str('Not There'))
+
+def _import_protein_info(xml_dir,verbose=True):
+    out={"location_separator":None}
+    if os.path.isfile(str(xml_dir+'/ProteinInformation.csv')):
+        df = pandas.read_csv(str(xml_dir+'/ProteinInformation.csv'),sep=',',header=0)
+        if "protein_location_separator" in list(df['Key']):
+            if not pandas.isna(df.loc[df['Key']=='protein_location_separator',"Value"].values[0]):
+                out["location_separator"]=df.loc[df['Key']=='protein_location_separator',"Value"].values[0]
+    elif os.path.isfile(str(xml_dir+'/data/ProteinInformation.csv')):
+        df = pandas.read_csv(str(xml_dir+'/data/ProteinInformation.csv'),sep=',',header=0)
+        if "protein_location_separator" in list(df['Key']):
+            if not pandas.isna(df.loc[df['Key']=='protein_location_separator',"Value"].values[0]):
+                out["location_separator"]=df.loc[df['Key']=='protein_location_separator',"Value"].values[0]
+    else:
+        if verbose:
+            print('WARNING: No model-info file "ModelInformation.csv" provided.\n' + ' Using dummy-information\n')
+    return(out)
 
 
 def _import_model_info(xml_dir,verbose=True):
