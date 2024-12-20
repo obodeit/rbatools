@@ -1318,14 +1318,15 @@ def determine_machinery_concentration_by_weighted_geometric_mean(rba_session,mac
                             if machinery_composition[subunit]>0:
                                 subunit_derived_concentrations[subunit]={"Concentration":copy_number_subunit,"Stoichiometry":machinery_composition[subunit]}
         else:
-            subunit_proto_id=rba_session.get_protein_information(subunit)["ProtoID"]
-            if subunit_proto_id in list(proteomicsData['ID']):
-                copy_number_subunit=proteomicsData.loc[proteomicsData['ID']==subunit_proto_id, 'copy_number'].values[0]
-                if numpy.isfinite(copy_number_subunit):
-                    if copy_number_subunit!=0:
-                        if numpy.isfinite(machinery_composition[subunit]):
-                            if machinery_composition[subunit]>0:
-                                subunit_derived_concentrations[subunit_proto_id]={"Concentration":copy_number_subunit,"Stoichiometry":machinery_composition[subunit]}
+            if subunit in rba_session.get_proteins():
+                subunit_proto_id=rba_session.get_protein_information(subunit)["ProtoID"]
+                if subunit_proto_id in list(proteomicsData['ID']):
+                    copy_number_subunit=proteomicsData.loc[proteomicsData['ID']==subunit_proto_id, 'copy_number'].values[0]
+                    if numpy.isfinite(copy_number_subunit):
+                        if copy_number_subunit!=0:
+                            if numpy.isfinite(machinery_composition[subunit]):
+                                if machinery_composition[subunit]>0:
+                                    subunit_derived_concentrations[subunit_proto_id]={"Concentration":copy_number_subunit,"Stoichiometry":machinery_composition[subunit]}
     if list(subunit_derived_concentrations.keys()):
         concentrations_of_subunits=[]
         stoichiometries_of_subunits=[]
@@ -1769,76 +1770,9 @@ def efficiency_correction_new(enzyme_efficiencies,
         predicted_proteome.loc[gene,"ID"]=gene
         predicted_proteome.loc[gene,"copy_number"]=predicted_proto_protein_quantities[gene]
     
-#    numpy.power(,1/n_th_root_mispred)
-    enzyme_correction_coefficients={} # {(Iso)Enzyme: correction_coeff} 
-    for enzyme in rba_session.get_enzymes():
-        enzyme_composition=rba_session.get_enzyme_information(enzyme)['Subunits']
-        measured_machinery_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
-                                                                                machinery_composition=enzyme_composition,
-                                                                                proteomicsData=protein_data,
-                                                                                proto_proteins=False)
-
-        predicted_machinery_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
-                                                                                machinery_composition=enzyme_composition,
-                                                                                proteomicsData=predicted_proteome,
-                                                                                proto_proteins=False)
-        machinery_misprediction_coefficient=1
-        if (measured_machinery_concentration != 0) and (predicted_machinery_concentration != 0):
-            if (numpy.isfinite(measured_machinery_concentration)) and (numpy.isfinite(predicted_machinery_concentration)):
-                #machinery_misprediction_coefficient=predicted_machinery_concentration/measured_machinery_concentration
-                machinery_misprediction_coefficient=numpy.power(predicted_machinery_concentration/measured_machinery_concentration,1/n_th_root_mispred)
-        if enzyme in list(enzyme_efficiencies["Enzyme_ID"]):
-            if numpy.isfinite(machinery_misprediction_coefficient):
-                if machinery_misprediction_coefficient!=1:
-                    current_efficiency=enzyme_efficiencies.loc[enzyme_efficiencies["Enzyme_ID"]==enzyme,"Kapp"].values[0]
-                    updated_efficiency=current_efficiency*machinery_misprediction_coefficient
-                    if tolerance is None:
-                        enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Enzyme_ID"]==enzyme,"Kapp"]=updated_efficiency
-                        enzyme_correction_coefficients[enzyme]=machinery_misprediction_coefficient
-                    else:
-                        if abs(numpy.log(tolerance)) <= abs(numpy.log(machinery_misprediction_coefficient)):
-                            enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Enzyme_ID"]==enzyme,"Kapp"]=updated_efficiency
-                            enzyme_correction_coefficients[enzyme]=machinery_misprediction_coefficient
-        else:
-            if correct_default_kapp_enzymes:
-                respective_reaction=rba_session.get_enzyme_information(enzyme)["Reaction"].split("_duplicate_")[0]
-                # find out wheter it is forward or backward specific kapp to add :
-                if respective_reaction in simulation_results["Reactions"].index:
-                    flux=simulation_results["Reactions"].loc[respective_reaction,condition_to_look_up]
-                    try:
-                        if flux < 0:
-                            flux_direction=-1
-                            efficiency_parameter= rba_session.model.enzymes.enzymes._elements_by_id[enzyme].backward_efficiency
-                        elif flux > 0:
-                            flux_direction=1
-                            efficiency_parameter= rba_session.model.enzymes.enzymes._elements_by_id[enzyme].forward_efficiency
-                        else:
-                            continue
-                    except:
-                        continue
-                    if numpy.isfinite(machinery_misprediction_coefficient):
-                        if machinery_misprediction_coefficient!=1:
-                            current_efficiency=default_enzyme_efficiencies[efficiency_parameter]
-                            updated_efficiency=current_efficiency*machinery_misprediction_coefficient
-                            if tolerance is None:
-                                enzyme_correction_coefficients[enzyme]=machinery_misprediction_coefficient
-                                enzyme_efficiencies_out.loc[respective_reaction,"Kapp"]=updated_efficiency
-                                enzyme_efficiencies_out.loc[respective_reaction,"Enzyme_ID"]=enzyme
-                                enzyme_efficiencies_out.loc[respective_reaction,"Flux"]=flux_direction
-                                enzyme_efficiencies_out.loc[respective_reaction,"Comment"]="Corrected Default"
-                            else:
-                                if abs(numpy.log(tolerance)) <= abs(numpy.log(machinery_misprediction_coefficient)):
-                                    enzyme_correction_coefficients[enzyme]=machinery_misprediction_coefficient
-                                    enzyme_efficiencies_out.loc[respective_reaction,"Kapp"]=updated_efficiency
-                                    enzyme_efficiencies_out.loc[respective_reaction,"Enzyme_ID"]=enzyme
-                                    enzyme_efficiencies_out.loc[respective_reaction,"Flux"]=flux_direction
-                                    enzyme_efficiencies_out.loc[respective_reaction,"Comment"]="Corrected Default"
-         
     process_correction_coefficients={}
     for process in rba_session.get_processes():
         machinery_composition=rba_session.get_process_information(process)['Composition']
-        print(process)
-        print(machinery_composition)
         measured_machinery_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
                                                                                 machinery_composition=machinery_composition,
                                                                                 proteomicsData=protein_data,
@@ -1866,6 +1800,93 @@ def efficiency_correction_new(enzyme_efficiencies,
                         if abs(numpy.log(tolerance)) <= abs(numpy.log(machinery_misprediction_coefficient)):
                             process_efficiencies_out.loc[process,"Value"]=updated_efficiency
                             process_correction_coefficients[process]=machinery_misprediction_coefficient
+
+#    numpy.power(,1/n_th_root_mispred)
+     # {(Iso)Enzyme: correction_coeff} 
+    enzyme_correction_coefficients_original={}
+    for enzyme in rba_session.get_enzymes():
+        associated_reaction=rba_session.get_enzyme_information(enzyme)["Reaction"]
+        # find out wheter it is forward or backward specific kapp to add :
+        if associated_reaction in simulation_results["Reactions"].index:
+            flux=simulation_results["Reactions"].loc[associated_reaction,condition_to_look_up]
+            if flux!=0:
+                enzyme_composition=rba_session.get_enzyme_information(enzyme)['Subunits']
+                measured_machinery_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
+                                                                                        machinery_composition=enzyme_composition,
+                                                                                        proteomicsData=protein_data,
+                                                                                        proto_proteins=False)
+
+                predicted_machinery_concentration=determine_machinery_concentration_by_weighted_geometric_mean(rba_session=rba_session,
+                                                                                        machinery_composition=enzyme_composition,
+                                                                                        proteomicsData=predicted_proteome,
+                                                                                        proto_proteins=False)
+                machinery_misprediction_coefficient=1
+                if (measured_machinery_concentration != 0) and (predicted_machinery_concentration != 0):
+                    if (numpy.isfinite(measured_machinery_concentration)) and (numpy.isfinite(predicted_machinery_concentration)):
+                        machinery_misprediction_coefficient=predicted_machinery_concentration/measured_machinery_concentration
+                        #machinery_misprediction_coefficient=numpy.power(predicted_machinery_concentration/measured_machinery_concentration,1/n_th_root_mispred)
+                enzyme_correction_coefficients_original[enzyme]=machinery_misprediction_coefficient
+
+    enzymes_already_corrected=[]
+    enzyme_correction_coefficients={}
+    for enzyme_to_correct in enzyme_correction_coefficients_original.keys():
+        if enzyme_to_correct in enzymes_already_corrected:
+            continue
+        correction_coeffs=[]
+        #isozymes=list([enzyme_to_correct]+rba_session.get_enzyme_information(enzyme_to_correct)["Isozymes"])
+        isozymes=[enzyme_to_correct]
+        enzymes_already_corrected+=isozymes
+        for isozyme in isozymes:
+            if isozyme in enzyme_correction_coefficients_original.keys():
+                correction_coeffs.append(enzyme_correction_coefficients_original[isozyme]) 
+        #mean_correction_coeff=gmean(numpy.array(correction_coeffs))
+        mean_correction_coeff=numpy.power(gmean(numpy.array(correction_coeffs)),1/n_th_root_mispred)
+        if numpy.isfinite(mean_correction_coeff):
+            for isozyme in isozymes:
+                if isozyme in list(enzyme_efficiencies["Enzyme_ID"]):
+                    current_efficiency=enzyme_efficiencies.loc[enzyme_efficiencies["Enzyme_ID"]==isozyme,"Kapp"].values[0]
+                    updated_efficiency=current_efficiency*mean_correction_coeff
+                    if tolerance is None:
+                        enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Enzyme_ID"]==isozyme,"Kapp"]=updated_efficiency
+                        enzyme_correction_coefficients[enzyme]=mean_correction_coeff
+                    else:
+                        if abs(numpy.log(tolerance)) <= abs(numpy.log(mean_correction_coeff)):
+                            enzyme_efficiencies_out.loc[enzyme_efficiencies_out["Enzyme_ID"]==isozyme,"Kapp"]=updated_efficiency
+                            enzyme_correction_coefficients[enzyme]=mean_correction_coeff
+                else:
+                    if correct_default_kapp_enzymes:
+                        #respective_reaction=rba_session.get_enzyme_information(isozyme)["Reaction"].split("_duplicate_")[0]
+                        respective_reaction=rba_session.get_enzyme_information(isozyme)["Reaction"]
+                        # find out wheter it is forward or backward specific kapp to add :
+                        if respective_reaction in simulation_results["Reactions"].index:
+                            flux=simulation_results["Reactions"].loc[respective_reaction,condition_to_look_up]
+                            try:
+                                if flux < 0:
+                                    flux_direction=-1
+                                    efficiency_parameter= rba_session.model.enzymes.enzymes._elements_by_id[isozyme].backward_efficiency
+                                elif flux > 0:
+                                    flux_direction=1
+                                    efficiency_parameter= rba_session.model.enzymes.enzymes._elements_by_id[isozyme].forward_efficiency
+                                else:
+                                    continue
+                            except:
+                                continue
+                            if efficiency_parameter in default_enzyme_efficiencies.keys():
+                                current_efficiency=default_enzyme_efficiencies[efficiency_parameter]
+                                updated_efficiency=current_efficiency*mean_correction_coeff
+                                if tolerance is None:
+                                    enzyme_correction_coefficients[enzyme]=mean_correction_coeff
+                                    enzyme_efficiencies_out.loc[respective_reaction,"Kapp"]=updated_efficiency
+                                    enzyme_efficiencies_out.loc[respective_reaction,"Enzyme_ID"]=isozyme
+                                    enzyme_efficiencies_out.loc[respective_reaction,"Flux"]=flux_direction
+                                    enzyme_efficiencies_out.loc[respective_reaction,"Comment"]="Corrected Default"
+                                else:
+                                    if abs(numpy.log(tolerance)) <= abs(numpy.log(mean_correction_coeff)):
+                                        enzyme_correction_coefficients[enzyme]=mean_correction_coeff
+                                        enzyme_efficiencies_out.loc[respective_reaction,"Kapp"]=updated_efficiency
+                                        enzyme_efficiencies_out.loc[respective_reaction,"Enzyme_ID"]=isozyme
+                                        enzyme_efficiencies_out.loc[respective_reaction,"Flux"]=flux_direction
+                                        enzyme_efficiencies_out.loc[respective_reaction,"Comment"]="Corrected Default"
 
     return({"Kapps":enzyme_efficiencies_out,
             "ProcessEfficiencies":process_efficiencies_out,
