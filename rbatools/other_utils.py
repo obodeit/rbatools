@@ -133,20 +133,21 @@ def split_protein_abundance_by_location(input_DF,mass_col):
     out=pandas.DataFrame(columns=input_DF.columns)
     new_index=0
     for i in list(input_DF.index):
-        if " ; " in input_DF.loc[i,"Location"]:
-            location_str=str(input_DF.loc[i,"Location"])
-            locations=location_str.split(" ; ")
-            for loc in locations:
-                for col in input_DF.columns:
-                    if col in ['ID','InModel',mass_col,'IsRibosomal']:
-                        out.loc[new_index,col]=input_DF.loc[i,col]
-                    elif col in ['Location']:
-                        out.loc[new_index,col]=loc
-                    else:
-                        out.loc[new_index,col]=input_DF.loc[i,col]/len(locations)
-        else:
-            out.loc[new_index,:]=input_DF.loc[i,:]
-        new_index+=1
+        if type(input_DF.loc[i,"Location"]) == str:
+            if " ; " in input_DF.loc[i,"Location"]:
+                location_str=str(input_DF.loc[i,"Location"])
+                locations=location_str.split(" ; ")
+                for loc in locations:
+                    for col in input_DF.columns:
+                        if col in ['ID','InModel',mass_col,'IsRibosomal']:
+                            out.loc[new_index,col]=input_DF.loc[i,col]
+                        elif col in ['Location']:
+                            out.loc[new_index,col]=loc
+                        else:
+                            out.loc[new_index,col]=input_DF.loc[i,col]/len(locations)
+            else:
+                out.loc[new_index,:]=input_DF.loc[i,:]
+            new_index+=1
     return(out)
 
 
@@ -178,6 +179,7 @@ def determine_compartment_occupation(Data_input,
     ribosomal_proteins_as_extra_compartment : bool, optional
         _description_, by default True
     """
+    
     out=pandas.DataFrame()
     if only_in_model:
         if split_multi_compartment_proteins:
@@ -191,7 +193,6 @@ def determine_compartment_occupation(Data_input,
                                                                     mass_col=mass_col)
         else:
             Data_intermediate=Data_input
-
     Data=pandas.DataFrame()
     for i in Data_intermediate.index:
         for j in Data_intermediate.columns:
@@ -263,19 +264,20 @@ def correct_proteome(correction_results_compartement_sizes,proteome,condition,Co
         abundance_coeff=1
         
         compartment_specific_correction_coeffs=[]
-        for location in proteome.loc[protein,"Location"].split(" ; "):
-            if location in compartments_to_replace.keys():
-                compartment=compartments_to_replace[location]
-            else:
-                compartment=location
-            
-            if compartment =="c":
-                compartment_specific_abundance_coeff=(correction_results_compartement_sizes.loc[compartment,"new_protein_fraction"]*(1-correction_results_compartement_sizes.loc[compartment,"new_PG_fraction"])-correction_results_compartement_sizes.loc["Ribosomes","new_protein_fraction"])/(correction_results_compartement_sizes.loc[compartment,"original_protein_fraction"]*(1-correction_results_compartement_sizes.loc[compartment,"original_PG_fraction"]))
-            else:
-                compartment_specific_abundance_coeff=(correction_results_compartement_sizes.loc[compartment,"new_protein_fraction"]*(1-correction_results_compartement_sizes.loc[compartment,"new_PG_fraction"]))/(correction_results_compartement_sizes.loc[compartment,"original_protein_fraction"]*(1-correction_results_compartement_sizes.loc[compartment,"original_PG_fraction"]))
-            if (numpy.isfinite(compartment_specific_abundance_coeff)) and (compartment_specific_abundance_coeff>0):
-                compartment_specific_correction_coeffs.append(compartment_specific_abundance_coeff)            
-                correction_results_compartement_sizes.loc[i,"copy_number_scaling"]=compartment_specific_abundance_coeff
+        if type(proteome.loc[protein,"Location"]) == str:
+            for location in proteome.loc[protein,"Location"].split(" ; "):
+                if location in compartments_to_replace.keys():
+                    compartment=compartments_to_replace[location]
+                else:
+                    compartment=location
+                
+                if compartment =="c":
+                    compartment_specific_abundance_coeff=(correction_results_compartement_sizes.loc[compartment,"new_protein_fraction"]*(1-correction_results_compartement_sizes.loc[compartment,"new_PG_fraction"])-correction_results_compartement_sizes.loc["Ribosomes","new_protein_fraction"])/(correction_results_compartement_sizes.loc[compartment,"original_protein_fraction"]*(1-correction_results_compartement_sizes.loc[compartment,"original_PG_fraction"]))
+                else:
+                    compartment_specific_abundance_coeff=(correction_results_compartement_sizes.loc[compartment,"new_protein_fraction"]*(1-correction_results_compartement_sizes.loc[compartment,"new_PG_fraction"]))/(correction_results_compartement_sizes.loc[compartment,"original_protein_fraction"]*(1-correction_results_compartement_sizes.loc[compartment,"original_PG_fraction"]))
+                if (numpy.isfinite(compartment_specific_abundance_coeff)) and (compartment_specific_abundance_coeff>0):
+                    compartment_specific_correction_coeffs.append(compartment_specific_abundance_coeff)            
+                    correction_results_compartement_sizes.loc[i,"copy_number_scaling"]=compartment_specific_abundance_coeff
 
         if len(compartment_specific_correction_coeffs)>0:
             abundance_coeff=gmean(compartment_specific_correction_coeffs)
