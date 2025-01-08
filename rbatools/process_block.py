@@ -72,9 +72,8 @@ def _get_process_info(model, i):
     for j in range(len(Processes[i].machinery.machinery_composition.reactants._elements)):
         spec = Processes[i].machinery.machinery_composition.reactants._elements[j].species
         # int() added#
-        stoc = int(
-            Processes[i].machinery.machinery_composition.reactants._elements[j].stoichiometry)
-        machinery[spec] = stoc
+        stoc = Processes[i].machinery.machinery_composition.reactants._elements[j].stoichiometry
+        machinery[spec] = numpy.round(stoc,5)
 
     respectiveMap = ''
     if len(Processes[i].processings.productions._elements) > 0:

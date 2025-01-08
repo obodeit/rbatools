@@ -149,7 +149,7 @@ def _find_subunits(enzyme_inQuestion, blocks, model, enzymes):
     ind = enzymes.index(E)
     if len(model.enzymes.enzymes._elements[ind].machinery_composition.reactants._elements) > 0:
         for p in model.enzymes.enzymes._elements[ind].machinery_composition.reactants._elements:
-            out[p.__dict__['species']] = int(p.__dict__['stoichiometry'])
+            out[p.__dict__['species']] = numpy.round(p.__dict__['stoichiometry'],5)
     return(out)
 
 
