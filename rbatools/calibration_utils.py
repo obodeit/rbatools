@@ -222,6 +222,7 @@ def calibration_workflow_2(proteome,
                 efficiencies_over_correction_iterations.append({"Specific_Kapps":Specific_Kapps.copy(),"Default_Kapps":Default_Kapps.copy(),"Process_Efficiencies":process_efficiencies.copy()})
 
                 #build_input_proteome_for_specific_kapp_estimation(protein_data, condition)
+                print(build_input_proteome_for_specific_kapp_estimation(proteome, condition))
                 KappCorrectionResults=efficiency_correction_new(enzyme_efficiencies=Specific_Kapps,
                                                                 simulation_results=Simulation_results[results_to_look_up],
                                                                 protein_data=build_input_proteome_for_specific_kapp_estimation(proteome, condition),
@@ -2233,6 +2234,7 @@ def weighted_geometric_mean(data,weights=None):
     weights : _type_, optional
         _description_, by default None
     """
+    print("{} -- {}".format(data,weights))
     if weights is None:
         value=1
         for i in data:
