@@ -60,6 +60,7 @@ def calibration_workflow_2(proteome,
         process_efficiencies=import_process_efficiencies(input_data=process_efficiencies,rba_session=rba_session,condition=condition)
     else:
         if process_efficiency_estimation_input is not None:
+
             process_efficiencies = determine_apparent_process_efficiencies_2(growth_rate=growth_rate_from_input(input=definition_file,condition=condition), 
                                                                              input=process_efficiency_estimation_input,
                                                                              rba_session=rba_session,
@@ -78,7 +79,8 @@ def calibration_workflow_2(proteome,
             #                                                               condition=condition,
             #                                                               fit_nucleotide_assembly_machinery=True)
 
-        #process_efficiencies.to_csv(output_dir+'/ProcEffsOrig_{}.csv'.format(condition))
+        #process_efficiencies_old.to_csv(output_dir+'/ProcEffsOrigOld_{}.csv'.format(condition))
+        process_efficiencies.to_csv(output_dir+'/ProcEffsOrig_{}.csv'.format(condition))
     process_efficiencies_original=process_efficiencies.copy()
 
     if use_mean_enzyme_composition_for_calibration:
@@ -386,10 +388,11 @@ def calculate_default_enzyme_efficiency_as_median_over_specific_efficiencies(spe
     return({"default_efficiency":spec_kapp_median,"default_transporter_efficiency":transporter_multiplier*spec_kapp_median})
 
 def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,compartment_densities_and_pg, protein_data, condition,fit_nucleotide_assembly_machinery=False):
-
+    print(compartment_densities_and_pg)
     for comp in list(compartment_densities_and_pg['Compartment_ID']):
         rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_pg.loc[compartment_densities_and_pg['Compartment_ID'] == comp, 'Density'].values[0]
-        rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = 0.0
+        #rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = 0.0
+        rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_pg.loc[compartment_densities_and_pg['Compartment_ID'] == comp, 'PG_fraction'].values[0]
     rba_session.rebuild_from_model()
     rba_session.set_growth_rate(growth_rate)
 
@@ -414,6 +417,8 @@ def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,com
         proto_id=protein_info['ProtoID']
         if proto_id in list(protein_data['ID']):
             concentration_proto_protein=protein_data.loc[protein_data['ID'] == proto_id, condition].values[0]
+            if pandas.isna(concentration_proto_protein):
+                continue
             protoprotein_isoform_distribution={}
             #{isoform1:0.1,isoform2:0.06}
             #protoprotein=isoform1+isoform2
@@ -429,10 +434,14 @@ def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,com
                         effective_client_protein_aa_concentrations[process_required]=effective_concentration_isoform*protein_info['ProcessRequirements'][process_required]
     #{target_species_protein1:its_concentration,}
     #A:0.2 B:1 C:0.1  n_A*0.2+n_B*1+n_C*0.1 n_AA=100 Transl:100 Chap=10
+
     protein_targets={rba_session.get_target_information(i)["TargetEntity"]:rba_session.get_current_parameter_value(rba_session.get_target_information(i)["TargetParameterID"]) for i in rba_session.get_targets() if rba_session.get_target_information(i)["TargetEntity"] in rba_session.get_proteins()}
     for protein in protein_targets.keys():
         protein_info=rba_session.get_protein_information(protein=protein)
         concentration_target_protein=protein_targets[protein]
+        if pandas.isna(concentration_target_protein):
+            continue
+
         for process_required in protein_info['ProcessRequirements'].keys():
             if process_required in effective_client_protein_aa_concentrations.keys():
                 effective_client_protein_aa_concentrations[process_required]+=concentration_target_protein*protein_info['ProcessRequirements'][process_required]
@@ -483,10 +492,10 @@ def determine_apparent_process_efficiencies(growth_rate, input, rba_session,comp
         #MACHINERY COST???
         n_AAs_in_machinery = 0
         machinery_size = 0
-        for i in constituting_proteins.keys(): # for protein in complex
-            if i in protein_data['ID']:
-                n_AAs_in_machinery += protein_data.loc[protein_data['ID'] == i, condition].values[0] * protein_data.loc[protein_data['ID'] == i, 'AA_residues'].values[0]
-                machinery_size += constituting_proteins[i] 
+        for j in constituting_proteins.keys(): # for protein in complex
+            if j in protein_data['ID']:
+                n_AAs_in_machinery += protein_data.loc[protein_data['ID'] == j, condition].values[0] * protein_data.loc[protein_data['ID'] == j, 'AA_residues'].values[0]
+                machinery_size += constituting_proteins[j] 
         # right reference amount?
 
         if n_AAs_in_machinery > 0:
@@ -2234,7 +2243,7 @@ def weighted_geometric_mean(data,weights=None):
     weights : _type_, optional
         _description_, by default None
     """
-    print("{} -- {}".format(data,weights))
+    #print("{} -- {}".format(data,weights))
     if weights is None:
         value=1
         for i in data:
