@@ -78,7 +78,7 @@ def calibration_workflow_2(proteome,
             #                                                               condition=condition,
             #                                                               fit_nucleotide_assembly_machinery=True)
 
-        #process_efficiencies.to_csv(output_dir+'/ProcEffsOrig_{}.csv'.format(condition))
+        process_efficiencies.to_csv(output_dir+'/ProcEffsOrig_{}.csv'.format(condition))
     process_efficiencies_original=process_efficiencies.copy()
 
     if use_mean_enzyme_composition_for_calibration:
@@ -2234,7 +2234,6 @@ def weighted_geometric_mean(data,weights=None):
     weights : _type_, optional
         _description_, by default None
     """
-    print("{} -- {}".format(data,weights))
     if weights is None:
         value=1
         for i in data:
