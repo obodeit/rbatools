@@ -223,7 +223,6 @@ def calibration_workflow_2(proteome,
                 efficiencies_over_correction_iterations.append({"Specific_Kapps":Specific_Kapps.copy(),"Default_Kapps":Default_Kapps.copy(),"Process_Efficiencies":process_efficiencies.copy()})
 
                 #build_input_proteome_for_specific_kapp_estimation(protein_data, condition)
-                print(build_input_proteome_for_specific_kapp_estimation(proteome, condition))
                 KappCorrectionResults=efficiency_correction_new(enzyme_efficiencies=Specific_Kapps,
                                                                 simulation_results=Simulation_results[results_to_look_up],
                                                                 protein_data=build_input_proteome_for_specific_kapp_estimation(proteome, condition),
@@ -248,11 +247,11 @@ def calibration_workflow_2(proteome,
                             if (1-correction_settings['rss_tolerance'])<=current_RSS/previous_RSS<=(1+correction_settings['rss_tolerance']):
                                 steady_count+=1
                             else:
-                                steady_count=0
-                                #
+                                if current_RSS/min(rss_trajectory) < (1-correction_settings['rss_tolerance']):
+                                    steady_count=0
                                 if current_RSS>=correction_settings['increasing_rss_factor']*previous_RSS:
                                     increasing_RSS_count+=1
-                                else:
+                                elif current_RSS<previous_RSS:
                                     increasing_RSS_count=0
                                 #
                 if print_outputs:
@@ -264,8 +263,8 @@ def calibration_workflow_2(proteome,
                 previous_RSS=current_RSS
 
                 #put in function: maybe also counts on top
-                if current_RSS>rss_trajectory[0]:
-                    continuation_criterion_correction=False
+                #if current_RSS>rss_trajectory[0]:
+                #    continuation_criterion_correction=False
                 if steady_count>=correction_settings['steady_rss_limit']:
                     continuation_criterion_correction=False
                 elif iteration_count>=correction_settings['iteration_limit']:
@@ -277,7 +276,9 @@ def calibration_workflow_2(proteome,
                     continuation_criterion_correction=False
         #
         if len(rss_trajectory)>0:
-            lowest_RSS_index=rss_trajectory.index(min(rss_trajectory))
+            min_RSS=min(rss_trajectory)
+            lowest_RSS_index=min([i for i in range(len(rss_trajectory)) if rss_trajectory[i]<=min_RSS*1.05])
+            #lowest_RSS_index=rss_trajectory.index(min(rss_trajectory))
 
             Default_Kapps_to_return=efficiencies_over_correction_iterations[lowest_RSS_index]["Default_Kapps"]
             Specific_Kapps_to_return=efficiencies_over_correction_iterations[lowest_RSS_index]["Specific_Kapps"]
@@ -387,7 +388,6 @@ def calculate_default_enzyme_efficiency_as_median_over_specific_efficiencies(spe
     return({"default_efficiency":spec_kapp_median,"default_transporter_efficiency":transporter_multiplier*spec_kapp_median})
 
 def determine_apparent_process_efficiencies_2(growth_rate,input, rba_session,compartment_densities_and_pg, protein_data, condition,fit_nucleotide_assembly_machinery=False):
-    print(compartment_densities_and_pg)
     for comp in list(compartment_densities_and_pg['Compartment_ID']):
         rba_session.model.parameters.functions._elements_by_id[str('fraction_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = compartment_densities_and_pg.loc[compartment_densities_and_pg['Compartment_ID'] == comp, 'Density'].values[0]
         #rba_session.model.parameters.functions._elements_by_id[str('fraction_non_enzymatic_protein_'+comp)].parameters._elements_by_id['CONSTANT'].value = 0.0
