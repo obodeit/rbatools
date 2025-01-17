@@ -277,7 +277,7 @@ def calibration_workflow_2(proteome,
         #
         if len(rss_trajectory)>0:
             min_RSS=min(rss_trajectory)
-            lowest_RSS_index=min([i for i in range(len(rss_trajectory)) if rss_trajectory[i]<=min_RSS*1.05])
+            lowest_RSS_index=min([i for i in range(len(rss_trajectory)) if rss_trajectory[i]<=min_RSS*1.01])
             #lowest_RSS_index=rss_trajectory.index(min(rss_trajectory))
 
             Default_Kapps_to_return=efficiencies_over_correction_iterations[lowest_RSS_index]["Default_Kapps"]
